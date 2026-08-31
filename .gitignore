@@ -16,3 +16,28 @@ Desktop.ini
 *.bak_*
 *.pdb
 bin-build/
+
+# --- 2026-08-31: close the gaps that let build output / backups in ---
+# NOTE: previous rules only covered bin/Release and bin-v20/Release,
+# so bin-v18/Release (13.5 MB) slipped through. Cover every variant.
+**/bin-v*/
+**/bin-verify*/
+**/obj-v18/
+**/obj-verify*/
+
+# Backup snapshots: previous rule was *.bak_* (underscore) and missed
+# the hyphen forms actually used here (SRC-BAK-20260730, .BAK-20260819).
+**/SRC-BAK-*/
+**/*.BAK-*/
+**/*.bak-*/
+**/*.BAK*/
+**/*.bak*/
+
+# Python tooling / IDE
+__pycache__/
+*.pyc
+.vscode/
+.idea/
+
+# Generated push tooling state
+gh_push_plan.json
