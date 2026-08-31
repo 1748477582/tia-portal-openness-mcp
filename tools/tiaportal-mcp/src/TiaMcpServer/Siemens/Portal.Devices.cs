@@ -95,55 +95,107 @@ namespace TiaMcpServer.Siemens
 
         
 
-        public List<Device> GetDevices(string regexName = "")
+        public List<ResponseDeviceInfo> GetDevices(string regexName = "")
         {
             return _sta.Run(() =>
             {
             _logger?.LogInformation("Getting devices...");
 
+            var result = new List<ResponseDeviceInfo>();
+
             if (IsProjectNull())
             {
-                return [];
+                return result;
             }
 
-            var list = new List<Device>();
-
+            // Collect RCWs on the STA thread, then extract plain data inside STA.
+            // Never return a Siemens.Engineering RCW across the STA boundary.
+            var rcw = new List<Device>();
             if (_project?.Devices != null)
             {
                 foreach (Device device in _project.Devices)
                 {
-                    list.Add(device);
+                    rcw.Add(device);
                 }
 
                 foreach (var group in _project.DeviceGroups)
                 {
-                    GetDevicesRecursive(group, list, regexName);
+                    GetDevicesRecursive(group, rcw, regexName);
                 }
 
                 //foreach (var group in _project.UngroupedDevicesGroup)
                 //{
-                //    GetDevicesRecursive(_project.UngroupedDevicesGroup, list, regexName);
+                //    GetDevicesRecursive(_project.UngroupedDevicesGroup, rcw, regexName);
                 //}
             }
 
-            return list;
+            foreach (var device in rcw)
+            {
+                result.Add(BuildDeviceInfo(device));
+            }
+
+            return result;
             });
         }
 
-        public Device? GetDevice(string devicePath)
+        public ResponseDeviceInfo? GetDevice(string devicePath)
         {
-            _logger?.LogInformation($"Getting device by path: {devicePath}");
-
-            if (IsProjectNull())
+            return _sta.Run(() =>
             {
-                return null;
-            }
+                _logger?.LogInformation($"Getting device by path: {devicePath}");
 
-            // Retrieve the device by its path
-            return GetDeviceByPath(devicePath);
+                if (IsProjectNull())
+                {
+                    return null;
+                }
+
+                // Retrieve the device by its path (RCW access stays on the STA thread)
+                var device = GetDeviceByPath(devicePath);
+                return device == null ? null : BuildDeviceInfo(device);
+            });
         }
 
-        public Device AddDevice(string orderNumber, string version, string deviceName)
+        // Returns a plain-data DTO built entirely on the STA thread.
+        // Keep GetDeviceItem (RCW) for drive/PlugNew callers that need the live object.
+        public ResponseDeviceItemInfo? GetDeviceItemInfo(string deviceItemPath)
+        {
+            return _sta.Run(() =>
+            {
+                _logger?.LogInformation($"Getting device item info by path: {deviceItemPath}");
+
+                if (IsProjectNull())
+                {
+                    return null;
+                }
+
+                var di = GetDeviceItemByPath(deviceItemPath);
+                if (di == null) return null;
+
+                return new ResponseDeviceItemInfo
+                {
+                    Name = di.Name,
+                    Attributes = Helper.GetAttributeList(di),
+                    Description = di.ToString()
+                };
+            });
+        }
+
+        private static ResponseDeviceInfo BuildDeviceInfo(Device device)
+        {
+            return new ResponseDeviceInfo
+            {
+                Name = device.Name,
+                Attributes = Helper.GetAttributeList(device),
+                Description = device.ToString()
+            };
+        }
+
+        // IMPORTANT: never return a Siemens.Engineering RCW (Device/Project/...)
+        // across the STA boundary. The returned object is marshaled to the MTA
+        // caller thread and any property access there throws
+        // "Cross-thread operation is not valid in Openness within STA".
+        // Extract the needed value (device name) INSIDE the STA and return it.
+        public string AddDevice(string orderNumber, string version, string deviceName)
         {
             return _sta.Run(() =>
             {
@@ -237,13 +289,13 @@ namespace TiaMcpServer.Siemens
                         try
                         {
                             var dev = project.Devices.CreateWithItem(typeIdentifier, itemName, deviceName);
-                            if (dev is Device d) return d;
+                            if (dev is Device d) return d.Name;
                         }
-                        catch (Exception exTry)
-                        {
-                            // try next variant
-                            lastVariantError = FormatExceptionDetail(exTry);
-                        }
+                    catch (Exception exTry)
+                    {
+                        // try next variant
+                        lastVariantError = FormatExceptionDetail(exTry);
+                    }
                     }
                 }
 
@@ -261,7 +313,9 @@ namespace TiaMcpServer.Siemens
             });
         }
 
-        public (Device? Device, string? MlfbUsed, string? VersionUsed, List<string> Attempts, string? Error) AddDeviceWithFallback(
+        // Returns the device NAME (string) rather than the Device RCW, so the
+        // caller never touches a Siemens.Engineering COM object off the STA.
+        public (string? DeviceName, string? MlfbUsed, string? VersionUsed, List<string> Attempts, string? Error) AddDeviceWithFallback(
             string preferredMlfb,
             string preferredVersion,
             string deviceName,
@@ -468,7 +522,7 @@ namespace TiaMcpServer.Siemens
             });
         }
 
-        public (Device? Device, HardwareCatalogCandidate? Candidate, List<HardwareCatalogCandidate> Candidates, List<string> Attempts, string? Error)
+        public (string? DeviceName, HardwareCatalogCandidate? Candidate, List<HardwareCatalogCandidate> Candidates, List<string> Attempts, string? Error)
             AddHardwareCatalogDeviceWithProbe(string keyword, string deviceName, string preferredText = "")
         {
             var attempts = new List<string>();
@@ -508,7 +562,7 @@ namespace TiaMcpServer.Siemens
                     if (dev is Device d)
                     {
                         attempts.Add($"{typeIdentifier} -> OK");
-                        return (d, candidate, candidates, attempts, null);
+                        return (d.Name, candidate, candidates, attempts, null);
                     }
 
                     lastError = "CreateWithItem returned null";
@@ -527,7 +581,7 @@ namespace TiaMcpServer.Siemens
             return (null, null, candidates, attempts, lastError ?? "All insert attempts failed");
         }
 
-        public (Device? Device, GsdDeviceCandidate? Candidate, List<GsdDeviceCandidate> Candidates, List<string> Attempts, string? Error)
+        public (string? DeviceName, GsdDeviceCandidate? Candidate, List<GsdDeviceCandidate> Candidates, List<string> Attempts, string? Error)
             AddGsdDeviceWithProbe(string keyword, string deviceName, string preferredDap = "")
         {
             var attempts = new List<string>();
@@ -567,7 +621,7 @@ namespace TiaMcpServer.Siemens
                     if (dev is Device d)
                     {
                         attempts.Add($"{typeIdentifier} -> OK");
-                        return (d, candidate, candidates, attempts, null);
+                        return (d.Name, candidate, candidates, attempts, null);
                     }
 
                     lastError = "CreateWithItem returned null";
@@ -977,7 +1031,7 @@ namespace TiaMcpServer.Siemens
                             throw new PortalException(PortalErrorCode.InvalidState, "No project is open in TIA Portal");
                         }
 
-                        var device = Guard.RequireNotNull(GetDevice(devicePath), "Device", devicePath);
+                        var device = Guard.RequireNotNull(GetDeviceByPath(devicePath), "Device", devicePath);
 
                         // SECURITY: Reject path traversal attempts (..) in user-provided paths
                         if (string.IsNullOrWhiteSpace(exportPath))
@@ -1183,7 +1237,7 @@ namespace TiaMcpServer.Siemens
             return _sta.Run(() =>
             {
             if (IsProjectNull()) return new JsonObject { ["found"] = false, ["message"] = "No project open." };
-            var device = GetDevice(devicePath);
+            var device = GetDeviceByPath(devicePath);
             if (device == null) return new JsonObject { ["found"] = false, ["device"] = devicePath, ["message"] = $"Device not found: '{devicePath}'." };
 
             var nodes = BuildDeviceNodesJson(device);
@@ -1263,7 +1317,7 @@ namespace TiaMcpServer.Siemens
             return _sta.Run(() =>
             {
             if (IsProjectNull()) return new JsonObject { ["found"] = false, ["message"] = "No project open." };
-            var device = GetDevice(devicePath);
+            var device = GetDeviceByPath(devicePath);
             if (device == null) return new JsonObject { ["found"] = false, ["device"] = devicePath, ["message"] = $"Device not found: '{devicePath}'." };
 
             var (item, attrName) = FindPutGetAttribute(device);
@@ -1299,7 +1353,7 @@ namespace TiaMcpServer.Siemens
             return _sta.Run(() =>
             {
             if (IsProjectNull()) return new JsonObject { ["ok"] = false, ["message"] = "No project open." };
-            var device = GetDevice(devicePath);
+            var device = GetDeviceByPath(devicePath);
             if (device == null) return new JsonObject { ["ok"] = false, ["device"] = devicePath, ["message"] = $"Device not found: '{devicePath}'." };
 
             var (item, attrName) = FindPutGetAttribute(device);
@@ -1345,7 +1399,7 @@ namespace TiaMcpServer.Siemens
             return _sta.Run(() =>
             {
             if (IsProjectNull()) return new JsonObject { ["found"] = false, ["message"] = "No project open." };
-            var device = GetDevice(devicePath);
+            var device = GetDeviceByPath(devicePath);
             if (device == null) return new JsonObject { ["found"] = false, ["device"] = devicePath, ["message"] = $"Device not found: '{devicePath}'." };
 
             var filter = NormalizeAttrName(nameFilter);

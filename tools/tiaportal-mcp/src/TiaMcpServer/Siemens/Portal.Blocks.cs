@@ -43,7 +43,8 @@ namespace TiaMcpServer.Siemens
     {
         #region blocks/types
 
-        public PlcBlock? GetBlock(string softwarePath, string blockPath)
+        // RCW-returning internal helper (called inside _sta.Run). Never expose to MTA.
+        private PlcBlock? GetBlockRcw(string softwarePath, string blockPath)
         {
             _logger?.LogInformation($"Getting block by path: {blockPath}");
 
@@ -93,7 +94,18 @@ namespace TiaMcpServer.Siemens
             return null;
         }
 
-        public PlcType? GetType(string softwarePath, string typePath)
+        // Plain-data DTO built on the STA thread; safe to return to the MTA caller.
+        public ResponseBlockInfo? GetBlock(string softwarePath, string blockPath)
+        {
+            return _sta.Run(() =>
+            {
+                var rcw = GetBlockRcw(softwarePath, blockPath);
+                return rcw == null ? null : BuildBlockInfo(rcw);
+            });
+        }
+
+        // RCW-returning internal helper (called inside _sta.Run). Never expose to MTA.
+        private PlcType? GetTypeRcw(string softwarePath, string typePath)
         {
             _logger?.LogInformation($"Getting type by path: {typePath}");
 
@@ -143,6 +155,16 @@ namespace TiaMcpServer.Siemens
             return null;
         }
 
+        // Plain-data DTO built on the STA thread; safe to return to the MTA caller.
+        public ResponseTypeInfo? GetType(string softwarePath, string typePath)
+        {
+            return _sta.Run(() =>
+            {
+                var rcw = GetTypeRcw(softwarePath, typePath);
+                return rcw == null ? null : BuildTypeInfo(rcw);
+            });
+        }
+
         public string GetBlockPath(PlcBlock block)
         {
             return _sta.Run(() =>
@@ -162,38 +184,37 @@ namespace TiaMcpServer.Siemens
             });
         }
 
-        public List<PlcBlock> GetBlocks(string softwarePath, string regexName = "")
+        // RCW list filler (no DTO mapping). Callers must be inside _sta.Run.
+        private List<PlcBlock> GetBlockRcwList(string softwarePath, string regexName = "")
         {
-            return _sta.Run(() =>
-            {
-            _logger?.LogInformation("Getting blocks...");
-
-            if (IsProjectNull())
-            {
-                return [];
-            }
-
             var list = new List<PlcBlock>();
-
+            if (IsProjectNull()) return list;
             try
             {
                 var softwareContainer = GetSoftwareContainer(softwarePath);
                 if (softwareContainer?.Software is PlcSoftware plcSoftware)
                 {
                     var group = plcSoftware?.BlockGroup;
-
-                    if (group != null)
-                    {
-                        GetBlocksRecursive(group, list, regexName);
-                    }
+                    if (group != null) GetBlocksRecursive(group, list, regexName);
                 }
             }
             catch (Exception ex)
             {
                 _logger?.LogError(ex, "Error getting blocks");
             }
-
             return list;
+        }
+
+        public List<ResponseBlockInfo> GetBlocks(string softwarePath, string regexName = "")
+        {
+            return _sta.Run(() =>
+            {
+            _logger?.LogInformation("Getting blocks...");
+
+            var rcw = GetBlockRcwList(softwarePath, regexName);
+            var result = new List<ResponseBlockInfo>();
+            foreach (var b in rcw) result.Add(BuildBlockInfo(b));
+            return result;
             });
         }
 
@@ -222,43 +243,44 @@ namespace TiaMcpServer.Siemens
             return null;
         }
 
-        public List<PlcType> GetTypes(string softwarePath, string regexName = "")
+        // RCW list filler (no DTO mapping). Callers must be inside _sta.Run.
+        private List<PlcType> GetTypeRcwList(string softwarePath, string regexName = "")
         {
-            return _sta.Run(() =>
-            {
-            _logger?.LogInformation("Getting types...");
-
-            if (IsProjectNull())
-            {
-                return [];
-            }
-
             var list = new List<PlcType>();
-
+            if (IsProjectNull()) return list;
             try
             {
                 var softwareContainer = GetSoftwareContainer(softwarePath);
                 if (softwareContainer?.Software is PlcSoftware plcSoftware)
                 {
                     var group = plcSoftware?.TypeGroup;
-
-                    if (group != null)
-                    {
-                        GetTypesRecursive(group, list, regexName);
-                    }
+                    if (group != null) GetTypesRecursive(group, list, regexName);
                 }
             }
             catch (Exception ex)
             {
                 _logger?.LogError(ex, "Error getting user defined types");
             }
-
             return list;
+        }
+
+        public List<ResponseTypeInfo> GetTypes(string softwarePath, string regexName = "")
+        {
+            return _sta.Run(() =>
+            {
+            _logger?.LogInformation("Getting types...");
+
+            var rcw = GetTypeRcwList(softwarePath, regexName);
+            var result = new List<ResponseTypeInfo>();
+            foreach (var t in rcw) result.Add(BuildTypeInfo(t));
+            return result;
             });
         }
 
         public PlcBlock? ExportBlock(string softwarePath, string blockPath, string exportPath, bool preservePath = false)
         {
+            return _sta.Run(() =>
+            {
             _logger?.LogInformation($"Exporting block by path: {blockPath}");
 
             try
@@ -268,7 +290,7 @@ namespace TiaMcpServer.Siemens
                     throw new PortalException(PortalErrorCode.InvalidState, "No project is open. If a project is already open in the TIA Portal UI, call AttachToOpenProject(projectName); otherwise call OpenProject(path) for a local .apXX project, or CreateProject to start a new one. (Connect is attempted automatically.)");
                 }
 
-                var block = Guard.RequireNotNull(GetBlock(softwarePath, blockPath), "Block", blockPath);
+                var block = Guard.RequireNotNull(GetBlockRcw(softwarePath, blockPath), "Block", blockPath);
 
                 if (preservePath)
                 {
@@ -312,10 +334,13 @@ namespace TiaMcpServer.Siemens
                 _logger?.LogError(pex, "ExportBlock failed for {SoftwarePath} {BlockPath} -> {ExportPath}", softwarePath, blockPath, exportPath);
                 throw pex;
             }
+            });
         }
 
         public PlcType? ExportType(string softwarePath, string typePath, string exportPath, bool preservePath = false)
         {
+            return _sta.Run(() =>
+            {
             _logger?.LogInformation($"Exporting type by path: {typePath}");
 
             try
@@ -325,7 +350,7 @@ namespace TiaMcpServer.Siemens
                     throw new PortalException(PortalErrorCode.InvalidState, "No project is open. If a project is already open in the TIA Portal UI, call AttachToOpenProject(projectName); otherwise call OpenProject(path) for a local .apXX project, or CreateProject to start a new one. (Connect is attempted automatically.)");
                 }
 
-                var type = Guard.RequireNotNull(GetType(softwarePath, typePath), "Type", typePath);
+                var type = Guard.RequireNotNull(GetTypeRcw(softwarePath, typePath), "Type", typePath);
 
                 // TIA Portal never exports inconsistent types
                 if (!type.IsConsistent)
@@ -368,6 +393,7 @@ namespace TiaMcpServer.Siemens
                 _logger?.LogError(pex, "ExportType failed for {SoftwarePath} {TypePath} -> {ExportPath}", softwarePath, typePath, exportPath);
                 throw pex;
             }
+            });
         }
 
         // Prepare a block/type XML file for Openness import. Two things are fixed on a temp
@@ -591,7 +617,7 @@ namespace TiaMcpServer.Siemens
                 if (IsProjectNull())
                     throw new PortalException(PortalErrorCode.InvalidState, "No project is open. If a project is already open in the TIA Portal UI, call AttachToOpenProject(projectName); otherwise call OpenProject(path) for a local .apXX project.");
 
-                var block = Guard.RequireNotNull(GetBlock(softwarePath, blockPath), "Block", blockPath);
+                var block = Guard.RequireNotNull(GetBlockRcw(softwarePath, blockPath), "Block", blockPath);
 
                 if (!block.IsConsistent)
                     throw new PortalException(PortalErrorCode.InvalidState, "Block is inconsistent; TIA Portal does not export inconsistent blocks. Compile it first.");
@@ -865,8 +891,10 @@ namespace TiaMcpServer.Siemens
             });
         }
 
-        public IEnumerable<PlcBlock>? ExportBlocks(string softwarePath, string exportPath, string regexName = "", bool preservePath = false)
+        public List<ResponseBlockInfo>? ExportBlocks(string softwarePath, string exportPath, string regexName = "", bool preservePath = false)
         {
+            return _sta.Run(() =>
+            {
             _logger?.LogInformation("Exporting blocks...");
 
             if (IsProjectNull())
@@ -874,26 +902,16 @@ namespace TiaMcpServer.Siemens
                 throw new PortalException(PortalErrorCode.InvalidState, "No project is open. If a project is already open in the TIA Portal UI, call AttachToOpenProject(projectName); otherwise call OpenProject(path) for a local .apXX project, or CreateProject to start a new one. (Connect is attempted automatically.)");
             }
 
-            var exportList = new List<PlcBlock>();
+            var exportList = new List<ResponseBlockInfo>();
             var failures = new List<string>();
             
-            PlcBlock[] list;
+            var list = GetBlockRcwList(softwarePath, regexName);
 
-            try
-            {
-                list = GetBlocks(softwarePath, regexName).ToArray();
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, "Failed to retrieve block list for {SoftwarePath}", softwarePath);
-                return exportList;
-            }
-
-            for (int k = 0; k < list.Count(); k++)
+            for (int k = 0; k < list.Count; k++)
             {
                 var block = list[k];
 
-                _logger?.LogDebug($"- Exporting block {k}/{list.Count()} : {block.Name}");
+                _logger?.LogDebug($"- Exporting block {k}/{list.Count} : {block.Name}");
 
                 string path;
                 if (preservePath)
@@ -963,7 +981,7 @@ namespace TiaMcpServer.Siemens
                         continue;
                     }
 
-                    exportList.Add(block);
+                    exportList.Add(BuildBlockInfo(block));
                 }
                 catch (Exception ex)
                 {
@@ -976,7 +994,7 @@ namespace TiaMcpServer.Siemens
 
             if (failures.Count > 0)
             {
-                _logger?.LogWarning($"ExportBlocks completed with {failures.Count} failures out of {list.Count()}. First failure: {failures[0]}");
+                _logger?.LogWarning($"ExportBlocks completed with {failures.Count} failures out of {list.Count}. First failure: {failures[0]}");
                 // Optionally: _logger?.LogDebug("All failures: {Failures}", string.Join("; ", failures));
             }
             else
@@ -985,10 +1003,13 @@ namespace TiaMcpServer.Siemens
             }
 
             return exportList;
+            });
         }
 
-        public IEnumerable<PlcType>? ExportTypes(string softwarePath, string exportPath, string regexName = "", bool preservePath = false)
+        public List<ResponseTypeInfo>? ExportTypes(string softwarePath, string exportPath, string regexName = "", bool preservePath = false)
         {
+            return _sta.Run(() =>
+            {
             _logger?.LogInformation("Exporting types...");
 
             if (IsProjectNull())
@@ -996,26 +1017,16 @@ namespace TiaMcpServer.Siemens
                 return null;
             }
 
-            var exportList = new List<PlcType>();
+            var exportList = new List<ResponseTypeInfo>();
             var failures = new List<string>();
 
-            PlcType[] list;
+            var list = GetTypeRcwList(softwarePath, regexName);
 
-            try
-            {
-                list = GetTypes(softwarePath, regexName).ToArray();
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, "Failed to retrieve type list for {SoftwarePath}", softwarePath);
-                return exportList;
-            }
-
-            for (int i = 0; i < list.Count(); i++)
+            for (int i = 0; i < list.Count; i++)
             {
                 var type = list[i];
 
-                _logger?.LogDebug("- Exporting type {Index}/{Total} : {Name}", i, list.Count(), type.Name);
+                _logger?.LogDebug("- Exporting type {Index}/{Total} : {Name}", i, list.Count, type.Name);
 
                 string path;
                 if (preservePath)
@@ -1071,7 +1082,7 @@ namespace TiaMcpServer.Siemens
                         continue;
                     }
 
-                    exportList.Add(type);
+                    exportList.Add(BuildTypeInfo(type));
                 }
                 catch (Exception ex)
                 {
@@ -1082,7 +1093,7 @@ namespace TiaMcpServer.Siemens
 
             if (failures.Count > 0)
             {
-                _logger?.LogWarning($"ExportTypes completed with {failures.Count} failures out of {list.Count()}. First failure: {failures[0]}");
+                _logger?.LogWarning($"ExportTypes completed with {failures.Count} failures out of {list.Count}. First failure: {failures[0]}");
             }
             else
             {
@@ -1090,6 +1101,7 @@ namespace TiaMcpServer.Siemens
             }
 
             return exportList;
+            });
         }
 
         public (string TempDir, List<string> Paths)? ExportBlockToTemp(string softwarePath, string blockPath, bool preservePath = false)
@@ -1250,8 +1262,10 @@ namespace TiaMcpServer.Siemens
         /// </summary>
         public IReadOnlyList<string> LastExportAsDocumentsFailures { get; private set; } = new List<string>();
 
-        public IEnumerable<PlcBlock>? ExportBlocksAsDocuments(string softwarePath, string exportPath, string regexName = "", bool preservePath = false)
+        public List<ResponseBlockInfo>? ExportBlocksAsDocuments(string softwarePath, string exportPath, string regexName = "", bool preservePath = false)
         {
+            return _sta.Run(() =>
+            {
             _logger?.LogInformation("Exporting blocks as documents...");
 
             if (IsProjectNull())
@@ -1265,25 +1279,16 @@ namespace TiaMcpServer.Siemens
                 return null;
             }
 
-            var exportList = new List<PlcBlock>();
+            var exportList = new List<ResponseBlockInfo>();
             var failures = new List<string>();
 
-            PlcBlock[] list;
-            try
-            {
-                list = GetBlocks(softwarePath, regexName).ToArray();
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, $"Failed to retrieve block list for {softwarePath}");
-                return exportList;
-            }
+            var list = GetBlockRcwList(softwarePath, regexName);
 
-            for (int i = 0; i < list.Count(); i++)
+            for (int i = 0; i < list.Count; i++)
             {
                 var block = list[i];
 
-                _logger?.LogDebug($"- Exporting block as document {i}/{list.Count()} : {block.Name}");
+                _logger?.LogDebug($"- Exporting block as document {i}/{list.Count} : {block.Name}");
 
                 // Skip inconsistent blocks (TIA generally won’t export them)
                 if (!block.IsConsistent)
@@ -1373,7 +1378,7 @@ namespace TiaMcpServer.Siemens
 
                     if (result.State == DocumentResultState.Success)
                     {
-                        exportList.Add(block);
+                        exportList.Add(BuildBlockInfo(block));
                     }
                     else
                     {
@@ -1393,7 +1398,7 @@ namespace TiaMcpServer.Siemens
 
             if (failures.Count > 0)
             {
-                _logger?.LogWarning($"ExportBlocksAsDocuments completed with {failures.Count} failures out of {list.Count()}. First failure: {failures[0]}");
+                _logger?.LogWarning($"ExportBlocksAsDocuments completed with {failures.Count} failures out of {list.Count}. First failure: {failures[0]}");
                 // Optional verbose list:
                 // _logger?.LogDebug("All failures: {Failures}", string.Join("; ", failures));
             }
@@ -1404,6 +1409,7 @@ namespace TiaMcpServer.Siemens
 
             LastExportAsDocumentsFailures = failures;
             return exportList;
+            });
         }
 
         public bool ImportFromDocuments(string softwarePath, string groupPath, string importPath, string fileNameWithoutExtension, ImportDocumentOptions option)
@@ -1626,6 +1632,71 @@ namespace TiaMcpServer.Siemens
             }
 
             return imported;
+        }
+
+        // STA-only: build a DTO from a PlcBlock RCW. Caller must be inside _sta.Run.
+        private ResponseBlockInfo BuildBlockInfo(PlcBlock b)
+        {
+            return new ResponseBlockInfo
+            {
+                Number = SafeGetNumber(b),
+                Path = GetBlockPath(b),
+                TypeName = b.GetType().Name,
+                Name = b.Name,
+                Namespace = b.Namespace,
+                ProgrammingLanguage = Enum.GetName(typeof(ProgrammingLanguage), b.ProgrammingLanguage),
+                MemoryLayout = Enum.GetName(typeof(MemoryLayout), b.MemoryLayout),
+                IsConsistent = b.IsConsistent,
+                HeaderName = b.HeaderName,
+                ModifiedDate = b.ModifiedDate,
+                IsKnowHowProtected = b.IsKnowHowProtected,
+                Attributes = Helper.GetAttributeList(b),
+                Description = b.ToString()
+            };
+        }
+
+        // STA-only: build a DTO from a PlcType RCW. Caller must be inside _sta.Run.
+        private ResponseTypeInfo BuildTypeInfo(PlcType t)
+        {
+            return new ResponseTypeInfo
+            {
+                Path = GetTypePath(t),
+                Name = t.Name,
+                TypeName = t.GetType().Name,
+                Namespace = t.Namespace,
+                IsConsistent = t.IsConsistent,
+                ModifiedDate = t.ModifiedDate,
+                IsKnowHowProtected = t.IsKnowHowProtected,
+                Attributes = Helper.GetAttributeList(t),
+                Description = t.ToString()
+            };
+        }
+
+        public string GetTypePath(PlcType type)
+        {
+            return _sta.Run(() =>
+            {
+                if (type == null) return string.Empty;
+                if (type.Parent is PlcTypeGroup parentGroup)
+                {
+                    var groupPath = GetPlcTypeGroupPath(parentGroup);
+                    return string.IsNullOrEmpty(groupPath) ? type.Name : $"{groupPath}/{type.Name}";
+                }
+                return type.Name;
+            });
+        }
+
+        /// <summary>
+        /// Return the full block hierarchy as a DTO tree (safe to return to MTA callers).
+        /// Replaces GetBlockRootGroup which returned a raw RCW.
+        /// </summary>
+        public BlockGroupInfo? GetBlockHierarchy(string softwarePath)
+        {
+            return _sta.Run(() =>
+            {
+                var rootGroup = GetBlockRootGroup(softwarePath);
+                return rootGroup == null ? null : Helper.BuildBlockHierarchy(rootGroup);
+            });
         }
 
         #endregion

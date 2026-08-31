@@ -889,7 +889,7 @@ namespace TiaMcpServer.ModelContextProtocol
             try
             {
                 var messagesValue = result.GetType().GetProperty("Messages")?.GetValue(result);
-                collected = CollectCompilerMessages(messagesValue);
+                collected = Portal.CollectCompilerMessagesOnSta(messagesValue);
             }
             catch
             {
@@ -3502,7 +3502,7 @@ namespace TiaMcpServer.ModelContextProtocol
             try
             {
                 var result = WithAutoOffline(() => Portal.CompileSoftware(softwarePath, password));
-                var collected = CollectCompilerMessages(result.Messages);
+                var collected = Portal.CollectCompilerMessagesOnSta(result.Messages);
 
                 return new ResponseCompile
                 {

@@ -144,32 +144,7 @@ namespace TiaMcpServer.ModelContextProtocol
 
                 if (exportedBlocks != null)
                 {
-                    var responseList = new List<ResponseBlockInfo>();
-                    var processedCount = 0;
-                    
-                    foreach (var block in exportedBlocks)
-                    {
-                        if (block != null)
-                        {
-                            var attributes = Helper.GetAttributeList(block);
-
-                            responseList.Add(new ResponseBlockInfo
-                            {
-                                Name = block.Name,
-                                TypeName = block.GetType().Name,
-                                Namespace = block.Namespace,
-                                ProgrammingLanguage = Enum.GetName(typeof(ProgrammingLanguage), block.ProgrammingLanguage),
-                                MemoryLayout = Enum.GetName(typeof(MemoryLayout), block.MemoryLayout),
-                                IsConsistent = block.IsConsistent,
-                                HeaderName = block.HeaderName,
-                                ModifiedDate = block.ModifiedDate,
-                                IsKnowHowProtected = block.IsKnowHowProtected,
-                                Attributes = attributes,
-                                Description = block.ToString()
-                            });
-                        }
-                        processedCount++;
-                    }
+                    var processedCount = exportedBlocks.Count;
 
                     // Send final progress notification
                     if (progressToken != null)
@@ -217,7 +192,7 @@ namespace TiaMcpServer.ModelContextProtocol
                     return new ResponseExportBlocksAsDocuments
                     {
                         Message = msg,
-                        Items = responseList,
+                        Items = exportedBlocks,
                         Meta = meta
                     };
                 }

@@ -63,6 +63,18 @@ namespace TiaMcpServer.Siemens
         private readonly ILogger<Portal>? _logger;
         public string? LastConnectError { get; private set; }
 
+        // Q-CRASH: CompilerResult.Messages is an Openness COM object that MUST be read on the
+        // STA thread. Tool-layer callers (CompileAndDiagnosePlc / GetCompileDiagnostics / etc.)
+        // run on the MCP dispatch thread (off-STA); accessing .Messages there can throw a
+        // corrupted-state exception that escapes the surrounding try/catch and terminates the
+        // whole server process (observed as 0xE0434352 during CompileAndDiagnosePlc on V20).
+        // Route every diagnostic collection through the STA executor. StaExecutor's re-entrancy
+        // guard inlines the call if we are already on the STA thread, so it is safe everywhere.
+        internal McpServer.CompilerMessageCollectResult CollectCompilerMessagesOnSta(object? messagesRoot)
+        {
+            return _sta.Run(() => McpServer.CollectCompilerMessages(messagesRoot));
+        }
+
         // #1 STA 线程模型：所有 Openness(COM) 访问都经此单 STA 线程执行。
         // StaExecutor 内部带重入守卫——已在 STA 线程上时直接内联执行，故 Portal 内部互调不会死锁。
         private readonly StaExecutor _sta = new StaExecutor();
@@ -223,6 +235,20 @@ namespace TiaMcpServer.Siemens
                 _logger?.LogWarning(ex, "Error disposing STA executor on Dispose");
             }
 
+            // G3: best-effort auto-save on process exit to avoid silent data loss.
+            try
+            {
+                if (!IsProjectNull())
+                {
+                    (_project as Project)?.Save();
+                    _logger?.LogInformation("Project auto-saved on Dispose.");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Save on Dispose failed; proceeding to close.");
+            }
+
             try
             {
                 (_project as Project)?.Close();
@@ -326,6 +352,25 @@ namespace TiaMcpServer.Siemens
         // COM Attach() call ~200s before throwing EngineeringSecurityException, stalling the whole
         // connect. On timeout we return null so the caller skips this process and tries the next /
         // launches a fresh instance. The worker thread is background and dies with the dead process.
+        // Q-MULTIVER: Only attach to TIA Portal instances of the SAME major version this server
+        // was built/launched for. Attaching a V20 Openness server to a V18 TIA process (or vice-versa)
+        // mismatches the COM/API boundary and can hang or throw. Skip mismatched versions.
+        private static bool TiaPortalProcessMatchesVersion(int processId)
+        {
+            try
+            {
+                using var p = System.Diagnostics.Process.GetProcessById(processId);
+                var path = p.MainModule?.FileName ?? "";
+                var m = System.Text.RegularExpressions.Regex.Match(path, @"[Vv](\d{2})");
+                if (!m.Success) return true; // cannot determine version → be permissive
+                return int.TryParse(m.Groups[1].Value, out var v) && v == Engineering.TiaMajorVersion;
+            }
+            catch
+            {
+                return true; // cannot read the process → be permissive (don't block Connect)
+            }
+        }
+
         private TiaPortal? AttachWithTimeout(TiaPortalProcess proc, int timeoutMs)
         {
             TiaPortal? result = null;
@@ -376,6 +421,13 @@ namespace TiaMcpServer.Siemens
 
                     foreach (var proc in processes)
                     {
+                        // Only consider TIA Portal processes of the matching major version.
+                        if (!TiaPortalProcessMatchesVersion(proc.Id))
+                        {
+                            _logger?.LogInformation($"Skipping TIA Portal PID={proc.Id}: major version mismatch (server targets V{Engineering.TiaMajorVersion}).");
+                            continue;
+                        }
+
                         TiaPortal? candidate = null;
                         try
                         {
@@ -555,13 +607,26 @@ namespace TiaMcpServer.Siemens
             });
         }
 
-        public bool DisconnectPortal()
+        public bool DisconnectPortal(bool saveBeforeClose = true)
         {
             return _sta.Run(() =>
             {
             _logger?.LogInformation("Disconnecting from TIA Portal...");
             return Operation.Run(_logger, nameof(DisconnectPortal), () =>
             {
+                // G3: protect against silent data loss — best-effort auto-save before releasing the handle.
+                if (saveBeforeClose && !IsProjectNull())
+                {
+                    try
+                    {
+                        (_project as Project)?.Save();
+                        _logger?.LogInformation("Project auto-saved before disconnect.");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogWarning(ex, "Save before disconnect failed; continuing to release handle.");
+                    }
+                }
                 _project = null;
                 _session = null;
                 _portal?.Dispose();
@@ -1023,7 +1088,7 @@ namespace TiaMcpServer.Siemens
             });
         }
 
-        public bool CloseProject()
+        public bool CloseProject(bool saveBeforeClose = true)
         {
             return _sta.Run(() =>
             {
@@ -1032,6 +1097,21 @@ namespace TiaMcpServer.Siemens
             if (IsProjectNull())
             {
                 return false;
+            }
+
+            // G3: protect against silent data loss — auto-save before closing.
+            if (saveBeforeClose)
+            {
+                try
+                {
+                    (_project as Project)?.Save();
+                    _logger?.LogInformation("Project auto-saved before close.");
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "Save before close failed; aborting close to protect unsaved data.");
+                    return false;
+                }
             }
 
             (_project as Project)?.Close();
@@ -1145,7 +1225,7 @@ namespace TiaMcpServer.Siemens
             });
         }
 
-        public bool CloseSession()
+        public bool CloseSession(bool saveBeforeClose = true)
         {
             return _sta.Run(() =>
             {
@@ -1154,6 +1234,21 @@ namespace TiaMcpServer.Siemens
             if (IsSessionNull())
             {
                 return false;
+            }
+
+            // G3: protect against silent data loss — auto-save before closing.
+            if (saveBeforeClose)
+            {
+                try
+                {
+                    _session?.Save();
+                    _logger?.LogInformation("Session auto-saved before close.");
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "Save before session close failed; aborting close to protect unsaved data.");
+                    return false;
+                }
             }
 
             _project = null;

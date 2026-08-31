@@ -40,7 +40,7 @@ namespace TiaMcpServer.Siemens
             string normTag = CausalTraceParser.NormalizeOperand(tag);
 
             List<PlcBlock> blocks;
-            try { blocks = GetBlocks(softwarePath, blockScope ?? ""); }
+            try { blocks = GetBlockRcwList(softwarePath, blockScope ?? ""); }
             catch (Exception ex) { return new ModelContextProtocol.ResponseJsonReport { Ok = false, Message = $"GetBlocks failed: {ex.Message}", Data = data }; }
 
             var codeBlocks = blocks.Where(b => !(b is DataBlock)).ToList();

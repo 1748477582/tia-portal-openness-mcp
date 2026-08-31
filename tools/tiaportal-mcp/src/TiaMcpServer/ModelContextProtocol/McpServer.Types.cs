@@ -35,25 +35,13 @@ namespace TiaMcpServer.ModelContextProtocol
                 var type = Portal.GetType(softwarePath, typePath);
                 if (type != null)
                 {
-                    var attributes = Helper.GetAttributeList(type);
-
-                    return new ResponseTypeInfo
+                    type.Message = $"Type info retrieved from '{typePath}' in '{softwarePath}'";
+                    type.Meta = new JsonObject
                     {
-                        Message = $"Type info retrieved from '{typePath}' in '{softwarePath}'",
-                        Name = type.Name,
-                        TypeName = type.GetType().Name,
-                        Namespace = type.Namespace,
-                        IsConsistent = type.IsConsistent,
-                        ModifiedDate = type.ModifiedDate,
-                        IsKnowHowProtected = type.IsKnowHowProtected,
-                        Attributes = attributes,
-                        Description = type.ToString(),
-                        Meta = new JsonObject
-                        {
-                            ["timestamp"] = DateTime.Now,
-                            ["success"] = true
-                        }
+                        ["timestamp"] = DateTime.Now,
+                        ["success"] = true
                     };
+                    return type;
                 }
                 else
                 {
@@ -75,33 +63,12 @@ namespace TiaMcpServer.ModelContextProtocol
             {
                 var list = Portal.GetTypes(softwarePath, regexName);
 
-                var responseList = new List<ResponseTypeInfo>();
-                foreach (var type in list)
-                {
-                    if (type != null)
-                    {
-                        var attributes = Helper.GetAttributeList(type);
-
-                        responseList.Add(new ResponseTypeInfo
-                        {
-                            Name = type.Name,
-                            TypeName = type.GetType().Name,
-                            Namespace = type.Namespace,
-                            IsConsistent = type.IsConsistent,
-                            ModifiedDate = type.ModifiedDate,
-                            IsKnowHowProtected = type.IsKnowHowProtected,
-                            Attributes = attributes,
-                            Description = type.ToString()
-                        });
-                    }
-                }
-
                 if (list != null)
                 {
                     return new ResponseTypes
                     {
                         Message = $"Types with regex '{regexName}' retrieved from '{softwarePath}'",
-                        Items = responseList,
+                        Items = list,
                         Meta = new JsonObject
                         {
                             ["timestamp"] = DateTime.Now,
@@ -323,18 +290,7 @@ namespace TiaMcpServer.ModelContextProtocol
                     {
                         if (t != null && t.IsConsistent == false)
                         {
-                            var attrs = Helper.GetAttributeList(t);
-                            inconsistentTypeInfos.Add(new ResponseTypeInfo
-                            {
-                                Name = t.Name,
-                                TypeName = t.GetType().Name,
-                                Namespace = t.Namespace,
-                                IsConsistent = t.IsConsistent,
-                                ModifiedDate = t.ModifiedDate,
-                                IsKnowHowProtected = t.IsKnowHowProtected,
-                                Attributes = attrs,
-                                Description = t.ToString()
-                            });
+                            inconsistentTypeInfos.Add(t);
                         }
                     }
                 }
@@ -354,29 +310,7 @@ namespace TiaMcpServer.ModelContextProtocol
 
                 if (exportedTypes != null)
                 {
-                    var responseList = new List<ResponseTypeInfo>();
-                    var processedCount = 0;
-                    
-                    foreach (var type in exportedTypes)
-                    {
-                        if (type != null)
-                        {
-                            var attributes = Helper.GetAttributeList(type);
-
-                            responseList.Add(new ResponseTypeInfo
-                            {
-                                Name = type.Name,
-                                TypeName = type.GetType().Name,
-                                Namespace = type.Namespace,
-                                IsConsistent = type.IsConsistent,
-                                ModifiedDate = type.ModifiedDate,
-                                IsKnowHowProtected = type.IsKnowHowProtected,
-                                Attributes = attributes,
-                                Description = type.ToString()
-                            });
-                        }
-                        processedCount++;
-                    }
+                    var processedCount = exportedTypes.Count;
 
                     // Send final progress notification
                     if (progressToken != null)
@@ -396,7 +330,7 @@ namespace TiaMcpServer.ModelContextProtocol
                     return new ResponseExportTypes
                     {
                         Message = $"Export completed: {processedCount} types with regex '{regexName}' exported from '{softwarePath}' to '{exportPath}'",
-                        Items = responseList,
+                        Items = exportedTypes,
                         Inconsistent = inconsistentTypeInfos,
                         Meta = new JsonObject
                         {

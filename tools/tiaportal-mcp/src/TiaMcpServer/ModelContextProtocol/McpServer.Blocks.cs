@@ -35,28 +35,13 @@ namespace TiaMcpServer.ModelContextProtocol
                 var block = Portal.GetBlock(softwarePath, blockPath);
                 if (block != null)
                 {
-                    var attributes = Helper.GetAttributeList(block);
-
-                    return new ResponseBlockInfo
+                    block.Message = $"Block info retrieved from '{blockPath}' in '{softwarePath}'";
+                    block.Meta = new JsonObject
                     {
-                        Message = $"Block info retrieved from '{blockPath}' in '{softwarePath}'",
-                        Name = block.Name,
-                        TypeName = block.GetType().Name,
-                        Namespace = block.Namespace,
-                        ProgrammingLanguage = Enum.GetName(typeof(ProgrammingLanguage),block.ProgrammingLanguage),
-                        MemoryLayout = Enum.GetName(typeof(MemoryLayout), block.MemoryLayout),
-                        IsConsistent = block.IsConsistent,
-                        HeaderName = block.HeaderName,
-                        ModifiedDate = block.ModifiedDate,
-                        IsKnowHowProtected = block.IsKnowHowProtected,
-                        Attributes = attributes,
-                        Description = block.ToString(),
-                        Meta = new JsonObject
-                        {
-                            ["timestamp"] = DateTime.Now,
-                            ["success"] = true
-                        }
+                        ["timestamp"] = DateTime.Now,
+                        ["success"] = true
                     };
+                    return block;
                 }
                 else
                 {
@@ -78,36 +63,12 @@ throw McpError.WithRecovery(ex, $"Unexpected error retrieving block info from '{
             {
                 var list = Portal.GetBlocks(softwarePath, regexName);
 
-                var responseList = new List<ResponseBlockInfo>();
-                foreach (var block in list)
-                {
-                    if (block != null)
-                    {
-                        var attributes = Helper.GetAttributeList(block);
-
-                        responseList.Add(new ResponseBlockInfo
-                        {
-                            Name = block.Name,
-                            TypeName = block.GetType().Name,
-                            Namespace = block.Namespace,
-                            ProgrammingLanguage = Enum.GetName(typeof(ProgrammingLanguage), block.ProgrammingLanguage),
-                            MemoryLayout = Enum.GetName(typeof(MemoryLayout), block.MemoryLayout),
-                            IsConsistent = block.IsConsistent,
-                            HeaderName = block.HeaderName,
-                            ModifiedDate = block.ModifiedDate,
-                            IsKnowHowProtected = block.IsKnowHowProtected,
-                            Attributes = attributes,
-                            Description = block.ToString()
-                        });
-                    }
-                }
-
                 if (list != null)
                 {
                     return new ResponseBlocks
                     {
                         Message = $"Blocks with regex '{regexName}' retrieved from '{softwarePath}'",
-                        Items = responseList,
+                        Items = list,
                         Meta = new JsonObject
                         {
                             ["timestamp"] = DateTime.Now,
@@ -132,10 +93,9 @@ throw McpError.WithRecovery(ex, $"Unexpected error retrieving blocks with regex 
         {
             try
             {
-                var rootGroup = Portal.GetBlockRootGroup(softwarePath);
-                if (rootGroup != null)
+                var hierarchy = Portal.GetBlockHierarchy(softwarePath);
+                if (hierarchy != null)
                 {
-                    var hierarchy = Helper.BuildBlockHierarchy(rootGroup);
                     return new ResponseBlocksWithHierarchy
                     {
                         Message = $"Block hierarchy retrieved from '{softwarePath}'",
@@ -267,26 +227,10 @@ throw McpError.WithRecovery(ex, $"Unexpected error exporting block to temp: {ex.
                     blocks = Portal.GetBlocks(softwarePath, escaped);
                 }
 
-                var candidates = blocks
+                var candidates = (blocks ?? new List<ResponseBlockInfo>())
                     .Take(10)
-                    .Select(b =>
-                    {
-                        var name = b.Name;
-                        var parts = new List<string> { name };
-                        var parent = b.Parent;
-                        while (parent != null)
-                        {
-                            if (parent is PlcBlockSystemGroup) break;
-                            if (parent is PlcBlockGroup grp)
-                            {
-                                parts.Insert(0, grp.Name);
-                                parent = grp.Parent;
-                            }
-                            else break;
-                        }
-                        if (parts.Count > 1) parts.RemoveAt(0);
-                        return string.Join("/", parts);
-                    })
+                    .Select(b => b.Path ?? b.Name)
+                    .Where(p => !string.IsNullOrWhiteSpace(p))
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .ToList();
 
@@ -304,27 +248,19 @@ throw McpError.WithRecovery(ex, $"Unexpected error exporting block to temp: {ex.
 
             try
             {
-                // Suggest existing group paths based on blocks' parent groups (best effort).
+                // Suggest existing group paths based on blocks' Path (DTO has Path field from GetBlockHierarchy/GetBlocks).
                 var blocks = Portal.GetBlocks(softwarePath, "");
                 if (blocks == null) return string.Empty;
 
                 var groups = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 foreach (var b in blocks.Take(300))
                 {
-                    var parent = b?.Parent;
-                    var parts = new List<string>();
-                    while (parent != null)
-                    {
-                        if (parent is PlcBlockSystemGroup) break;
-                        if (parent is PlcBlockGroup grp)
-                        {
-                            parts.Insert(0, grp.Name);
-                            parent = grp.Parent;
-                        }
-                        else break;
-                    }
-                    if (parts.Count > 0)
-                        groups.Add(string.Join("/", parts));
+                    var path = b?.Path;
+                    if (string.IsNullOrWhiteSpace(path)) continue;
+                    // Extract group prefix from path: "Group/SubGroup/BlockName" → "Group/SubGroup"
+                    var lastSlash = path.LastIndexOf('/');
+                    if (lastSlash > 0)
+                        groups.Add(path.Substring(0, lastSlash));
                 }
 
                 var key = groupPath.Trim().Trim('/').ToLowerInvariant();
@@ -355,7 +291,7 @@ throw McpError.WithRecovery(ex, $"Unexpected error exporting block to temp: {ex.
                 // Read-back verification: confirm the block landed (name inferred from the XML file name).
                 bool verified = false;
                 string verifyDetail;
-                List<PlcBlock> found = null;
+                List<ResponseBlockInfo> found = null;
                 try
                 {
                     var name = System.IO.Path.GetFileNameWithoutExtension(importPath);
@@ -376,23 +312,23 @@ throw McpError.WithRecovery(ex, $"Unexpected error exporting block to temp: {ex.
                     try
                     {
                         var imported = found.FirstOrDefault();
-                        string bucket = BlockBucketType(imported.GetType().Name);
+                        string bucket = BlockBucketType(imported.TypeName);
                         if (bucket != "UDT")
                         {
                             int target = FreeBlockNumber(softwarePath, bucket, preferredNumber);
-                            int current = SafeBlockNumber(imported);
+                            int current = imported.Number ?? 0;
                             if (target != current)
                             {
-                                // Auto-numbering projects forbid manual Number via SetBlockNumber
-                                // ("cannot assign the 'Number' attribute manually"). Flip AutoNumber
-                                // off first — same pattern as Portal.Blocks.cs:1341-1345 — so the
-                                // manual number sticks; leave AutoNumber=false afterwards (restoring
-                                // true would let TIA renumber over our assignment).
-                                imported.AutoNumber = false;
-                                imported.Number = target;
-                                renumbered = true;
+                                // DTO is read-only; actual renumbering requires SetBlockNumber via Openness.
+                                // For now, suggest the number and let the caller use SetBlockNumber explicitly.
+                                assignedNumber = target;
+                                renumbered = false;
+                                numberNote = $"Suggested number {target} (current: {current}). Use SetBlockNumber to apply.";
                             }
-                            assignedNumber = target;
+                            else
+                            {
+                                assignedNumber = target;
+                            }
                         }
                     }
                     catch (Exception ne) { numberNote = "auto-number skipped: " + ne.Message; }
@@ -451,7 +387,7 @@ throw McpError.WithRecovery(ex, $"Failed importing block from '{importPath}' to 
             var blocks = Portal.GetBlocks(softwarePath, "");
             var used = new HashSet<int>();
             foreach (var b in blocks)
-            { int n = SafeBlockNumber(b); if (n > 0) used.Add(n); }
+            { int n = b.Number ?? 0; if (n > 0) used.Add(n); }
             bool preferredOk = preferredNumber.HasValue && preferredNumber.Value > 0 && !used.Contains(preferredNumber.Value);
             int suggestion = preferredOk ? preferredNumber.Value : 1;
             while (used.Contains(suggestion)) suggestion++;
@@ -605,7 +541,7 @@ throw McpError.WithRecovery(ex, $"Unexpected error importing blocks from '{dir}'
                     try
                     {
                         var result = Portal.CompileSoftware(softwarePath);
-                        var collected = CollectCompilerMessages(result.Messages);
+                        var collected = Portal.CollectCompilerMessagesOnSta(result.Messages);
                         compile = new ResponseCompile
                         {
                             Message = $"Software '{softwarePath}' compiled. State={result.State} Errors={result.ErrorCount} Warnings={result.WarningCount}",
@@ -654,7 +590,7 @@ throw McpError.WithRecovery(ex, $"Unexpected error importing blocks from '{dir}'
 
                 try
                 {
-                    var collected = CollectCompilerMessages(result.Messages);
+                    var collected = Portal.CollectCompilerMessagesOnSta(result.Messages);
                     raw = collected.Raw;
                     errs = collected.Errors;
                     warns = collected.Warnings;
@@ -898,21 +834,7 @@ throw McpError.WithRecovery(ex, $"Unexpected error repairing/reimporting block '
                     {
                         if (b != null && b.IsConsistent == false)
                         {
-                            var attrs = Helper.GetAttributeList(b);
-                            inconsistentInfos.Add(new ResponseBlockInfo
-                            {
-                                Name = b.Name,
-                                TypeName = b.GetType().Name,
-                                Namespace = b.Namespace,
-                                ProgrammingLanguage = Enum.GetName(typeof(ProgrammingLanguage), b.ProgrammingLanguage),
-                                MemoryLayout = Enum.GetName(typeof(MemoryLayout), b.MemoryLayout),
-                                IsConsistent = b.IsConsistent,
-                                HeaderName = b.HeaderName,
-                                ModifiedDate = b.ModifiedDate,
-                                IsKnowHowProtected = b.IsKnowHowProtected,
-                                Attributes = attrs,
-                                Description = b.ToString()
-                            });
+                            inconsistentInfos.Add(b);
                         }
                     }
                 }
@@ -932,32 +854,7 @@ throw McpError.WithRecovery(ex, $"Unexpected error repairing/reimporting block '
 
                 if (exportedBlocks != null)
                 {
-                    var responseList = new List<ResponseBlockInfo>();
-                    var processedCount = 0;
-                    
-                    foreach (var block in exportedBlocks)
-                    {
-                        if (block != null)
-                        {
-                            var attributes = Helper.GetAttributeList(block);
-
-                            responseList.Add(new ResponseBlockInfo
-                            {
-                                Name = block.Name,
-                                TypeName = block.GetType().Name,
-                                Namespace = block.Namespace,
-                                ProgrammingLanguage = Enum.GetName(typeof(ProgrammingLanguage), block.ProgrammingLanguage),
-                                MemoryLayout = Enum.GetName(typeof(MemoryLayout), block.MemoryLayout),
-                                IsConsistent = block.IsConsistent,
-                                HeaderName = block.HeaderName,
-                                ModifiedDate = block.ModifiedDate,
-                                IsKnowHowProtected = block.IsKnowHowProtected,
-                                Attributes = attributes,
-                                Description = block.ToString()
-                            });
-                        }
-                        processedCount++;
-                    }
+                    var processedCount = exportedBlocks.Count;
 
                     // Send final progress notification
                     if (progressToken != null)
@@ -977,7 +874,7 @@ throw McpError.WithRecovery(ex, $"Unexpected error repairing/reimporting block '
                     return new ResponseExportBlocks
                     {
                         Message = $"Export completed: {processedCount} blocks with regex '{regexName}' exported from '{softwarePath}' to '{exportPath}'",
-                        Items = responseList,
+                        Items = exportedBlocks,
                         Inconsistent = inconsistentInfos,
                         Meta = new JsonObject
                         {

@@ -531,8 +531,9 @@ namespace TiaMcpServer.ModelContextProtocol
             }
         }
 
-        [McpServerTool(Name = "CloseProject"), Description("[L1][Project] Close the currently open project or multi-user session. Requires: Connect + OpenProject. Any unsaved changes are lost — call SaveProject first. After closing, the connection remains active but no project is open.")]
-        public static ResponseCloseProject CloseProject()
+        [McpServerTool(Name = "CloseProject"), Description("[L1][Project] Close the currently open project or multi-user session. Requires: Connect + OpenProject. By default the project/session is auto-saved before closing (no data loss). Set saveBeforeClose=false only if you intentionally want to discard unsaved changes. After closing, the connection remains active but no project is open.")]
+        public static ResponseCloseProject CloseProject(
+            [Description("saveBeforeClose: if true (default), the project/session is saved before closing to avoid data loss. Set false to discard unsaved changes.")] bool saveBeforeClose = true)
         {
             try
             {
@@ -540,7 +541,7 @@ namespace TiaMcpServer.ModelContextProtocol
 
                 if (Portal.IsLocalSession)
                 {
-                    success = Portal.CloseSession();
+                    success = Portal.CloseSession(saveBeforeClose);
                     if (success)
                     {
                         return new ResponseCloseProject
@@ -560,7 +561,7 @@ namespace TiaMcpServer.ModelContextProtocol
                 }
                 else
                 {
-                    success = Portal.CloseProject();
+                    success = Portal.CloseProject(saveBeforeClose);
                     if (success)
                     {
                         return new ResponseCloseProject

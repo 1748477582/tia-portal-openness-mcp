@@ -32,7 +32,7 @@ namespace TiaMcpServer
 
         // Upper bound on how long a POST waits for the MCP host to produce a matching
         // response before returning 504, so a stalled pipe can't hang the request forever.
-        private static readonly TimeSpan ResponseTimeout = TimeSpan.FromSeconds(30);
+        private static readonly TimeSpan ResponseTimeout = TimeSpan.FromSeconds(120);
 
         private sealed class Session
         {

@@ -39,7 +39,7 @@ namespace TiaMcpServer.Siemens
             if (string.IsNullOrWhiteSpace(blockName))
                 return new ResponseJsonReport { Ok = false, Message = "blockName is required.", Data = data };
 
-            var target = GetBlock(softwarePath, blockName);
+            var target = GetBlockRcw(softwarePath, blockName);
             if (target == null)
                 return new ResponseJsonReport { Ok = false, Message = $"Block '{blockName}' not found in '{softwarePath}'.", Data = data };
 
@@ -63,7 +63,7 @@ namespace TiaMcpServer.Siemens
 
             // ---- callers: scan all in-scope code blocks ----
             List<PlcBlock> blocks;
-            try { blocks = GetBlocks(softwarePath, blockScope ?? ""); }
+            try { blocks = GetBlockRcwList(softwarePath, blockScope ?? ""); }
             catch (Exception ex) { return new ResponseJsonReport { Ok = false, Message = $"GetBlocks failed: {ex.Message}", Data = data }; }
 
             var codeBlocks = blocks.Where(b => !(b is DataBlock)).ToList();

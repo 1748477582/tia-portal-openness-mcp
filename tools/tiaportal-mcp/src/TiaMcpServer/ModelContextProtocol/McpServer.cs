@@ -127,12 +127,13 @@ namespace TiaMcpServer.ModelContextProtocol
             }
         }
 
-        [McpServerTool(Name = "Disconnect"), Description("[L1][Portal] Disconnect from TIA Portal and release the Openness handle. Call after all project work is done. Any unsaved changes will be lost — call SaveProject first if needed.")]
-        public static ResponseDisconnect Disconnect()
+        [McpServerTool(Name = "Disconnect"), Description("[L1][Portal] Disconnect from TIA Portal and release the Openness handle. Call after all project work is done. By default the open project/session is auto-saved before disconnecting (no data loss). Set saveBeforeClose=false only to discard unsaved changes.")]
+        public static ResponseDisconnect Disconnect(
+            [Description("saveBeforeClose: if true (default), the open project/session is saved before disconnecting. Set false to discard unsaved changes.")] bool saveBeforeClose = true)
         {
             try
             {
-                if (Portal.DisconnectPortal())
+                if (Portal.DisconnectPortal(saveBeforeClose))
                 {
                     return new ResponseDisconnect
                     {
@@ -875,7 +876,7 @@ namespace TiaMcpServer.ModelContextProtocol
 
                 var candidates = blocks
                     .Take(10)
-                    .Select(b => Portal.GetBlockPath(b))
+                    .Select(b => b.Path)
                     .Where(p => !string.IsNullOrWhiteSpace(p))
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .ToList();

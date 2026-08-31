@@ -6561,16 +6561,18 @@ namespace TiaMcpServer.Siemens
 
         public List<ModelContextProtocol.CrossReferenceEntry>? GetCrossReferences(string softwarePath, string objectPath, string objectKind = "Block", string filter = "AllObjects")
         {
+            return _sta.Run(() =>
+            {
             if (IsProjectNull()) return null;
 
             object? target = null;
             if (string.Equals(objectKind, "Type", StringComparison.OrdinalIgnoreCase))
             {
-                target = GetType(softwarePath, objectPath);
+                target = GetTypeRcw(softwarePath, objectPath);
             }
             else
             {
-                target = GetBlock(softwarePath, objectPath);
+                target = GetBlockRcw(softwarePath, objectPath);
             }
 
             if (target == null) return null;
@@ -6582,6 +6584,7 @@ namespace TiaMcpServer.Siemens
             if (result == null) return null;
 
             return TryFlattenCrossReferenceResult(result, objectPath);
+            });
         }
 
         private static object? TryGetServiceByTypeSuffix(object target, string serviceTypeNameSuffix)

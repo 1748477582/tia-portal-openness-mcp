@@ -66,20 +66,13 @@ namespace TiaMcpServer.ModelContextProtocol
 
                 if (device != null)
                 {
-                    var attributes = Helper.GetAttributeList(device);
-
-                    return new ResponseDeviceInfo
+                    device.Message = $"Device info retrieved from '{devicePath}'";
+                    device.Meta = new JsonObject
                     {
-                        Message = $"Device info retrieved from '{devicePath}'",
-                        Name = device.Name,
-                        Attributes = attributes,
-                        Description = device.ToString(),
-                        Meta = new JsonObject
-                        {
-                            ["timestamp"] = DateTime.Now,
-                            ["success"] = true
-                        }
+                        ["timestamp"] = DateTime.Now,
+                        ["success"] = true
                     };
+                    return device;
                 }
                 else
                 {
@@ -414,28 +407,13 @@ namespace TiaMcpServer.ModelContextProtocol
             try
             {
                 var list = Portal.GetDevices();
-                var responseList = new List<ResponseDeviceInfo>();
 
                 if (list != null)
                 {
-                    foreach (var device in list)
-                    {
-                        if (device != null)
-                        {
-                            var attributes = Helper.GetAttributeList(device);
-                            responseList.Add(new ResponseDeviceInfo
-                            {
-                                Name = device.Name,
-                                Attributes = attributes,
-                                Description = device.ToString()
-                            });
-                        }
-                    }
-
                     return new ResponseDevices
                     {
                         Message = "Devices retrieved",
-                        Items = responseList,
+                        Items = list,
                         Meta = new JsonObject
                         {
                             ["timestamp"] = DateTime.Now,
@@ -470,7 +448,7 @@ namespace TiaMcpServer.ModelContextProtocol
                     {
                         ["timestamp"] = DateTime.Now,
                         ["success"] = true,
-                        ["name"] = dev.Name
+                        ["name"] = dev
                     }
                 };
             }
@@ -494,7 +472,7 @@ namespace TiaMcpServer.ModelContextProtocol
             try
             {
                 var res = Portal.AddDeviceWithFallback(preferredMlfb, preferredVersion, deviceName, family);
-                if (res.Device == null)
+                if (res.DeviceName == null)
                 {
                     return new ResponseDeviceProbe
                     {
@@ -517,7 +495,7 @@ namespace TiaMcpServer.ModelContextProtocol
                     MlfbUsed = res.MlfbUsed,
                     VersionUsed = res.VersionUsed,
                     Attempts = res.Attempts,
-                    Meta = new JsonObject { ["timestamp"] = DateTime.Now, ["success"] = true, ["name"] = res.Device.Name }
+                    Meta = new JsonObject { ["timestamp"] = DateTime.Now, ["success"] = true, ["name"] = res.DeviceName }
                 };
             }
             catch (Exception ex) when (ex is not McpException)
@@ -595,7 +573,7 @@ namespace TiaMcpServer.ModelContextProtocol
             try
             {
                 var res = Portal.AddGsdDeviceWithProbe(keyword, deviceName, preferredDap);
-                if (res.Device == null)
+                if (res.DeviceName == null)
                 {
                     return new ResponseGsdDeviceProbe
                     {
@@ -625,7 +603,7 @@ namespace TiaMcpServer.ModelContextProtocol
                     {
                         ["timestamp"] = DateTime.Now,
                         ["success"] = true,
-                        ["name"] = res.Device.Name
+                        ["name"] = res.DeviceName
                     }
                 };
             }
@@ -644,7 +622,7 @@ namespace TiaMcpServer.ModelContextProtocol
             try
             {
                 var res = Portal.AddHardwareCatalogDeviceWithProbe(keyword, deviceName, preferredText);
-                if (res.Device == null)
+                if (res.DeviceName == null)
                 {
                     return new ResponseHardwareCatalogDeviceProbe
                     {
@@ -670,7 +648,7 @@ namespace TiaMcpServer.ModelContextProtocol
                     CandidateUsed = res.Candidate,
                     Candidates = res.Candidates,
                     Attempts = res.Attempts,
-                    Meta = new JsonObject { ["timestamp"] = DateTime.Now, ["success"] = true, ["name"] = res.Device.Name }
+                    Meta = new JsonObject { ["timestamp"] = DateTime.Now, ["success"] = true, ["name"] = res.DeviceName }
                 };
             }
             catch (Exception ex) when (ex is not McpException)

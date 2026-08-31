@@ -23,10 +23,9 @@ namespace TiaMcpServer.ModelContextProtocol
     {
         #region helpers
 
-        private static int SafeBlockNumber(PlcBlock b)
+        private static int SafeBlockNumber(ResponseBlockInfo b)
         {
-            try { return b.Number; }
-            catch { return 0; }
+            return b.Number ?? 0;
         }
 
         private static string BucketType(string typeName)
@@ -62,7 +61,7 @@ namespace TiaMcpServer.ModelContextProtocol
 
                 foreach (var b in blocks)
                 {
-                    string bucket = BucketType(b.GetType().Name);
+                    string bucket = BucketType(b.TypeName);
                     int n = SafeBlockNumber(b);
                     switch (bucket)
                     {
@@ -79,7 +78,7 @@ namespace TiaMcpServer.ModelContextProtocol
                 var groups = new JsonArray();
                 try
                 {
-                    var root = Portal.GetBlockRootGroup(softwarePath);
+                    var root = Portal.GetBlockHierarchy(softwarePath);
                     if (root != null)
                     {
                         foreach (var b in root.Blocks) topLevel.Add(b.Name);
@@ -341,7 +340,7 @@ namespace TiaMcpServer.ModelContextProtocol
             try
             {
                 var result = Portal.CompileSoftware(softwarePath, password);
-                var collected = CollectCompilerMessages(result.Messages);
+                var collected = Portal.CollectCompilerMessagesOnSta(result.Messages);
                 return new ResponseMessage
                 {
                     Message = $"Software '{softwarePath}' compiled. State={result.State} Errors={result.ErrorCount} Warnings={result.WarningCount}",

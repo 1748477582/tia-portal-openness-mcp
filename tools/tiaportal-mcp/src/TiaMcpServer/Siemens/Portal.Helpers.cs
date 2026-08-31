@@ -2282,11 +2282,11 @@ namespace TiaMcpServer.Siemens
 
                 case "block":
                     if (string.IsNullOrWhiteSpace(softwarePath)) return null;
-                    return GetBlock(softwarePath, objectPath);
+                    return GetBlockRcw(softwarePath, objectPath);
 
                 case "type":
                     if (string.IsNullOrWhiteSpace(softwarePath)) return null;
-                    return GetType(softwarePath, objectPath);
+                    return GetTypeRcw(softwarePath, objectPath);
 
                 case "hmiscreen":
                 case "hmi_screen":
