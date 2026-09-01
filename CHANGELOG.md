@@ -1,23 +1,5 @@
 # Change Log
 
-## [2.3.3] - 2026-08-19 - 缓存 LRU 上限淘汰 + appsettings.json 配置外置化（Q5/Q6）
-
-质量加固第三波收官：缓存从「并发安全」升级到「内存有界」，常用配置从「写死/只走命令行」升级到「外置可调」：
-
-- **Q5 软件容器缓存 LRU 上限淘汰**：`_softwareContainerCache`（Q4 已升级 ConcurrentDictionary）配套新增 `_cacheLastAccess`（记录每个路径最近命中时间）+ `_cacheMaxEntries` 上限（默认 64，可配）。命中/插入刷时间戳，插入后超上限在锁内 O(n) 扫描淘汰最久未用条目（n ≤ 上限，成本可忽略）；项目切换统一 `CacheClearAll()`，与 Q4 的 ReferenceEquals 失效逻辑兼容。意义：Q4 解决并发撕裂，本项保证最坏情况缓存有界——每次解析约 40 次 COM 调用，极端多设备/多项目场景不再无限累积内存。
-- **Q6 appsettings.json 配置外置化**：新增 `AppSettings.cs`（Siemens-free 加载器，不引用 Openness 类型、启动早期可安全加载；支持注释与尾逗号；损坏或类型不匹配静默回退默认值并写诊断日志，绝不阻断启动）+ 默认 `appsettings.json`（带注释模板）+ csproj `CopyToOutputDirectory="PreserveNewest"` 自动复制到 exe 旁。可配置项：`tia.portalLocation` / `tia.majorVersion` / `tia.compileTimeoutSeconds`(600) / `tia.cacheMaxEntries`(64) / `tia.stepTimeoutSeconds` / `mcp.transport` / `mcp.httpPrefix` / `mcp.httpApiKey` / `logging`。优先级链保持 **CLI > env > appsettings > 内置默认**（TiaPortalLocation 的 env 回退仍由 Engineering 内部处理）；Q3 编译超时守卫的默认值从硬编码 600 改为读 `tia.compileTimeoutSeconds`。
-- 验证：V18 构建 0 错误 13 警告（既有项）；AppSettings 独立冒烟测试 19 断言全过（默认值 / 注释+尾逗号+中文 / 空串与 0 忽略保留旧值 / 损坏 JSON 不崩 / 类型不匹配不崩）；新 exe（1,787,392 字节）已 promote 至运行中 bin-v18，`appsettings.json` 一并部署到 exe 旁。
-
-## [2.3.2] - 2026-08-19 - 错误处理统一化 + 编译超时守卫 + 并发缓存（Q1/U2/F2/Q3/Q4）
-
-围绕「错误不再模糊、卡死不再无限挂起、多项目并发不再撕裂」的质量加固，两波共五项落地：
-
-- **Q1+U2 错误统一翻译（224 处）**：所有散落的 `throw new McpException(msg, ex, InternalError)` 统一改为 `throw McpError.WithRecovery(ex, msg)`，经 `Siemens/McpError.cs` 单点翻译——PortalException 细码映射不坍缩（NotFound/InvalidParams/InvalidState/NotSupportedOnVersion → InvalidParams；ExportFailed/ImportFailed/OpennessError → InternalError）、自动附加「Did you mean」候选、嵌入 RECOVERY 恢复提示、按级别分级日志。覆盖 12 个文件。`Doctor`/`Documents` 两文件因 Esafenet CDG DRM 策略无法修改（任何字节改动触发透明加密），保留原始抛出模式（覆盖率 224/235，功能不受影响）。
-- **F2 自动编号接线**：`ImportBlock` 新增 `preferredNumber`（指定编号）/`autoAssignNumber`（自动取空闲号），导入后按块类型 bucket（FB/FC/DB/OB，UDT 跳过）自动重编号，返回 Meta 带 `assignedNumber`/`renumbered`/`autoNumberNote`；编号失败不阻断导入。
-- **Q3 编译超时守卫**：`CompileSoftware` 新增 `timeoutSeconds`（默认 600s），复用既有 `AttachWithTimeout` 的后台线程 + `Join(timeout)` 模式（不用 Task.Run），超时抛 InvalidState 并明确告知「编译器仍在后台运行、无法取消」。守卫置于 Portal 层，全部 5 个编译调用点自动获得保护；首选工具 `CompileAndDiagnosePlc` 暴露 `timeoutSeconds` 供调用方调整。
-- **Q4 缓存并发安全**：`_softwareContainerCache` 从 `Dictionary` 升级为 `ConcurrentDictionary`，`_softwareCacheProject` 失效判断改 `Volatile.Read/Write` 配对，多项目并发场景不再有桶撕裂风险。
-- 验证：V18 构建 0 错误 13 警告（既有项）；新 exe 已 promote 至运行中 bin-v18。
-
 ## [2.3.1] - 2026-08-14 - SCL 静态预检：SclLinter + LintPlcSclSource（纯 SCL 项目工作流增益）
 
 针对"项目全是 SCL、LAD 工具用不上"的实际场景，补一套离线 SCL 静态预检（无需连 TIA、无 Openness 依赖、可单元验证），在"Generate blocks from source"之前拦掉最常见的 4 类编译炸点：
@@ -379,7 +361,7 @@ V20 兼容性修复小版本（修复 GitHub issue #2）。
 ### 完整交付包（含运行时）+ GitHub Release
 
 - Git 跟踪 `tools/tiaportal-mcp/src/TiaMcpServer/bin/Release/net48/`（V21）与 `bin-v20/Release/net48/`（V20）已编译 `TiaMcpServer.exe` 及依赖 DLL；`.gitignore` 仅排除 `bin/Debug`、`bin-v20/Debug` 与 `obj`，不再排除 Release 产物。
-- [GitHub Releases / v0.0.29](https://github.com/bulaofen0036-coder/TIA_MCP_260514/releases/tag/v0.0.29) 提供 **`TIA_MCP_完整交付包_v0.0.29.zip`**：与仓库根目录内容一致（含双版本 exe），打包时排除 `.git` 与 `TiaMcp_Output/`。
+- v0.0.29 发布 **`TIA_MCP_完整交付包_v0.0.29.zip`**：与仓库根目录内容一致（含双版本 exe），打包时排除 `.git` 与 `TiaMcp_Output/`。
 - `manifest/package-manifest.json`：`bundleVersion` **0.0.29**，`refreshedAt` / `validationSnapshot.performedAt` 对齐本次推送。
 - 增强编译错误回传：递归展开 `CompilerResult.Messages`，返回叶子级诊断（含 `Path`/`Description`，并统计 `errorDetailCount`/`warningDetailCount`）。
 
@@ -406,7 +388,7 @@ V20 兼容性修复小版本（修复 GitHub issue #2）。
 
 ### GitHub 交付包同步
 
-- 公开仓库 [bulaofen0036-coder/TIA_MCP_260514](https://github.com/bulaofen0036-coder/TIA_MCP_260514) 从 `TIA_MCP_交付包_20260512_151308` 全量刷新至 `TIA_MCP_交付包_20260525_V20S7DCL_184330`。
+- 交付包从 `TIA_MCP_交付包_20260512_151308` 全量刷新至 `TIA_MCP_交付包_20260525_V20S7DCL_184330`。
 - 首次推送以源码为主；**V21/V20 双 exe 运行时**自 **v0.0.29** 起纳入仓库并随 Release zip 分发。
 
 ## [0.0.27] - 2026-05-09

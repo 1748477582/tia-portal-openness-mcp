@@ -25,7 +25,7 @@ import urllib.error
 import urllib.request
 
 OWNER = "1748477582"
-REPO = "tia-portal-openness-mcp-v18"
+REPO = "tia-portal-openness-mcp"
 BRANCH = "master"
 
 # local root -> remote prefix inside the repo
