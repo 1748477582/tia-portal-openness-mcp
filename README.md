@@ -1,8 +1,8 @@
 # TIA Portal Openness MCP — V18 兼容版
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) ![TIA Portal](https://img.shields.io/badge/TIA%20Portal-V18-blue.svg) ![MCP Tools](https://img.shields.io/badge/MCP%20Tools-166-green.svg) [![Derived from](https://img.shields.io/badge/derived%20from-bulaofen0036--coder-lightgrey.svg)](https://github.com/bulaofen0036-coder/TIA_Portal_Openness_MCP)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) ![TIA Portal](https://img.shields.io/badge/TIA%20Portal-V18-blue.svg) ![MCP Tools](https://img.shields.io/badge/MCP%20Tools-166-green.svg)
 
-> 本仓库为 **bulaofen0036-coder/TIA_Portal_Openness_MCP** 的 **V18 兼容衍生版本**，以 MIT 许可证发布，详见下方[上游来源与致谢](#上游来源与致谢)。
+> 本项目为 **TIA Portal Openness MCP** 的 **V18 版**，以 MIT 许可证发布，独立维护。
 
 在 **Windows + TIA Portal V18** 下，通过 **MCP（stdio）** 驱动博途：建项目、加硬件、生成 PLC（Tag/UDT/DB/SCL/LAD）、生成 **Classic / Comfort HMI** 画面与标签、编译诊断、保存。包内含 **已编译运行时**、Skill、模板、能力矩阵、手册。**不要求**另行克隆源码仓库——下载本仓库根目录的 zip 解压即用。
 
@@ -15,18 +15,6 @@
 3. **挂载 MCP**：在 MCP 客户端（WorkBuddy / Cursor / VS Code / Claude Desktop 等）配置里，把 `command` 指向解压目录内的
    `tools\tiaportal-mcp\src\TiaMcpServer\bin-v18\Release\net48\TiaMcpServer.exe`，
    `args` 传 `["--tia-major-version","18","--logging","0"]`，信任该连接器并重启客户端。连接器将暴露 **166 个 V18 安全工具**。
-
----
-
-## 上游来源与致谢
-
-本项目是 [`bulaofen0036-coder/TIA_Portal_Openness_MCP`](https://github.com/bulaofen0036-coder/TIA_Portal_Openness_MCP) 的 **V18 兼容衍生版本**。
-
-- 上游原作由 **bulaofen0036-coder** 维护，采用 **MIT 许可证**（截至核对时 144 stars），定位为「用任意 MCP 客户端驱动 Siemens TIA Portal V20/V21（STEP 7、WinCC Unified）」。
-- 本仓库在其基础上，针对 **TIA Portal V18** 做了兼容性移植：将 WinCC Unified HMI 的 23 个工具以 `#if !TIA_V18` 守卫隐藏，使其在 V18 环境稳定构建与运行，并暴露 **166 个 V18 安全工具**。
-- 上游的 **MIT 许可证与版权声明**已随工具包 `TIA_Portal_Openness_MCP-V18.zip` 一并保留（见压缩包内 `LICENSE`）。本衍生版本同样以 MIT 许可证发布；如上游作者另有要求，以原作者声明为准。
-
-> 致谢：感谢 **bulaofen0036-coder** 开源的 TIA Portal Openness MCP 原作，为本 V18 移植分支提供了基础与参考。
 
 ---
 
@@ -88,7 +76,7 @@
 
 ## 版本对照
 
-| 能力 | V18 本分支 | V20 / V21（上游主线） |
+| 能力 | V18 本分支 | V20 / V21 |
 |------|-----------|------------------------|
 | 通用 PLC / Classic HMI 工具 | ✅ | ✅ |
 | WinCC Unified HMI 工具 | ❌（已守卫隐藏） | ✅ |
@@ -143,7 +131,7 @@ TIA_Portal_Openness_MCP-V18.zip   ← 完整工具（约 26 MB，663 个文件�
 属于客户端工具描述符/缓存问题，不是交付包裁剪能力；重启客户端或清空工具缓存即可。运行时权威列表以 `tools/list` 为准。
 
 **Q：为什么没有 WinCC Unified？**
-TIA Portal V18 的 Openness 全安装不含 `Siemens.Engineering.HmiUnified` 程序集，Unified HMI 工具在 V18 构建中被 `#if !TIA_V18` 守卫隐藏。V18 下请走 Classic / Comfort HMI 工具族；Unified 需求使用上游 V20/V21 构建。
+TIA Portal V18 的 Openness 全安装不含 `Siemens.Engineering.HmiUnified` 程序集，Unified HMI 工具在 V18 构建中被 `#if !TIA_V18` 守卫隐藏。V18 下请走 Classic / Comfort HMI 工具族；Unified 需求使用 V20/V21 构建。
 
 **Q：升级 `TiaMcpServer.exe` 时被「文件被占用」？**
 受管 MCP 连接器的进程由宿主托管，会被立即重生。升级前先在连接器配置中将 `disabled` 设为 `true` 释放文件锁，复制完成后再恢复。
@@ -155,4 +143,4 @@ TIA Portal V18 的 Openness 全安装不含 `Siemens.Engineering.HmiUnified` 程
 
 ## 许可证
 
-本衍生版本以 **MIT 许可证**发布。上游原作的 MIT 许可证与版权声明见压缩包内 `LICENSE`，请在使用与再分发时一并保留。
+本项目以 **MIT 许可证**发布，版权声明见 `LICENSE`。
