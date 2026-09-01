@@ -282,6 +282,8 @@ namespace TiaMcpServer.ModelContextProtocol
                     "Openness API CANNOT: read/change CPU RUN-STOP mode (use OPC UA), read fault buffer, ClearForces, selective per-block download.",
                     "Force/Watch table values become effective only after the project is online and the table trigger fires.",
                     "Safety F-CPU compile is not exposed in PublicAPI; user must trigger it in TIA UI.",
+                    "HEADLESS default: the server launches TIA WithoutUserInterface (faster). HMI screen EDITING requires --with-ui; HMI read/list/tag tools still work headless.",
+                    "SINGLE-SESSION: the TIA Portal handle is process-wide, so concurrent MCP sessions share one TIA instance (no per-session isolation).",
                 };
 
                 bool ready = env.OpennessGroupOk == true && (env.TiaVersionInUse != null || env.TiaVersionDetected != null);

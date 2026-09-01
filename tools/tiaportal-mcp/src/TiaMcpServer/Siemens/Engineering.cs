@@ -37,19 +37,19 @@ namespace TiaMcpServer.Siemens
             }
 
             var tiaMajorVersionString = TiaMajorVersion.ToString();
+            var targetVersionDir = $"V{tiaMajorVersionString}";
             var searchDirectories = new[]
             {
-                Path.Combine(tiaInstallPath, "PublicAPI", $"V{tiaMajorVersionString}"),
+                Path.Combine(tiaInstallPath, "PublicAPI", targetVersionDir),
                 Path.Combine(tiaInstallPath, "Bin", "PublicAPI")
             };
 
-            // IEnumerable without given majorVersionString
-            var excludedTiaMajorVersions = new[] { "V13", "V14", "V15", "V16", "V17", "V18", "V19", "V20" }
-                                    .Where(v => v != $"V{tiaMajorVersionString}");
-
+            // Version filtering: skip any sibling V<NN> directory that is NOT the target version.
+            // This was previously a hardcoded white-list (V13..V20) that silently missed V21+ and any
+            // future version, allowing a newer install to resolve to an older version's DLL.
             foreach (var dir in searchDirectories)
             {
-                var assemblyPath = FindAssemblyRecursive(dir, assemblyName.Name + ".dll", excludedTiaMajorVersions);
+                var assemblyPath = FindAssemblyRecursive(dir, assemblyName.Name + ".dll", targetVersionDir);
                 if (assemblyPath != null)
                 {
                     return Assembly.LoadFrom(assemblyPath);
@@ -177,7 +177,7 @@ namespace TiaMcpServer.Siemens
             return int.TryParse(m.Groups[1].Value, out int pv) && pv == version;
         }
 
-        private static string? FindAssemblyRecursive(string directory, string fileName, IEnumerable<string> excludedTiaMajorVersions)
+        private static string? FindAssemblyRecursive(string directory, string fileName, string targetVersionDir)
         {
             if (!Directory.Exists(directory))
             {
@@ -193,12 +193,16 @@ namespace TiaMcpServer.Siemens
             foreach (var subDir in Directory.GetDirectories(directory))
             {
                 var subDirName = new DirectoryInfo(subDir).Name;
-                if (excludedTiaMajorVersions.Contains(subDirName))
+                // Skip any other TIA major-version directory (V<NN>) that is not the target version,
+                // so a newer install (e.g. V21) can never resolve to an older version's DLL. This is
+                // version-aware (no hardcoded white-list) and therefore also covers future versions.
+                if (!string.Equals(subDirName, targetVersionDir, StringComparison.OrdinalIgnoreCase)
+                    && System.Text.RegularExpressions.Regex.IsMatch(subDirName, @"^V\d{2}$", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
                 {
                     continue;
                 }
 
-                var result = FindAssemblyRecursive(subDir, fileName, excludedTiaMajorVersions);
+                var result = FindAssemblyRecursive(subDir, fileName, targetVersionDir);
                 if (result != null)
                 {
                     return result;

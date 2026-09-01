@@ -30,29 +30,17 @@ namespace TiaMcpServer.ModelContextProtocol
         {
             try
             {
-                var list = Portal.GetProjects();
+                // Openness compliance: materialize DTOs on the STA thread (Portal.GetProjectsInfo/
+                // GetSessionsInfo) instead of touching ProjectBase RCWs off-STA, which could corrupt
+                // the RCW (0xE0434352). Return fields are unchanged (Name + Attributes).
+                var list = Portal.GetProjectsInfo();
 
-                list.AddRange(Portal.GetSessions());
-
-                var responseList = new List<ResponseProjectInfo>();
-                foreach (var project in list)
-                {
-                    var attributes = Helper.GetAttributeList(project);
-
-                    if (project != null)
-                    {
-                        responseList.Add(new ResponseProjectInfo
-                        {
-                            Name = project.Name,
-                            Attributes = attributes
-                        });
-                    }
-                }
+                list.AddRange(Portal.GetSessionsInfo());
 
                 return new ResponseGetProjects
                 {
                     Message = "Open projects and sessions retrieved",
-                    Items = responseList,
+                    Items = list,
                     Meta = new JsonObject
                     {
                         ["timestamp"] = DateTime.Now,

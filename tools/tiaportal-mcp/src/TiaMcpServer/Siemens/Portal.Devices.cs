@@ -937,16 +937,22 @@ namespace TiaMcpServer.Siemens
 
         public DeviceItem? GetDeviceItem(string deviceItemPath)
         {
-            _logger?.LogInformation($"Getting device item by path: {deviceItemPath}");
-
-            if (IsProjectNull())
+            // Openness compliance: resolve the DeviceItem on the STA thread (GetDeviceItemByPath
+            // reads _project.Devices/_project.DeviceGroups, which are COM). The returned RCW MUST be
+            // used on the STA thread by the caller — callers that touch the live object must wrap
+            // their logic in Portal.RunOnSta.
+            return _sta.Run(() =>
             {
-                return null;
-            }
+                _logger?.LogInformation($"Getting device item by path: {deviceItemPath}");
 
-            // Retrieve the device by its path
-            return GetDeviceItemByPath(deviceItemPath);
+                if (IsProjectNull())
+                {
+                    return null;
+                }
 
+                // Retrieve the device by its path
+                return GetDeviceItemByPath(deviceItemPath);
+            });
         }
 
         public string GetDeviceItemTree(string deviceItemPath, int maxDepth = 4)
@@ -975,47 +981,51 @@ namespace TiaMcpServer.Siemens
 
         public List<ModelContextProtocol.NetworkAttribute>? GetDeviceItemNetworkInfo(string deviceItemPath)
         {
-            if (IsProjectNull()) return null;
-            var di = GetDeviceItemByPath(deviceItemPath);
-            if (di == null) return null;
-
-            // Heuristic: filter attribute names that likely contain network addressing / interface identity.
-            var keys = new[]
+            // Openness compliance: enumerate attributes on the STA thread.
+            return _sta.Run<List<ModelContextProtocol.NetworkAttribute>?>(() =>
             {
-                "ip", "ipv4", "subnet", "mask", "gateway", "mac", "pn", "profinet", "device", "station", "interface", "name", "address"
-            };
+                if (IsProjectNull()) return null;
+                var di = GetDeviceItemByPath(deviceItemPath);
+                if (di == null) return null;
 
-            var list = new List<ModelContextProtocol.NetworkAttribute>();
-            try
-            {
-                foreach (var info in di.GetAttributeInfos())
+                // Heuristic: filter attribute names that likely contain network addressing / interface identity.
+                var keys = new[]
                 {
-                    var n = info.Name ?? "";
-                    var lower = n.ToLowerInvariant();
-                    if (!keys.Any(k => lower.Contains(k))) continue;
+                    "ip", "ipv4", "subnet", "mask", "gateway", "mac", "pn", "profinet", "device", "station", "interface", "name", "address"
+                };
 
-                    object vObj;
-                    try { vObj = di.GetAttribute(info.Name); }
-                    catch { continue; }
-
-                    var v = vObj?.ToString();
-                    if (string.IsNullOrWhiteSpace(v)) continue;
-
-                    list.Add(new ModelContextProtocol.NetworkAttribute
+                var list = new List<ModelContextProtocol.NetworkAttribute>();
+                try
+                {
+                    foreach (var info in di.GetAttributeInfos())
                     {
-                        Name = info.Name,
-                        Value = v,
-                        DataType = TryGetPropertyValue(info, "DataType", "Type")?.ToString(),
-                        IsWritable = IsAttributeWritable(info)
-                    });
-                }
-            }
-            catch
-            {
-                // best-effort
-            }
+                        var n = info.Name ?? "";
+                        var lower = n.ToLowerInvariant();
+                        if (!keys.Any(k => lower.Contains(k))) continue;
 
-            return list;
+                        object vObj;
+                        try { vObj = di.GetAttribute(info.Name); }
+                        catch { continue; }
+
+                        var v = vObj?.ToString();
+                        if (string.IsNullOrWhiteSpace(v)) continue;
+
+                        list.Add(new ModelContextProtocol.NetworkAttribute
+                        {
+                            Name = info.Name,
+                            Value = v,
+                            DataType = TryGetPropertyValue(info, "DataType", "Type")?.ToString(),
+                            IsWritable = IsAttributeWritable(info)
+                        });
+                    }
+                }
+                catch
+                {
+                    // best-effort
+                }
+
+                return list;
+            });
         }
 
         // Read-only: export a device's hardware configuration to an AutomationML (CAx) file.

@@ -658,36 +658,40 @@ namespace TiaMcpServer.ModelContextProtocol
             [System.ComponentModel.Description("deviceItemPath: SINAMICS application device item path, e.g. 'SINAMICS S_1/驱动闭环控制' (the drive-application container that holds motor/encoder modules)")] string deviceItemPath)
         {
             DriveLog("=== ListDriveModel(HW) START ===");
-            RequireConnected();
-            var data = new JsonObject();
-            try
+            // Openness compliance: resolve and walk the DeviceItem tree on the STA thread.
+            return Portal.RunOnSta(() =>
             {
-                var di = Portal.GetDeviceItem(deviceItemPath);
-                if (di == null) throw new McpException($"Device item not found: {deviceItemPath}");
-                DriveLog("device item resolved");
-
-                var modules = new JsonArray();
-                WalkHwModules(di, deviceItemPath, modules, 0, 3);
-
-                data["deviceItemPath"] = deviceItemPath;
-                data["moduleCount"] = modules.Count;
-                data["modules"] = modules;
-                data["note"] = "HW public-API drive model. Startdrive P-parameters (e.g. P0840) and telegrams are NOT exposed on this layer - they require the Startdrive Openness public API (Siemens.Engineering.Sinamics.dll).";
-                DriveLog($"=== ListDriveModel(HW) OK ({modules.Count} modules) ===");
-                return new ResponseJsonReport
+                RequireConnected();
+                var data = new JsonObject();
+                try
                 {
-                    Ok = true,
-                    Data = data,
-                    Message = $"Drive HW model for '{deviceItemPath}' ({modules.Count} module(s))",
-                    Meta = new JsonObject { ["timestamp"] = DateTime.Now, ["success"] = true }
-                };
-            }
-            catch (Exception ex) when (ex is not McpException)
-            {
-                data["error"] = ex.Message;
-                DriveLog("EXCEPTION: " + ex.Message);
-                return new ResponseJsonReport { Ok = false, Data = data, Message = $"partial: {ex.Message}", Meta = new JsonObject { ["timestamp"] = DateTime.Now, ["success"] = false } };
-            }
+                    var di = Portal.GetDeviceItem(deviceItemPath);
+                    if (di == null) throw new McpException($"Device item not found: {deviceItemPath}");
+                    DriveLog("device item resolved");
+
+                    var modules = new JsonArray();
+                    WalkHwModules(di, deviceItemPath, modules, 0, 3);
+
+                    data["deviceItemPath"] = deviceItemPath;
+                    data["moduleCount"] = modules.Count;
+                    data["modules"] = modules;
+                    data["note"] = "HW public-API drive model. Startdrive P-parameters (e.g. P0840) and telegrams are NOT exposed on this layer - they require the Startdrive Openness public API (Siemens.Engineering.Sinamics.dll).";
+                    DriveLog($"=== ListDriveModel(HW) OK ({modules.Count} modules) ===");
+                    return new ResponseJsonReport
+                    {
+                        Ok = true,
+                        Data = data,
+                        Message = $"Drive HW model for '{deviceItemPath}' ({modules.Count} module(s))",
+                        Meta = new JsonObject { ["timestamp"] = DateTime.Now, ["success"] = true }
+                    };
+                }
+                catch (Exception ex) when (ex is not McpException)
+                {
+                    data["error"] = ex.Message;
+                    DriveLog("EXCEPTION: " + ex.Message);
+                    return new ResponseJsonReport { Ok = false, Data = data, Message = $"partial: {ex.Message}", Meta = new JsonObject { ["timestamp"] = DateTime.Now, ["success"] = false } };
+                }
+            });
         }
 
         /// <summary>Recursively walk DeviceItem.DeviceItems and emit module info (attributes + children).</summary>
@@ -809,28 +813,32 @@ namespace TiaMcpServer.ModelContextProtocol
             [System.ComponentModel.Description("name: name for the new component")] string name,
             [System.ComponentModel.Description("positionNumber: plug position (1-based); 0 lets TIA auto-place")] int positionNumber = 0)
         {
-            try
+            // Openness compliance: resolve the DeviceItem and invoke PlugNew on the STA thread.
+            return Portal.RunOnSta(() =>
             {
-                RequireConnected();
-                var di = Portal.GetDeviceItem(deviceItemPath);
-                if (di == null) throw new McpException($"Device item not found: {deviceItemPath}");
-                var plugNew = typeof(DeviceItem).GetMethods()
-                    .FirstOrDefault(m => m.Name == "PlugNew" && m.GetParameters().Length == 3);
-                if (plugNew == null) throw new McpException("PlugNew(string,string,int) not found on DeviceItem");
-                var newItem = (DeviceItem)plugNew.Invoke(di, new object[] { typeIdentifier, name, positionNumber });
-                return new ResponseMessage
+                try
                 {
-                    Message = $"Component '{name}' added under '{deviceItemPath}'",
-                    Meta = new JsonObject { ["timestamp"] = DateTime.Now, ["success"] = true, ["name"] = newItem?.Name }
-                };
-            }
-            catch (Exception ex) when (ex is not McpException)
-            {
-                var chain = new System.Text.StringBuilder();
-                Exception? e = ex;
-                while (e != null) { chain.Append(e.Message).Append(" <= "); e = e.InnerException; }
-                throw McpError.WithRecovery(ex, $"AddDriveComponent failed: {chain}");
-            }
+                    RequireConnected();
+                    var di = Portal.GetDeviceItem(deviceItemPath);
+                    if (di == null) throw new McpException($"Device item not found: {deviceItemPath}");
+                    var plugNew = typeof(DeviceItem).GetMethods()
+                        .FirstOrDefault(m => m.Name == "PlugNew" && m.GetParameters().Length == 3);
+                    if (plugNew == null) throw new McpException("PlugNew(string,string,int) not found on DeviceItem");
+                    var newItem = (DeviceItem)plugNew.Invoke(di, new object[] { typeIdentifier, name, positionNumber });
+                    return new ResponseMessage
+                    {
+                        Message = $"Component '{name}' added under '{deviceItemPath}'",
+                        Meta = new JsonObject { ["timestamp"] = DateTime.Now, ["success"] = true, ["name"] = newItem?.Name }
+                    };
+                }
+                catch (Exception ex) when (ex is not McpException)
+                {
+                    var chain = new System.Text.StringBuilder();
+                    Exception? e = ex;
+                    while (e != null) { chain.Append(e.Message).Append(" <= "); e = e.InnerException; }
+                    throw McpError.WithRecovery(ex, $"AddDriveComponent failed: {chain}");
+                }
+            });
         }
 
         #endregion

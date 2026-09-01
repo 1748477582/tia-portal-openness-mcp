@@ -111,6 +111,7 @@ namespace TiaMcpServer
         public string? ProjectName { get; set; }
         public int? TiaStepTimeoutSeconds { get; set; }
         public bool PortalWithUserInterface { get; set; } // --with-ui: launch TIA with full GUI (slower) instead of headless
+        public bool NoAutoJoinGroup { get; set; } // --no-auto-join-group: do NOT auto-add the user to 'Siemens TIA Openness' group; check-only
 
         public static CliOptions ParseArgs(string[] args)
         {
@@ -745,6 +746,11 @@ namespace TiaMcpServer
                             options.HttpApiKey = args[i + 1];
                             i++;
                         }
+                        break;
+
+                    case "-no-auto-join-group":
+                    case "--no-auto-join-group":
+                        options.NoAutoJoinGroup = true;
                         break;
                 }
             }

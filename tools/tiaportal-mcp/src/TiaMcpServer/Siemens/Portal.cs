@@ -224,8 +224,55 @@ namespace TiaMcpServer.Siemens
             return regex.IsMatch(projectPath);
         }
 
+        /// <summary>
+        /// Openness compliance: expose the STA executor so tool-layer code that must touch live
+        /// Siemens.Engineering RCWs (e.g. drive/device reflection, attribute enumeration) can run
+        /// on the owning STA thread instead of the MCP dispatch thread. Reentrant: calling from the
+        /// STA thread inlines the delegate. This is the sanctioned escape hatch for tool methods
+        /// that need the live object (not a DTO); prefer DTO materialization where possible.
+        /// </summary>
+        public T RunOnSta<T>(Func<T> func) => _sta.Run(func);
+
+        /// <summary>Void variant of <see cref="RunOnSta{T}"/>.</summary>
+        public void RunOnSta(Action action) => _sta.Run(action);
+
         public void Dispose()
         {
+            // CRITICAL FIX (Openness compliance): all COM calls (Save/Close/Dispose) MUST run on
+            // the STA thread BEFORE the STA executor is shut down. The previous order disposed the
+            // STA executor first, so Save/Close/Dispose then executed off-STA — where Siemens.Engineering
+            // calls can be silently swallowed (Save data loss) or corrupt the RCW. Correct order:
+            //   STA: Save -> Close -> _portal.Dispose  (on the owning apartment)
+            //   then _sta.Dispose()
+            //   then ForceComCleanup() (process-level GC of RCWs).
+
+            // G3: best-effort auto-save on process exit to avoid silent data loss.
+            try
+            {
+                if (!IsProjectNull())
+                {
+                    _sta.Run(() =>
+                    {
+                        (_project as Project)?.Save();
+                        (_project as Project)?.Close();
+                    });
+                    _logger?.LogInformation("Project auto-saved on Dispose.");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Save/Close on Dispose failed; proceeding to dispose portal.");
+            }
+
+            try
+            {
+                _sta.Run(() => _portal?.Dispose());
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Error disposing TIA Portal on Dispose");
+            }
+
             try
             {
                 _sta.Dispose();
@@ -233,38 +280,6 @@ namespace TiaMcpServer.Siemens
             catch (Exception ex)
             {
                 _logger?.LogWarning(ex, "Error disposing STA executor on Dispose");
-            }
-
-            // G3: best-effort auto-save on process exit to avoid silent data loss.
-            try
-            {
-                if (!IsProjectNull())
-                {
-                    (_project as Project)?.Save();
-                    _logger?.LogInformation("Project auto-saved on Dispose.");
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogWarning(ex, "Save on Dispose failed; proceeding to close.");
-            }
-
-            try
-            {
-                (_project as Project)?.Close();
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogWarning(ex, "Error closing the project on Dispose");
-            }
-
-            try
-            {
-                _portal?.Dispose();
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogWarning(ex, "Error disposing TIA Portal on Dispose");
             }
 
             // G2: Force GC to release COM RCWs (Runtime Callable Wrappers) that are
@@ -375,19 +390,43 @@ namespace TiaMcpServer.Siemens
         {
             TiaPortal? result = null;
             Exception? error = null;
+            var gate = new object();
             var worker = new System.Threading.Thread(() =>
             {
-                try { result = proc.Attach(); }
-                catch (Exception ex) { error = ex; }
+                TiaPortal? local = null;
+                try { local = proc.Attach(); }
+                catch (Exception ex) { lock (gate) { error = ex; } return; }
+                lock (gate) { result = local; }
             }) { IsBackground = true };
+            // Openness compliance: Attach() is a Siemens.Engineering COM call and must run on an STA
+            // thread. The default .NET thread apartment is MTA, which violates Openness' STA requirement.
+            worker.SetApartmentState(System.Threading.ApartmentState.STA);
             worker.Start();
             if (!worker.Join(timeoutMs))
             {
                 _logger?.LogWarning($"Attach to TIA Portal PID={proc.Id} exceeded {timeoutMs}ms; skipping (likely orphaned/dying instance).");
+                // The worker may still complete Attach() after our timeout, which would leak a
+                // TiaPortal RCW that is never used. Reap it best-effort once the late Attach settles.
+                System.Threading.ThreadPool.QueueUserWorkItem(_ =>
+                {
+                    try
+                    {
+                        if (worker.Join(TimeSpan.FromSeconds(60)))
+                        {
+                            TiaPortal? late;
+                            lock (gate) { late = result; result = null; }
+                            if (late != null) { try { late.Dispose(); } catch { } }
+                        }
+                    }
+                    catch { }
+                });
                 return null;
             }
-            if (error != null) throw error;
-            return result;
+            lock (gate)
+            {
+                if (error != null) throw error;
+                return result;
+            }
         }
 
         public bool ConnectPortal()
@@ -797,7 +836,13 @@ namespace TiaMcpServer.Siemens
 
         #region project
 
-        public List<ProjectBase> GetProjects()
+        /// <summary>
+        /// Openness compliance: INTERNAL STA helper — returns live ProjectBase RCWs bound to the STA
+        /// apartment. Do NOT call from the tool layer (cross-apartment RCW access corrupts). Use
+        /// <see cref="GetProjectsInfo"/> for tool-layer JSON DTOs. Kept internal solely for the Acx
+        /// diagnostic bootstrap in McpServer.Drives.cs (dead code, kept as reference); no live callers.
+        /// </summary>
+        internal List<ProjectBase> GetProjects()
         {
             return _sta.Run(() =>
             {
@@ -821,6 +866,42 @@ namespace TiaMcpServer.Siemens
             }
 
             return projects;
+            });
+        }
+
+        /// <summary>
+        /// Openness compliance: materialize project list as plain DTOs ON the STA thread, so the
+        /// tool layer never touches ProjectBase RCWs from the MCP dispatch thread. Field-equivalent
+        /// to the old GetProjects() + Helper.GetAttributeList(project) + project.Name that the
+        /// GetProject tool used to run off-STA.
+        /// </summary>
+        public List<ResponseProjectInfo> GetProjectsInfo()
+        {
+            return _sta.Run(() =>
+            {
+                _logger?.LogInformation("Getting open projects (DTO)...");
+
+                if (_portal == null)
+                {
+                    _logger?.LogWarning("No TIA Portal instance available.");
+                    return new List<ResponseProjectInfo>();
+                }
+
+                var list = new List<ResponseProjectInfo>();
+
+                if (_portal.Projects != null)
+                {
+                    foreach (var project in _portal.Projects)
+                    {
+                        list.Add(new ResponseProjectInfo
+                        {
+                            Name = project.Name,
+                            Attributes = Helper.GetAttributeList(project)
+                        });
+                    }
+                }
+
+                return list;
             });
         }
 
@@ -982,29 +1063,33 @@ namespace TiaMcpServer.Siemens
         {
             _logger?.LogInformation("Getting project info...");
 
-            if (IsPortalNull())
+            // Openness compliance: read COM properties (Name/Path/GetType) on the STA thread.
+            return _sta.Run<object?>(() =>
             {
-                return null;
-            }
+                if (IsPortalNull())
+                {
+                    return null;
+                }
 
-            if (IsProjectNull())
-            {
-                return null;
-            }
+                if (IsProjectNull())
+                {
+                    return null;
+                }
 
-            var project = _project!;
+                var project = _project!;
 
-            var info = new
-            {
-                Name = project.Name,
-                Path = project.Path,
-                Type = project.GetType().Name,
-                IsMultiuserProject = project is MultiuserProject,
-                IsLocalSession = _session != null,
-                IsLocalProject = _session == null
-            };
+                var info = new
+                {
+                    Name = project.Name,
+                    Path = project.Path,
+                    Type = project.GetType().Name,
+                    IsMultiuserProject = project is MultiuserProject,
+                    IsLocalSession = _session != null,
+                    IsLocalProject = _session == null
+                };
 
-            return info;
+                return info;
+            });
         }
 
         public bool SaveProject()
@@ -1125,7 +1210,13 @@ namespace TiaMcpServer.Siemens
 
         #region session
 
-        public List<ProjectBase> GetSessions()
+        /// <summary>
+        /// Openness compliance: INTERNAL STA helper — returns live ProjectBase RCWs bound to the STA
+        /// apartment. Do NOT call from the tool layer (cross-apartment RCW access corrupts). Use
+        /// <see cref="GetSessionsInfo"/> for tool-layer JSON DTOs. Kept internal; used by OpenSession
+        /// (which itself runs on the STA via _sta.Run) to test whether a session is already open.
+        /// </summary>
+        internal List<ProjectBase> GetSessions()
         {
             return _sta.Run(() =>
             {
@@ -1147,6 +1238,41 @@ namespace TiaMcpServer.Siemens
             }
 
             return sessions;
+            });
+        }
+
+        /// <summary>
+        /// Openness compliance: materialize local-session list as plain DTOs ON the STA thread.
+        /// Field-equivalent to GetSessions() (session.Project as ProjectBase).
+        /// </summary>
+        public List<ResponseProjectInfo> GetSessionsInfo()
+        {
+            return _sta.Run(() =>
+            {
+                _logger?.LogInformation("Getting open local sessions (DTO)...");
+
+                if (IsPortalNull())
+                {
+                    return new List<ResponseProjectInfo>();
+                }
+
+                var list = new List<ResponseProjectInfo>();
+
+                if (_portal?.LocalSessions != null)
+                {
+                    foreach (var session in _portal.LocalSessions)
+                    {
+                        var project = session.Project;
+                        if (project == null) continue; // match original tool behavior (null projects were skipped)
+                        list.Add(new ResponseProjectInfo
+                        {
+                            Name = project.Name,
+                            Attributes = Helper.GetAttributeList(project)
+                        });
+                    }
+                }
+
+                return list;
             });
         }
 

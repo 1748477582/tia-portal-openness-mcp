@@ -359,6 +359,8 @@ namespace TiaMcpServer
 
                 // Ensure user is in user group 'Siemens TIA Openness'.
                 LogDiag("Checking Windows group membership: Siemens TIA Openness");
+                // Honor --no-auto-join-group: check-only, do not silently rewrite group membership.
+                Openness.AutoJoinGroup = !options.NoAutoJoinGroup;
                 var opennessUserOk = await Openness.IsUserInGroup();
                 LogDiag($"Siemens TIA Openness group membership: {opennessUserOk}");
                 if (opennessUserOk)

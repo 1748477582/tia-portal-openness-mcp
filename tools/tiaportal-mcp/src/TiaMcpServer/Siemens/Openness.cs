@@ -27,6 +27,13 @@ namespace TiaMcpServer.Siemens
             return Api.Global.Openness().IsUserInGroup();
         }
 
+        // When false (--no-auto-join-group), IsUserInGroup only checks membership and does NOT
+        // silently mutate Windows group membership. Default true preserves the prior auto-add
+        // behavior, so existing single-user setups see zero functional regression. This addresses
+        // the compliance concern that a third-party process was rewriting group membership on startup
+        // without explicit consent.
+        public static bool AutoJoinGroup { get; set; } = true;
+
         public static async Task<bool> IsUserInGroup()
         {
             if (Api.Global.Openness().IsUserInGroup())
@@ -36,6 +43,11 @@ namespace TiaMcpServer.Siemens
             }
             else
             {
+                if (!AutoJoinGroup)
+                {
+                    // explicit opt-out: check-only, do not auto-add
+                    return false;
+                }
                 return await Api.Global.Openness().AddUserToGroupAsync();
             }
         }

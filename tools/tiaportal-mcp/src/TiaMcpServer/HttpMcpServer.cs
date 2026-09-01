@@ -54,6 +54,16 @@ namespace TiaMcpServer
             if (!prefix.EndsWith("/")) prefix += "/";
             string? secret = options?.HttpApiKey;
 
+            // Security / Openness compliance: the HTTP endpoint exposes real TIA Portal operations
+            // (compile/download/save). Binding a non-loopback interface with no API key would make
+            // those operations reachable from the network. Keep the loopback default working (zero
+            // functional regression for local stdio/localhost users) but refuse non-loopback without auth.
+            if (secret == null && !IsLoopbackPrefix(prefix))
+            {
+                Console.Error.WriteLine($"FATAL: --http-api-key is required when --http-prefix binds a non-loopback interface ({prefix}). Refusing to start an unauthenticated network-exposed endpoint.");
+                throw new InvalidOperationException("HTTP endpoint refuses to bind non-loopback without --http-api-key.");
+            }
+
             var listener = new HttpListener();
             listener.Prefixes.Add(prefix);
             listener.Start();
@@ -61,7 +71,7 @@ namespace TiaMcpServer
             Console.Error.WriteLine($"TIA Portal MCP Server (HTTP) listening at {prefix}");
             log($"HTTP transport started at {prefix}");
             if (secret == null)
-                Console.Error.WriteLine("WARNING: --http-api-key not set; endpoint is unauthenticated.");
+                Console.Error.WriteLine("WARNING: --http-api-key not set; endpoint is unauthenticated (loopback-only).");
 
             // The MCP SDK is single-threaded over the underlying stream pair, so all
             // forwarded JSON-RPC must be serialized.
@@ -91,6 +101,21 @@ namespace TiaMcpServer
             }
 
             listener.Stop();
+        }
+
+        /// <summary>True when the HTTP prefix binds a loopback-only interface (localhost / 127.x / ::1).</summary>
+        private static bool IsLoopbackPrefix(string prefix)
+        {
+            try
+            {
+                var host = new Uri(prefix).Host;
+                if (string.Equals(host, "localhost", StringComparison.OrdinalIgnoreCase)) return true;
+                return IPAddress.TryParse(host, out var ip) && IPAddress.IsLoopback(ip);
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         private static async Task Dispatch(

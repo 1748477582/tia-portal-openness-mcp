@@ -89,36 +89,40 @@ namespace TiaMcpServer.ModelContextProtocol
         public static ResponseDeviceItemInfo GetDeviceItemInfo(
             [Description("deviceItemPath: defines the path in the project structure to the device item")] string deviceItemPath)
         {
-            try
+            // Openness compliance: enumerate DeviceItem attributes on the STA thread.
+            return Portal.RunOnSta(() =>
             {
-                var deviceItem = Portal.GetDeviceItem(deviceItemPath);
-
-                if (deviceItem != null)
+                try
                 {
-                    var attributes = Helper.GetAttributeList(deviceItem);
+                    var deviceItem = Portal.GetDeviceItem(deviceItemPath);
 
-                    return new ResponseDeviceItemInfo
+                    if (deviceItem != null)
                     {
-                        Message = $"Device item info retrieved from '{deviceItemPath}'",
-                        Name = deviceItem.Name,
-                        Attributes = attributes,
-                        Description = deviceItem.ToString(),
-                        Meta = new JsonObject
+                        var attributes = Helper.GetAttributeList(deviceItem);
+
+                        return new ResponseDeviceItemInfo
                         {
-                            ["timestamp"] = DateTime.Now,
-                            ["success"] = true
-                        }
-                    };
+                            Message = $"Device item info retrieved from '{deviceItemPath}'",
+                            Name = deviceItem.Name,
+                            Attributes = attributes,
+                            Description = deviceItem.ToString(),
+                            Meta = new JsonObject
+                            {
+                                ["timestamp"] = DateTime.Now,
+                                ["success"] = true
+                            }
+                        };
+                    }
+                    else
+                    {
+                        throw new McpException($"Device item not found at '{deviceItemPath}'", McpErrorCode.InternalError);
+                    }
                 }
-                else
+                catch (Exception ex) when (ex is not McpException)
                 {
-                    throw new McpException($"Device item not found at '{deviceItemPath}'", McpErrorCode.InternalError);
+                    throw McpError.WithRecovery(ex, $"Unexpected error retrieving device item info from '{deviceItemPath}': {ex.Message}{McpHints.Recovery(ex)}");
                 }
-            }
-            catch (Exception ex) when (ex is not McpException)
-            {
-                throw McpError.WithRecovery(ex, $"Unexpected error retrieving device item info from '{deviceItemPath}': {ex.Message}{McpHints.Recovery(ex)}");
-            }
+            });
         }
 
         [McpServerTool(Name = "GetDeviceItemTree"), Description("[L2][Hardware]Get a subtree view for a device item (hardware components + sub device items)")]
