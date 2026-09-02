@@ -1,167 +1,155 @@
-# TIA Portal MCP Server (v2.2.8 · V20 + V21 · S7DCL · CLI · read-only online monitoring · one-click config · Doctor)
+# TIA Portal Openness MCP — Multi-Version (V18 / V20 / V21)
 
-**English** · [中文](README.md)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) ![TIA Portal](https://img.shields.io/badge/TIA%20Portal-V18%20%2F%20V20%20%2F%20V21-blue.svg) ![MCP Tools](https://img.shields.io/badge/MCP%20Tools-166-green.svg)
 
-> **v2.0 — the same exe is also a declarative CLI (`tia`).** Any AI emits a
-> YAML/JSON spec, any engineer runs one command (`tia gen spec.yaml`) — no MCP
-> client required. Verbs: `gen` / `patch` / `compile` / `describe` / `export` /
-> `import` / `prewarm` / `schema` / `version`. Exit code 0/1/2. See
-> `docs/CLI_quickstart.md`. The MCP server behaviour is unchanged.
+> **TIA Portal Openness MCP** — an independently maintained, MIT-licensed MCP server for **Siemens TIA Portal V18 / V20 / V21**.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+On **Windows + TIA Portal V18 / V20 / V21**, drive TIA Portal through **MCP (stdio)**: create projects, add hardware, generate PLC objects (Tag / UDT / DB / SCL / LAD), build **Classic / Comfort / Unified HMI** screens and tags, compile-and-diagnose, and save. The bundle ships **prebuilt runtimes**, a Skill spec, templates, a capability matrix, and a manual. **No source-clone required** — download the zip at the repository root, unzip, and go.
 
-> **Free & open (MIT).** The server runs with **no license key** — there is no
-> license-enforcement code at all.
+## Quick start (3 steps)
 
-![Architecture](docs/assets/architecture.svg)
+1. **Prepare**: install **TIA Portal V18** + **.NET Framework 4.8**; add your Windows user to the local **`Siemens TIA Openness`** group and log off/on once.
+2. **Download & unzip**: grab `TIA_Portal_Openness_MCP.zip` from the `master` branch root and unzip it anywhere.
+3. **Mount the MCP**: in your MCP client (WorkBuddy / Cursor / VS Code / Claude Desktop, etc.), point `command` at
+   `tools\tiaportal-mcp\src\TiaMcpServer\bin-v18\Release\net48\TiaMcpServer.exe`,
+   pass `args` `["--tia-major-version","18","--logging","0"]`, trust the connector, and restart the client. The connector exposes **166 safe V18 tools**.
 
-Drive **Siemens TIA Portal V20 or V21** from any **MCP** client (stdio or HTTP):
-create projects, add hardware, generate PLC objects (Tag / UDT / DB / SCL / LAD),
-build **WinCC Unified** screens and events, compile-and-diagnose, and save —
-all through natural-language tool calls. The bundle ships **prebuilt runtimes**,
-a Skill spec, a static tool list, a capability matrix, PLC/HMI templates,
-one-shot project blueprints, and a manual. **No separate source clone required**
-to run.
+---
 
-> Works with any MCP-capable client — Cursor, VS Code, Claude Desktop, or your
-> own HTTP client — using the same `TiaMcpServer.exe`.
+## Version notes (V18 / V20 / V21)
 
-## ⚡ Fastest start (3 steps, no coding — CLI path)
+This repository maintains **V18 / V20 / V21** builds (three csproj files producing the same `TiaMcpServer.exe`, distinguished by output directory `bin-v18` / `bin-v20` / `bin`). The **V18 build** applies the following compatibility handling:
 
-> First time? **No MCP client, no code.** Once TIA is installed, these 3 steps
-> generate your first project in minutes.
-> (Wiring an AI client like Cursor / Claude Desktop over MCP instead? See
-> [Quick Start](#quick-start) below.)
+- **WinCC Unified HMI is unavailable in V18**: a full V18 Openness install does not include `Siemens.Engineering.HmiUnified`. The **23 Unified HMI tools** are hidden in the V18 build via `#if !TIA_V18` guards (bodies kept, simply not registered as MCP tools).
+- **Exposed tool count**: the connector reports **166 safe V18 tools** (baseline 189 − 23 Unified); V20/V21 builds expose the full set.
+- **Audit result**: apart from those 23 Unified tools, every exposed tool is safe and usable under V18; V20-only document tools (`Export/Import*Documents`) are exposed in V18 only as guided hints and are not callable.
+- **HMI automation path**: under V18 use the **Classic / Comfort HMI** tool family; Unified requires the V20/V21 build.
 
-1. **Prepare**: install **TIA Portal V20 or V21** + **.NET Framework 4.8**; add your
-   Windows user to the local **`Siemens TIA Openness`** group and log off/on once.
-   **Use the exe matching your installed version** — the bundle root ships
-   `tia.cmd` (V21) / `tia-v20.cmd` (V20); all other paths are auto-resolved.
-2. **Prewarm (optional, recommended)**: double-click `scripts\预热.bat` and leave the
-   window open. It keeps one headless TIA resident so every later command connects in
-   **~1s** (without it, each run cold-starts ~3 min). Press `Ctrl+C` to close.
-3. **Generate a project**: drag a ready-made template
-   `templates\project-blueprints\scaffold_spec_motor.json` (or
-   `scaffold_spec_start_stop.json`) **onto `scripts\生成工程.bat`** — it creates the
-   project → adds PLC/HMI → builds blocks → compiles → saves in one shot. Exit code
-   `0` means success.
-   - To customize: have any AI emit a spec per [`docs/AI_spec_prompt.md`](docs/AI_spec_prompt.md)
-     (YAML or JSON), then drag it onto `生成工程.bat`.
-   - CLI equivalent: add the bundle root to PATH, then `tia gen <spec>` (start with
-     `--dry-run` for an offline check).
+---
 
-## Highlights
+## Setup
 
-- **Stability-first public generation (v0.0.39).** `PlcBuildAndImport` now returns
-  `CapabilityDecision`, `CapabilityWarnings`, and `RecommendedNextActions`;
-  `ApplyUnifiedHmiScreenDesignJson(strict=true)` fails when any HMI property write
-  fails; `EnsureUnifiedHmiTag(requireVerifiedBinding=true)` requires readback as
-  `SymbolicVerified` or `AbsoluteVerified`.
-- **Dual-version support (V20 + V21).** Two separate executables, not
-  interchangeable: V21 binds the split DLLs (`Siemens.Engineering.Base/Step7/…`),
-  V20 binds the monolithic `Siemens.Engineering.dll`.
-  - V21 → `tools/tiaportal-mcp/src/TiaMcpServer/bin/Release/net48/TiaMcpServer.exe`
-  - V20 → `tools/tiaportal-mcp/src/TiaMcpServer/bin-v20/Release/net48/TiaMcpServer.exe`
-- **Version-safe imports.** Generated Openness XML is normalized to the connected
-  portal version on import, so a V20 portal no longer rejects blocks with
-  *"engineering version 'V21' is not supported"*.
-- **S7DCL textual format.** `ExportAsDocuments` / `ExportBlocksAsDocuments` /
-  `ImportFromDocuments` / `ImportBlocksFromDocuments` read/write the diff-friendly
-  SIMATIC SD text format (`.s7dcl` + `.s7res`) on V20+ and are flagged *PREFERRED on
-  V21+*. The SimaticML XML chain remains for backward compatibility.
-- **183 tools** across project, hardware, PLC, HMI, and online operations,
-  layered `[L0]`/`[L1]`/`[L2]` so a normal session only needs L0 + L1.
+1. **Environment**
+   - Install **.NET Framework 4.8** and **TIA Portal V18**;
+   - Add the current user to the local **`Siemens TIA Openness`** group and re-login;
+   - Locate the TIA install root (one of):
+     a) pass `--tia-portal-location "C:/Program Files/Siemens/Automation/Portal V18"` at launch (recommended for non-default installs);
+     b) set the `TiaPortalLocation` user environment variable;
+     c) let it auto-read from the registry.
+   - Authorize **Openness** in the TIA popup on first connect.
 
-## Requirements
+2. **Mount the MCP (manual config, most reliable)**
+   Point `command` at the V18 exe inside the bundle:
 
-- Windows + **.NET Framework 4.8**
-- **TIA Portal V20 or V21** installed
-- Current user added to the **`Siemens TIA Openness`** local group (re-login after)
-
-## Quick Start
-
-1. **Locate the portal install root** (one of):
-   - pass `--tia-portal-location "D:\app\TIA20\Portal V20"` when launching (recommended for non-default installs);
-   - set the `TiaPortalLocation` user environment variable;
-   - let it auto-read `HKLM\SOFTWARE\Siemens\Automation\_InstalledSW\TIAP{20|21}\TIA_Opns\Path`.
-   With multiple versions installed, pass `--tia-major-version 20` (or `21`) explicitly.
-2. **Mount the MCP — one command, fully automatic.**
-
-   ```powershell
-   .\tools\tiaportal-mcp\src\TiaMcpServer\bin\Release\net48\TiaMcpServer.exe config
+   ```json
+   {
+     "mcpServers": {
+       "tia-portal": {
+         "command": "C:/path/to/unzip/tools/tiaportal-mcp/src/TiaMcpServer/bin-v18/Release/net48/TiaMcpServer.exe",
+         "args": ["--tia-major-version", "18", "--logging", "0", "--with-ui"],
+         "env": { "TiaPortalLocation": "C:/Program Files/Siemens/Automation/Portal V18" }
+       }
+     }
+   }
    ```
 
-   It self-discovers everything: its own absolute path, the installed TIA Portal
-   (registry) and version, and the version-matching exe (V20/V21 picked for you) —
-   then writes the `tia-portal` entry into every AI host detected on this machine:
-   **Claude Desktop / Claude Code / Cursor / VS Code** (existing config backed up
-   as `.bak`, other servers preserved). Restart the AI client to load it.
-   Options: `config --host vscode` (or `claude|claude-code|cursor`), `config --print`
-   to copy a snippet manually, `config --lite` (v2.2.8) to expose only ~42 essential
-   tools via `TIA_MCP_PROFILE=lite` — best for weaker models and VS Code's 128-tool cap.
-   If anything fails to connect, run `tia.cmd doctor` (v2.2.8): a one-shot environment
-   check (TIA install, exe/version match, Openness group, host registration) with the
-   exact fix per problem; `--fix` auto-adds the Openness group. Since v2.2.7 the exe also **self-routes**: if it was
-   built for a different TIA major version than the machine has, it transparently
-   re-execs the matching sibling exe — grabbing the "wrong" exe no longer crashes.
-   Manual fallback: copy the snippet from `cursor-mcp.example.json`, replace
-   `REPLACE_ME` with this bundle's root, pick the exe path by TIA version; for
-   non-default installs add `"--tia-portal-location","<root>","--tia-major-version","<20|21>"` to `args`.
-3. **First call sequence:** `Bootstrap` → `Connect` → `OpenProject` (or
-   `CreateProject`) → `GetProjectTree`, then read the real `PLC_*` / `HMI_RT_*`
-   paths from the tree before continuing.
+   (On a managed MCP client, set `disabled` to `true` in the connector config to release the file lock before upgrading `TiaMcpServer.exe`, then restore it after copying. The same exe also supports `TiaMcpServer.exe config` to auto-discover and write host config — manual config is more reliable.)
 
-### Offline validation (no TIA needed)
+3. **First-call sequence**
+   - `Bootstrap` → `Connect` → `OpenProject` (or `CreateProject`) → `GetProjectTree`, then read the real `PLC_xxx` / `HMI_RT_xxx` paths from the tree before continuing.
 
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\Validate-Bundle.ps1
-```
-
-Checks runtime presence, blueprint file completeness, tool-count consistency, and
-that PLC/HMI JSON parse. Add `-Strict` for tighter manifest/matrix comparison.
-
-## Build from source
-
-The full source lives under `tools/tiaportal-mcp/src/TiaMcpServer` (51 `.cs`).
-
-```powershell
-# V21 (split DLLs)
-dotnet build tools/tiaportal-mcp/src/TiaMcpServer/TiaMcpServer.csproj -c Release
-# V20 (monolithic DLL) — clean intermediates first if you just built the other target
-dotnet build tools/tiaportal-mcp/src/TiaMcpServer/TiaMcpServer.V20.csproj -c Release
-```
+---
 
 ## Capabilities & boundaries
 
-**Can do:** projects & hardware, PROFINET, declarative PLC import, LAD XML import,
-WinCC Unified connections / tags (absolute addressing) / screens / button
-Down·Up / dynamization, compile-and-diagnose, save.
+**Can do**: project & hardware configuration, PROFINET, declarative PLC import (Tag/UDT/DB/SCL/LAD), Classic / Comfort HMI connections/tags/screens, cross-reference & impact analysis, batch grouping & auto-classification, compile-and-diagnose, save.
 
-**Not bundled:** Siemens install media, field projects, business-specific
-technology. `reference/` is style/instruction reference only. See `notBundled` in
-`manifest/package-manifest.json`. For what Openness **cannot** do, see
-`手册/openness-limitations.md`.
+**Not available under V18**:
+- WinCC **Unified** HMI (23 tools hidden; V18 Openness lacks the `HmiUnified` assembly) — requires V20/V21.
+- S7DCL human-readable SCL text export (`Export/Import*Documents` is V20+ only; exposed as a guided hint only in this build). Use `ExportBlockSourceUtf8` + `RegenerateBlockFromSource` instead (SimaticML XML, UTF-8+BOM).
 
-## Documentation map
+**Not bundled**: Siemens install media, field projects, business-specific technology.
+
+---
+
+## Version comparison
+
+| Capability | V18 build | V20 / V21 build |
+|------|-----------|------------------------|
+| Common PLC / Classic HMI tools | ✅ | ✅ |
+| WinCC Unified HMI tools | ❌ (guarded/hidden) | ✅ |
+| Document import/export (`*Documents` / S7DCL) | ⚠️ guided hint only | ✅ callable |
+| Exposed tool count | **166** | ~180–189 |
+
+---
+
+## Build (if compiling from source)
+
+Three csproj files map to the three TIA versions, distinguished by output directory:
+
+```bat
+:: V18 (Unified HMI hidden, 166 tools)
+dotnet build TiaMcpServer.V18.csproj -c Release ^
+  -p:TiaPortalLocation="C:/Program Files/Siemens/Automation/Portal V18" ^
+  -p:BaseOutputPath=bin-v18/ -p:BaseIntermediateOutputPath=obj-v18/
+
+:: V20 (monolithic session assembly)
+dotnet build TiaMcpServer.V20.csproj -c Release ^
+  -p:TiaPortalLocation="D:/Program Files/Siemens/Automation/Portal V20" ^
+  -p:BaseOutputPath=bin-v20/ -p:BaseIntermediateOutputPath=obj-v20/
+
+:: V21 (split assemblies)
+dotnet build TiaMcpServer.csproj -c Release
+```
+
+`TiaMcpServer.V18.csproj` defines the `TIA_V18` compile symbol, which automatically hides the Unified HMI tools.
+
+---
+
+## What's delivered
+
+The `master` branch root provides:
+
+```
+TIA_Portal_Openness_MCP.zip   ← full toolkit (~26 MB, 663 files)
+```
+
+The archive contains: prebuilt runtime `bin-v18/`, source `src/`, docs `docs/`, templates `templates/`, a Skill, the capability matrix `manifest/`, config `.mcp.json`, plus a more detailed `README.md` and `LICENSE`. Everything needed is inside the archive — no separate source clone required.
+
+> This repository is delivered as a packaged bundle and does not separately commit the source tree, to avoid mixing it with build artifacts. For source, unzip the archive.
+
+---
+
+## Documentation map (inside the archive)
 
 | Path | What |
 |------|------|
-| `tools/tiaportal-mcp/skill/SKILL.md` | **Primary spec**: tool layers, parameter traps, Unified HMI schema, LAD/SCL boundaries |
+| `tools/tiaportal-mcp/skill/SKILL.md` | Primary spec: tool layers, parameter traps, HMI schema, LAD/SCL boundaries |
 | `manifest/tools-list.json` | Static tool names/layers (runtime authority is `tools/list` after connect) |
 | `docs/tool-capability-matrix.md` | Capability matrix |
-| `docs/full-project-generation-runbook.md` | End-to-end project generation |
 | `docs/scl-instruction-library.md` / `docs/lad-instruction-library.md` | SCL / LAD instruction libraries |
-| `docs/hmi-connection-driver-matrix.md` | Communication-driver selection by CPU family |
-| `手册/quickstart.md` | English quick start |
-| `手册/TIA_NL_INTENT_RECIPES.md` | Natural-language → tool-sequence recipes |
+| `docs/hmi-plc-tag-binding-and-addressing.md` | HMI↔PLC binding & addressing |
+| `templates/plc/` · `templates/hmi/` | PLC / HMI template index |
+| `手册/` | Quick start, Openness limitations, error model, etc. |
 
-## Standard loop (abbreviated)
+---
 
-```text
-Bootstrap → Connect → CreateProject → AddDeviceWithFallback → AddHardwareCatalogDeviceWithProbe
-→ ConnectDeviceNodesToProfinetSubnet → GetProjectTree → ValidateAutomationContext
-→ PlcBuildAndImport(dryRun=true per item) → PlcBuildAndImport(dryRun=false in import order)
-→ CompileAndDiagnosePlc → EnsureUnifiedHmiConnection → EnsureUnifiedHmiTagTable → EnsureUnifiedHmiTag
-→ EnsureUnifiedHmiScreen → ApplyUnifiedHmiScreenDesignJson → BindUnifiedHmiTagDynamization
-→ EnsureUnifiedHmiButtonAction → SaveProject → Disconnect
-```
+## FAQ
+
+**Q: The connector only shows some tools / a tool is missing?**
+This is a client tool-descriptor/cache issue, not a trimmed bundle — restart the client or clear the tool cache. The runtime authority is `tools/list`.
+
+**Q: Why no WinCC Unified?**
+TIA Portal V18's full Openness install does not include `Siemens.Engineering.HmiUnified`; the Unified HMI tools are hidden in the V18 build via `#if !TIA_V18`. Use the Classic / Comfort HMI family under V18; use V20/V21 for Unified.
+
+**Q: "File in use" when upgrading `TiaMcpServer.exe`?**
+The managed MCP connector's process is hosted and respawns immediately. Set `disabled` to `true` in the connector config to release the file lock before upgrading, then restore it.
+
+**Q: Is it IDE-independent?**
+Yes. Any MCP-capable client (WorkBuddy, Cursor, VS Code, Claude Desktop, custom HTTP clients, etc.) can use the same `TiaMcpServer.exe`.
+
+---
+
+## License
+
+Released under the **MIT License** — see `LICENSE`.
