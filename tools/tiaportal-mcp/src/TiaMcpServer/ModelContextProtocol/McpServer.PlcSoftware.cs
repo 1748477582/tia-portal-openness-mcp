@@ -29,36 +29,40 @@ namespace TiaMcpServer.ModelContextProtocol
         public static ResponseSoftwareInfo GetSoftwareInfo(
             [Description("softwarePath: defines the path in the project structure to the plc software")] string softwarePath)
         {
-            try
+            // Openness compliance: enumerate software attributes on the STA thread.
+            return Portal.RunOnSta(() =>
             {
-                var software = Portal.GetPlcSoftware(softwarePath);
-                if (software != null)
+                try
                 {
-
-                    var attributes = Helper.GetAttributeList(software);
-
-                    return new ResponseSoftwareInfo
+                    var software = Portal.GetPlcSoftware(softwarePath);
+                    if (software != null)
                     {
-                        Message = $"Software info retrieved from '{softwarePath}'",
-                        Name = software.Name,
-                        Attributes = attributes,
-                        Description = software.ToString(),
-                        Meta = new JsonObject
+
+                        var attributes = Helper.GetAttributeList(software);
+
+                        return new ResponseSoftwareInfo
                         {
-                            ["timestamp"] = DateTime.Now,
-                            ["success"] = true
-                        }
-                    };
+                            Message = $"Software info retrieved from '{softwarePath}'",
+                            Name = software.Name,
+                            Attributes = attributes,
+                            Description = software.ToString(),
+                            Meta = new JsonObject
+                            {
+                                ["timestamp"] = DateTime.Now,
+                                ["success"] = true
+                            }
+                        };
+                    }
+                    else
+                    {
+                        throw new McpException($"Software not found at '{softwarePath}'", McpErrorCode.InternalError);
+                    }
                 }
-                else
+                catch (Exception ex) when (ex is not McpException)
                 {
-                    throw new McpException($"Software not found at '{softwarePath}'", McpErrorCode.InternalError);
+                    throw McpError.WithRecovery(ex, $"Unexpected error retrieving software info from '{softwarePath}': {ex.Message}{McpHints.Recovery(ex)}");
                 }
-            }
-            catch (Exception ex) when (ex is not McpException)
-            {
-                throw McpError.WithRecovery(ex, $"Unexpected error retrieving software info from '{softwarePath}': {ex.Message}{McpHints.Recovery(ex)}");
-            }
+            });
         }
 
         [McpServerTool(Name = "GetHmiProgramInfo"), Description("[L2][HMI] Get HMI software type (Classic/Basic/Unified), version, and list of all screen names. Requires: Connect + OpenProject. softwarePath from GetProjectTree (e.g. 'HMI_RT_1'). Use to confirm HMI type before choosing Classic vs Unified tool variants.")]
@@ -885,33 +889,23 @@ namespace TiaMcpServer.ModelContextProtocol
 
         private static ResponseCompile BuildCompileResponse(string softwarePath, object result)
         {
-            var collected = new CompilerMessageCollectResult();
-            try
-            {
-                var messagesValue = result.GetType().GetProperty("Messages")?.GetValue(result);
-                collected = Portal.CollectCompilerMessagesOnSta(messagesValue);
-            }
-            catch
-            {
-                // best effort only
-            }
+            // Every CompilerResult member is a COM property that must be read on the PortalSta
+            // thread; CollectCompilerResultOnSta does that and returns a plain snapshot.
+            var snap = Portal.CollectCompilerResultOnSta(result);
 
-            var state = result.GetType().GetProperty("State")?.GetValue(result)?.ToString() ?? "";
-            var errorCount = ReadIntProperty(result, "ErrorCount");
-            var warningCount = ReadIntProperty(result, "WarningCount");
             return new ResponseCompile
             {
-                Message = $"Software '{softwarePath}' compiled. State={state} Errors={errorCount} Warnings={warningCount}",
-                State = state,
-                ErrorCount = errorCount,
-                WarningCount = warningCount,
-                Messages = collected.Raw,
+                Message = $"Software '{softwarePath}' compiled. State={snap.State} Errors={snap.ErrorCount} Warnings={snap.WarningCount}",
+                State = snap.State,
+                ErrorCount = snap.ErrorCount,
+                WarningCount = snap.WarningCount,
+                Messages = snap.Raw,
                 Meta = new JsonObject
                 {
                     ["timestamp"] = DateTime.Now,
-                    ["success"] = !state.Equals("Error", StringComparison.OrdinalIgnoreCase),
-                    ["errorDetailCount"] = collected.Errors.Count,
-                    ["warningDetailCount"] = collected.Warnings.Count
+                    ["success"] = !snap.State.Equals("Error", StringComparison.OrdinalIgnoreCase),
+                    ["errorDetailCount"] = snap.Errors.Count,
+                    ["warningDetailCount"] = snap.Warnings.Count
                 }
             };
         }
@@ -3501,22 +3495,23 @@ namespace TiaMcpServer.ModelContextProtocol
         {
             try
             {
-                var result = WithAutoOffline(() => Portal.CompileSoftware(softwarePath, password));
-                var collected = Portal.CollectCompilerMessagesOnSta(result.Messages);
+                // CompilerResult COM reads must happen on the PortalSta thread.
+                var compiled = WithAutoOffline(() => Portal.CompileSoftware(softwarePath, password));
+                var snap = Portal.CollectCompilerResultOnSta(compiled);
 
                 return new ResponseCompile
                 {
-                    Message = $"Software '{softwarePath}' compiled. State={result.State} Errors={result.ErrorCount} Warnings={result.WarningCount}",
-                    State = result.State.ToString(),
-                    ErrorCount = result.ErrorCount,
-                    WarningCount = result.WarningCount,
-                    Messages = collected.Raw,
+                    Message = $"Software '{softwarePath}' compiled. State={snap.State} Errors={snap.ErrorCount} Warnings={snap.WarningCount}",
+                    State = snap.State,
+                    ErrorCount = snap.ErrorCount,
+                    WarningCount = snap.WarningCount,
+                    Messages = snap.Raw,
                     Meta = new JsonObject
                     {
                         ["timestamp"] = DateTime.Now,
-                        ["success"] = !result.State.ToString().Equals("Error", StringComparison.OrdinalIgnoreCase),
-                        ["errorDetailCount"] = collected.Errors.Count,
-                        ["warningDetailCount"] = collected.Warnings.Count
+                        ["success"] = !snap.State.Equals("Error", StringComparison.OrdinalIgnoreCase),
+                        ["errorDetailCount"] = snap.Errors.Count,
+                        ["warningDetailCount"] = snap.Warnings.Count
                     }
                 };
             }

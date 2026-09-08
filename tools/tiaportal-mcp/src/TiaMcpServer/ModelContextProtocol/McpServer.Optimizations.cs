@@ -339,21 +339,21 @@ namespace TiaMcpServer.ModelContextProtocol
         {
             try
             {
-                var result = Portal.CompileSoftware(softwarePath, password);
-                var collected = Portal.CollectCompilerMessagesOnSta(result.Messages);
+                // CompilerResult COM reads must happen on the PortalSta thread.
+                var snap = Portal.CollectCompilerResultOnSta(Portal.CompileSoftware(softwarePath, password));
                 return new ResponseMessage
                 {
-                    Message = $"Software '{softwarePath}' compiled. State={result.State} Errors={result.ErrorCount} Warnings={result.WarningCount}",
+                    Message = $"Software '{softwarePath}' compiled. State={snap.State} Errors={snap.ErrorCount} Warnings={snap.WarningCount}",
                     Meta = new JsonObject
                     {
-                        ["state"] = result.State.ToString(),
-                        ["errorCount"] = result.ErrorCount,
-                        ["warningCount"] = result.WarningCount,
-                        ["errors"] = ToJsonArray(collected.Errors),
-                        ["warnings"] = ToJsonArray(collected.Warnings),
-                        ["info"] = ToJsonArray(collected.Info),
+                        ["state"] = snap.State,
+                        ["errorCount"] = snap.ErrorCount,
+                        ["warningCount"] = snap.WarningCount,
+                        ["errors"] = ToJsonArray(snap.Errors),
+                        ["warnings"] = ToJsonArray(snap.Warnings),
+                        ["info"] = ToJsonArray(snap.Info),
                         ["timestamp"] = DateTime.Now,
-                        ["success"] = !result.State.ToString().Equals("Error", StringComparison.OrdinalIgnoreCase)
+                        ["success"] = !snap.State.Equals("Error", StringComparison.OrdinalIgnoreCase)
                     }
                 };
             }

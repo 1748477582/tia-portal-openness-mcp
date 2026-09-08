@@ -32,7 +32,16 @@ namespace TiaMcpServer
 
         // Upper bound on how long a POST waits for the MCP host to produce a matching
         // response before returning 504, so a stalled pipe can't hang the request forever.
-        private static readonly TimeSpan ResponseTimeout = TimeSpan.FromSeconds(120);
+        // TIA Portal cold-start (Connect) and full compiles can both exceed the old 120s cap,
+        // so default to 300s and allow override via TIA_MCP_HTTP_TIMEOUT_SECONDS for slow hosts.
+        private static readonly TimeSpan ResponseTimeout = TimeSpan.FromSeconds(GetHttpTimeoutSeconds());
+
+        private static int GetHttpTimeoutSeconds()
+        {
+            var raw = Environment.GetEnvironmentVariable("TIA_MCP_HTTP_TIMEOUT_SECONDS");
+            if (int.TryParse(raw, out var v) && v > 0) return v;
+            return 300;
+        }
 
         private sealed class Session
         {

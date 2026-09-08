@@ -43,7 +43,7 @@ namespace TiaMcpServer.ModelContextProtocol
 
                 var xml = File.ReadAllText(xmlFile.FullName);
                 var readable = LadTextRenderer.Render(xml);
-                var lang = block.ProgrammingLanguage.ToString();
+                var lang = block.ProgrammingLanguage ?? "Unknown";
 
                 return new ResponseBlockLogic
                 {

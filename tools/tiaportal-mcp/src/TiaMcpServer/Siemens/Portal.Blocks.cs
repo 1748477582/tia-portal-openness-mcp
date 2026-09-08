@@ -277,7 +277,7 @@ namespace TiaMcpServer.Siemens
             });
         }
 
-        public PlcBlock? ExportBlock(string softwarePath, string blockPath, string exportPath, bool preservePath = false)
+        public ResponseBlockInfo? ExportBlock(string softwarePath, string blockPath, string exportPath, bool preservePath = false)
         {
             return _sta.Run(() =>
             {
@@ -320,7 +320,7 @@ namespace TiaMcpServer.Siemens
 
                 block.Export(new FileInfo(exportPath), ExportOptions.None);
 
-                return block;
+                return BuildBlockInfo(block);
             }
             catch (Exception ex)
             {
@@ -337,7 +337,7 @@ namespace TiaMcpServer.Siemens
             });
         }
 
-        public PlcType? ExportType(string softwarePath, string typePath, string exportPath, bool preservePath = false)
+        public ResponseTypeInfo? ExportType(string softwarePath, string typePath, string exportPath, bool preservePath = false)
         {
             return _sta.Run(() =>
             {
@@ -380,7 +380,7 @@ namespace TiaMcpServer.Siemens
 
                 type.Export(new FileInfo(exportPath), ExportOptions.None);
 
-                return type;
+                return BuildTypeInfo(type);
             }
             catch (Exception ex)
             {
@@ -1495,7 +1495,9 @@ namespace TiaMcpServer.Siemens
                         if (result == null || result.State != DocumentResultState.Success)
                         {
                             throw new PortalException(PortalErrorCode.ImportFailed,
-                                $"ImportFromDocuments returned state '{result?.State.ToString() ?? "null"}' for '{fileNameWithoutExtension}'. The document set was not imported.");
+                                $"ImportFromDocuments returned state '{result?.State.ToString() ?? "null"}' for '{fileNameWithoutExtension}'. The document set was not imported. " +
+                                "Note: .s7dcl documents have a dedicated textual format produced by ExportBlocksAsDocuments — plain SCL source text (FUNCTION_BLOCK ... END_FUNCTION_BLOCK) is NOT a valid .s7dcl. " +
+                                "To import plain SCL, use ImportPlcExternalSource + GenerateBlocksFromExternalSource instead.");
                         }
 
                         // Restore the original block number if Override renumbered it (symbolic/optimized blocks

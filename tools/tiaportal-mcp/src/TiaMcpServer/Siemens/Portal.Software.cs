@@ -139,19 +139,25 @@ namespace TiaMcpServer.Siemens
             });
         }
 
+        // STA 化: PlcSoftware 是 RCW, 读 TagTables 属性必须在 STA 线程上,
+        // 否则 Openness 报 "Cross-thread operation is not valid in Openness within STA"。
+        // 与 ExportPlcTagTable / ImportPlcTagTable 保持同样的 _sta.Run 包裹。
         public List<string>? GetPlcTagTables(string softwarePath)
         {
-            if (IsProjectNull()) return null;
-            var plc = GetPlcSoftware(softwarePath);
-            if (plc == null) return null;
+            return _sta.Run(() =>
+            {
+                if (IsProjectNull()) return null;
+                var plc = GetPlcSoftware(softwarePath);
+                if (plc == null) return null;
 
-            // common shapes: plc.TagTables OR plc.TagTableGroup.TagTables
-            object? tables =
-                TryGetPropertyValue(plc, "TagTables") ??
-                TryGetPropertyValue(TryGetPropertyValue(plc, "TagTableGroup", "TagTableFolder") ?? plc, "TagTables");
+                // common shapes: plc.TagTables OR plc.TagTableGroup.TagTables
+                object? tables =
+                    TryGetPropertyValue(plc, "TagTables") ??
+                    TryGetPropertyValue(TryGetPropertyValue(plc, "TagTableGroup", "TagTableFolder") ?? plc, "TagTables");
 
-            if (tables == null) return new List<string>();
-            return TryListNamesFromCollection(tables, new[] { "TagTables" }, "TagTables");
+                if (tables == null) return new List<string>();
+                return TryListNamesFromCollection(tables, new[] { "TagTables" }, "TagTables");
+            });
         }
 
         public bool ExportPlcTagTable(string softwarePath, string tagTableName, string exportPath)
@@ -6699,6 +6705,10 @@ namespace TiaMcpServer.Siemens
 
         public List<string>? GetPlcExternalSources(string softwarePath)
         {
+            // Must run on the STA thread: enumerating the ExternalSources COM collection
+            // off the STA thread throws cross-thread (same rule as every other Openness call).
+            return _sta.Run(() =>
+            {
             if (IsProjectNull()) return null;
             var softwareContainer = GetSoftwareContainer(softwarePath);
             if (softwareContainer?.Software is not PlcSoftware plcSoftware) return null;
@@ -6714,6 +6724,7 @@ namespace TiaMcpServer.Siemens
                 if (!string.IsNullOrWhiteSpace(name)) names.Add(name!);
             }
             return names;
+            });
         }
 
         /// <summary>
@@ -7115,6 +7126,48 @@ namespace TiaMcpServer.Siemens
 
         public CompilerResult CompileSoftware(string softwarePath, string password = "", int timeoutSeconds = 600)
         {
+            var effectiveTimeout = timeoutSeconds > 0 ? timeoutSeconds : AppSettings.CompileTimeoutSeconds;
+
+            // Already on the PortalSta thread (e.g. nested inside another _sta.Run): the compile
+            // must run inline — dispatching back to the STA we are blocking on would deadlock,
+            // and a COM call cannot be interrupted anyway.
+            if (_sta.IsStaThread)
+                return CompileSoftwareCore(softwarePath, password);
+
+            // Q3 timeout guard: a stuck compiler service (corrupted project, dead TIA instance)
+            // can block Compile() forever and stall the whole MCP server.
+            // IMPORTANT: the Openness RCW (ICompilable) is apartment-bound to the persistent
+            // PortalSta thread, so Compile() must NOT be called on a one-shot worker thread —
+            // that raises "Cross-thread operation is not valid in Openness within STA" (same class
+            // of bug as the old AttachWithTimeout). The worker therefore only runs the STA-dispatched
+            // core and provides the abandon-on-timeout semantics; a stuck COM call cannot be
+            // cancelled, so on timeout the caller is told to wait or retry.
+            // Q6: default timeout is configurable via appsettings.json tia.compileTimeoutSeconds.
+            var task = System.Threading.Tasks.Task.Factory.StartNew(
+                () => CompileSoftwareCore(softwarePath, password),
+                System.Threading.Tasks.TaskCreationOptions.LongRunning);
+
+            try
+            {
+                if (!task.Wait(TimeSpan.FromSeconds(effectiveTimeout)))
+                {
+                    _logger?.LogWarning($"Compile of '{softwarePath}' exceeded {effectiveTimeout}s timeout; the compile keeps running in the background.");
+                    throw new PortalException(PortalErrorCode.InvalidState,
+                        $"Compile exceeded {effectiveTimeout}s timeout for '{softwarePath}'. The compiler is still running in the background and cannot be cancelled; wait for it to finish or retry with a larger timeoutSeconds.");
+                }
+                return task.Result;
+            }
+            catch (AggregateException ae)
+            {
+                var inner = ae.InnerException ?? ae;
+                System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(inner).Throw();
+                throw; // unreachable
+            }
+        }
+
+        /// <summary>Compilation body; every Openness access runs on the PortalSta thread.</summary>
+        private CompilerResult CompileSoftwareCore(string softwarePath, string password)
+        {
             return _sta.Run(() =>
             {
             _logger?.LogInformation($"Compiling software by path: {softwarePath}");
@@ -7156,26 +7209,13 @@ namespace TiaMcpServer.Siemens
                     if (compileService == null)
                         throw new PortalException(PortalErrorCode.OpennessError, "plcSoftware.GetService<ICompilable>() returned null");
 
-                    // Q3 timeout guard: a stuck compiler service (corrupted project, dead TIA instance)
-                    // can block Compile() forever and stall the whole MCP server. Same background-thread +
-                    // Join(timeout) pattern as AttachWithTimeout. On timeout the background worker keeps
-                    // running (COM call cannot be cancelled); the error tells the caller to wait or retry.
-                    // Q6: default timeout is configurable via appsettings.json tia.compileTimeoutSeconds.
-                    var effectiveTimeout = timeoutSeconds > 0 ? timeoutSeconds : AppSettings.CompileTimeoutSeconds;
-                    CompilerResult? result = null;
+                    // Runs on the PortalSta thread (this lambda is dispatched by _sta.Run), which is
+                    // required: the ICompilable RCW belongs to this apartment. The abandon-on-timeout
+                    // guard lives in CompileSoftware (caller side) so no Openness call happens off-STA.
+                    CompilerResult? result;
                     Exception? compileError = null;
-                    var worker = new System.Threading.Thread(() =>
-                    {
-                        try { result = compileService.Compile(); }
-                        catch (Exception ex) { compileError = ex; }
-                    }) { IsBackground = true };
-                    worker.Start();
-                    if (!worker.Join(TimeSpan.FromSeconds(effectiveTimeout)))
-                    {
-                        _logger?.LogWarning($"Compile of '{softwarePath}' exceeded {effectiveTimeout}s timeout; worker keeps running in background.");
-                        throw new PortalException(PortalErrorCode.InvalidState,
-                            $"Compile exceeded {effectiveTimeout}s timeout for '{softwarePath}'. The compiler is still running in the background and cannot be cancelled; wait for it to finish or retry with a larger timeoutSeconds.");
-                    }
+                    try { result = compileService.Compile(); }
+                    catch (Exception ex) { result = null; compileError = ex; }
 
                     if (compileError != null)
                         throw compileError;
@@ -7208,6 +7248,62 @@ namespace TiaMcpServer.Siemens
             });
         }
 
+        /// <summary>
+        /// Reads a CompilerResult's COM properties (State / ErrorCount / WarningCount / Messages)
+        /// ON the PortalSta thread and returns a plain snapshot. Dereferencing those members
+        /// off-STA raises "Cross-thread operation is not valid in Openness within STA" on V20+,
+        /// so every caller must go through this helper instead of touching the result directly.
+        /// Reflection keeps this version-agnostic (V18/V20/V21 CompilerResult shapes differ).
+        /// </summary>
+        public CompilerResultSnapshot CollectCompilerResultOnSta(object? result)
+        {
+            if (result == null) return new CompilerResultSnapshot();
+
+            return _sta.Run(() =>
+            {
+                var snap = new CompilerResultSnapshot();
+                var t = result.GetType();
+                try { snap.State = t.GetProperty("State")?.GetValue(result)?.ToString() ?? ""; } catch { }
+                try { snap.ErrorCount = ReadIntPropertySafe(result, "ErrorCount"); } catch { }
+                try { snap.WarningCount = ReadIntPropertySafe(result, "WarningCount"); } catch { }
+                try
+                {
+                    var messages = t.GetProperty("Messages")?.GetValue(result);
+                    // Nested Run executes inline because we are already on the PortalSta thread.
+                    var collected = CollectCompilerMessagesOnSta(messages);
+                    snap.Raw = collected.Raw;
+                    snap.Errors = collected.Errors;
+                    snap.Warnings = collected.Warnings;
+                    snap.Info = collected.Info;
+                }
+                catch { }
+                return snap;
+            });
+        }
+
+        private static int ReadIntPropertySafe(object value, string propertyName)
+        {
+            var raw = value.GetType().GetProperty(propertyName)?.GetValue(value);
+            if (raw is int i) return i;
+            return int.TryParse(raw?.ToString(), out var parsed) ? parsed : 0;
+        }
+
         #endregion
+    }
+
+    /// <summary>
+    /// Plain-DTO snapshot of an Openness CompilerResult. Every CompilerResult member is a COM
+    /// property that may only be touched on the PortalSta thread, so all reads happen inside
+    /// <see cref="Portal.CollectCompilerResultOnSta"/> and callers work with this POCO off-STA.
+    /// </summary>
+    public sealed class CompilerResultSnapshot
+    {
+        public string State { get; set; } = "";
+        public int ErrorCount { get; set; }
+        public int WarningCount { get; set; }
+        public List<string> Raw { get; set; } = new List<string>();
+        public List<string> Errors { get; set; } = new List<string>();
+        public List<string> Warnings { get; set; } = new List<string>();
+        public List<string> Info { get; set; } = new List<string>();
     }
 }

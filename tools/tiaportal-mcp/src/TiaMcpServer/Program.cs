@@ -44,6 +44,27 @@ namespace TiaMcpServer
 
                 AppDomain.CurrentDomain.AssemblyResolve += ResolveFromBaseDir;
 
+                // Top-level last-resort handler: capture any exception that escapes the host
+                // (including corrupted-state exceptions thrown by Siemens COM) WITHOUT calling
+                // ToString() on a possibly-dead RCW, which would itself throw and kill the process.
+                // Writes the real exception type to the diagnostic log for post-mortem analysis.
+                AppDomain.CurrentDomain.UnhandledException += (s, e) =>
+                {
+                    try
+                    {
+                        var ex = e.ExceptionObject as Exception;
+                        var t = ex?.GetType().FullName ?? e.ExceptionObject?.GetType().FullName ?? "unknown";
+                        LogDiag($"[UnhandledException] isTerminating={e.IsTerminating} type={t}");
+                        if (ex != null) LogExceptionSafe(ex);
+                    }
+                    catch { try { LogDiag("[UnhandledException] logging failed"); } catch { } }
+                };
+                TaskScheduler.UnobservedTaskException += (s, e) =>
+                {
+                    try { if (e.Exception != null) { LogDiag("[UnobservedTaskException]"); LogExceptionSafe(e.Exception); } e.SetObserved(); }
+                    catch { }
+                };
+
                 LogDiag($"=== {DateTime.Now:O} PID={System.Diagnostics.Process.GetCurrentProcess().Id} ===");
                 LogDiag($"BaseDir: {AppContext.BaseDirectory}");
                 LogDiag($"Exe: {Assembly.GetExecutingAssembly().Location}");

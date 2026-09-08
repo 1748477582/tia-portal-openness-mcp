@@ -540,21 +540,20 @@ throw McpError.WithRecovery(ex, $"Unexpected error importing blocks from '{dir}'
                 {
                     try
                     {
-                        var result = Portal.CompileSoftware(softwarePath);
-                        var collected = Portal.CollectCompilerMessagesOnSta(result.Messages);
+                        var snap = Portal.CollectCompilerResultOnSta(Portal.CompileSoftware(softwarePath));
                         compile = new ResponseCompile
                         {
-                            Message = $"Software '{softwarePath}' compiled. State={result.State} Errors={result.ErrorCount} Warnings={result.WarningCount}",
-                            State = result.State.ToString(),
-                            ErrorCount = result.ErrorCount,
-                            WarningCount = result.WarningCount,
-                            Messages = collected.Raw,
+                            Message = $"Software '{softwarePath}' compiled. State={snap.State} Errors={snap.ErrorCount} Warnings={snap.WarningCount}",
+                            State = snap.State,
+                            ErrorCount = snap.ErrorCount,
+                            WarningCount = snap.WarningCount,
+                            Messages = snap.Raw,
                             Meta = new JsonObject
                             {
                                 ["timestamp"] = DateTime.Now,
-                                ["success"] = !result.State.ToString().Equals("Error", StringComparison.OrdinalIgnoreCase),
-                                ["errorDetailCount"] = collected.Errors.Count,
-                                ["warningDetailCount"] = collected.Warnings.Count
+                                ["success"] = !snap.State.Equals("Error", StringComparison.OrdinalIgnoreCase),
+                                ["errorDetailCount"] = snap.Errors.Count,
+                                ["warningDetailCount"] = snap.Warnings.Count
                             }
                         };
                     }
@@ -581,39 +580,27 @@ throw McpError.WithRecovery(ex, $"Unexpected error importing blocks from '{dir}'
         {
             try
             {
-                var result = Portal.CompileSoftware(softwarePath, password, timeoutSeconds);
-
-                var raw = new List<string>();
-                var errs = new List<string>();
-                var warns = new List<string>();
-                var info = new List<string>();
-
-                try
-                {
-                    var collected = Portal.CollectCompilerMessagesOnSta(result.Messages);
-                    raw = collected.Raw;
-                    errs = collected.Errors;
-                    warns = collected.Warnings;
-                    info = collected.Info;
-                }
-                catch { }
+                // The CompilerResult is an Openness COM object: every member read must happen on
+                // the PortalSta thread (off-STA reads raise "Cross-thread operation is not valid
+                // in Openness within STA" on V20+), so take a snapshot instead.
+                var snap = Portal.CollectCompilerResultOnSta(Portal.CompileSoftware(softwarePath, password, timeoutSeconds));
 
                 return new ResponseCompileDiagnose
                 {
-                    Message = $"Software '{softwarePath}' compiled. State={result.State} Errors={result.ErrorCount} Warnings={result.WarningCount}",
-                    State = result.State.ToString(),
-                    ErrorCount = result.ErrorCount,
-                    WarningCount = result.WarningCount,
-                    Errors = errs,
-                    Warnings = warns,
-                    Info = info,
-                    RawMessages = raw,
+                    Message = $"Software '{softwarePath}' compiled. State={snap.State} Errors={snap.ErrorCount} Warnings={snap.WarningCount}",
+                    State = snap.State,
+                    ErrorCount = snap.ErrorCount,
+                    WarningCount = snap.WarningCount,
+                    Errors = snap.Errors,
+                    Warnings = snap.Warnings,
+                    Info = snap.Info,
+                    RawMessages = snap.Raw,
                     Meta = new JsonObject
                     {
                         ["timestamp"] = DateTime.Now,
-                        ["success"] = !result.State.ToString().Equals("Error", StringComparison.OrdinalIgnoreCase),
-                        ["errorDetailCount"] = errs.Count,
-                        ["warningDetailCount"] = warns.Count
+                        ["success"] = !snap.State.Equals("Error", StringComparison.OrdinalIgnoreCase),
+                        ["errorDetailCount"] = snap.Errors.Count,
+                        ["warningDetailCount"] = snap.Warnings.Count
                     }
                 };
             }

@@ -1114,7 +1114,17 @@ namespace TiaMcpServer.Siemens
         // group names that were newly created this call (for reporting / idempotency).
         public PlcBlockGroup? EnsurePlcBlockGroup(string softwarePath, string groupPath, out List<string> created)
         {
-            created = new List<string>();
+            // Every Openness access below (BlockGroup, Groups.Create) must run on the PortalSta
+            // thread; off-STA calls raise "Cross-thread operation is not valid in Openness within STA".
+            // `out` cannot be assigned inside the lambda, so the caller's list is filled by the core.
+            var createdList = new List<string>();
+            var result = _sta.Run(() => EnsurePlcBlockGroupCore(softwarePath, groupPath, createdList));
+            created = createdList;
+            return result;
+        }
+
+        private PlcBlockGroup? EnsurePlcBlockGroupCore(string softwarePath, string groupPath, List<string> created)
+        {
             if (IsProjectNull())
             {
                 return null;
@@ -1346,6 +1356,10 @@ namespace TiaMcpServer.Siemens
             try
             {
                 previous = block.Number;
+                // Openness: when automatic numbering is enabled, Number cannot be assigned
+                // manually. Disable AutoNumber first (same pattern as ImportBlock restore logic
+                // in Portal.Blocks.cs), then set the explicit number.
+                block.AutoNumber = false;
                 block.Number = number;
             }
             catch (Exception ex)
@@ -1463,18 +1477,22 @@ namespace TiaMcpServer.Siemens
                     continue;
                 }
 
+                // Cache name BEFORE moving: MoveSingleBlockToGroupCore deletes the block
+                // (export->delete->import round-trip), after which touching block.Name
+                // throws EngineeringObjectDisposedException and corrupts the bookkeeping.
+                var blockNameSafe = block.Name;
                 try
                 {
-                    MoveSingleBlockToGroupCore(block, targetGroup, block.Name, targetGroupPath);
-                    moved.Add(block.Name);
+                    MoveSingleBlockToGroupCore(block, targetGroup, blockNameSafe, targetGroupPath);
+                    moved.Add(blockNameSafe);
                 }
                 catch (PortalException pex)
                 {
-                    failed.Add($"{block.Name}: {pex.Message}");
+                    failed.Add($"{blockNameSafe}: {pex.Message}");
                 }
                 catch (Exception ex)
                 {
-                    failed.Add($"{block.Name}: {ex.Message}");
+                    failed.Add($"{blockNameSafe}: {ex.Message}");
                 }
             }
 
@@ -1495,7 +1513,15 @@ namespace TiaMcpServer.Siemens
         // Create (nested) PLC data-type (UDT/Struct) groups, mirroring EnsurePlcBlockGroup.
         public PlcTypeGroup? EnsurePlcTypeGroup(string softwarePath, string groupPath, out List<string> created)
         {
-            created = new List<string>();
+            // Same STA requirement as EnsurePlcBlockGroup (see comment there).
+            var createdList = new List<string>();
+            var result = _sta.Run(() => EnsurePlcTypeGroupCore(softwarePath, groupPath, createdList));
+            created = createdList;
+            return result;
+        }
+
+        private PlcTypeGroup? EnsurePlcTypeGroupCore(string softwarePath, string groupPath, List<string> created)
+        {
             if (IsProjectNull()) return null;
 
             var softwareContainer = GetSoftwareContainer(softwarePath);
@@ -1875,13 +1901,15 @@ namespace TiaMcpServer.Siemens
                     : GetPlcBlockGroupByPath(softwarePath, folder);
                 if (target == null) { failed.Add($"{block.Name}: target '{folder}' missing (autoCreate=false)"); continue; }
                 if (ReferenceEquals(block.Parent, target)) { skipped.Add($"{block.Name}->{key}"); continue; }
+                // Cache name before the move round-trip deletes the block (see MoveBlocksToGroup).
+                var blockNameSafe = block.Name;
                 try
                 {
-                    MoveSingleBlockToGroupCore(block, target, block.Name, folder);
-                    moved.Add($"{block.Name}->{key}");
+                    MoveSingleBlockToGroupCore(block, target, blockNameSafe, folder);
+                    moved.Add($"{blockNameSafe}->{key}");
                 }
-                catch (PortalException pex) { failed.Add($"{block.Name}: {pex.Message}"); }
-                catch (Exception ex) { failed.Add($"{block.Name}: {ex.Message}"); }
+                catch (PortalException pex) { failed.Add($"{blockNameSafe}: {pex.Message}"); }
+                catch (Exception ex) { failed.Add($"{blockNameSafe}: {ex.Message}"); }
             }
 
             return $"AutoClassify blocks: moved {moved.Count}, skipped {skipped.Count}, failed {failed.Count}"

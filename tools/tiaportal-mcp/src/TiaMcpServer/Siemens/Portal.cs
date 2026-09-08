@@ -391,32 +391,30 @@ namespace TiaMcpServer.Siemens
             TiaPortal? result = null;
             Exception? error = null;
             var gate = new object();
+            // Attach() MUST execute on the persistent PortalSta thread so the resulting TiaPortal
+            // RCW is apartment-consistent with every later Openness call (which all run on PortalSta).
+            // Running Attach() on a throwaway worker thread bound the RCW to that thread, causing
+            // "Cross-thread operation is not valid in Openness within STA" on the very next call.
+            // The worker thread here only *waits*; the COM call itself is marshaled to PortalSta.
             var worker = new System.Threading.Thread(() =>
             {
-                TiaPortal? local = null;
-                try { local = proc.Attach(); }
-                catch (Exception ex) { lock (gate) { error = ex; } return; }
-                lock (gate) { result = local; }
+                try { result = _sta.Run<TiaPortal>(() => proc.Attach()); }
+                catch (Exception ex) { lock (gate) { error = ex; } }
             }) { IsBackground = true };
-            // Openness compliance: Attach() is a Siemens.Engineering COM call and must run on an STA
-            // thread. The default .NET thread apartment is MTA, which violates Openness' STA requirement.
-            worker.SetApartmentState(System.Threading.ApartmentState.STA);
             worker.Start();
             if (!worker.Join(timeoutMs))
             {
                 _logger?.LogWarning($"Attach to TIA Portal PID={proc.Id} exceeded {timeoutMs}ms; skipping (likely orphaned/dying instance).");
-                // The worker may still complete Attach() after our timeout, which would leak a
-                // TiaPortal RCW that is never used. Reap it best-effort once the late Attach settles.
+                // The attach may still complete on PortalSta after our timeout. Reap the leaked RCW
+                // best-effort so it doesn't hold the project open.
                 System.Threading.ThreadPool.QueueUserWorkItem(_ =>
                 {
                     try
                     {
-                        if (worker.Join(TimeSpan.FromSeconds(60)))
-                        {
-                            TiaPortal? late;
-                            lock (gate) { late = result; result = null; }
-                            if (late != null) { try { late.Dispose(); } catch { } }
-                        }
+                        worker.Join(TimeSpan.FromSeconds(60));
+                        TiaPortal? late;
+                        lock (gate) { late = result; result = null; }
+                        if (late != null) { try { _sta.Run(() => late.Dispose()); } catch { } }
                     }
                     catch { }
                 });
@@ -445,7 +443,19 @@ namespace TiaMcpServer.Siemens
                 // connect to running TIA Portal
                 var processes = TiaPortal.GetProcesses();
                 _logger?.LogInformation($"TIA Portal process count: {processes.Count()}");
-                if (processes.Any())
+
+                // Test/isolation escape hatch: when TIA_MCP_NO_ATTACH is set, NEVER attach to a
+                // running instance (e.g. the user's own TIA session). Always spin up a fresh
+                // headless instance so functional tests never touch the user's open project.
+                bool noAttach = string.Equals(Environment.GetEnvironmentVariable("TIA_MCP_NO_ATTACH"), "1", StringComparison.OrdinalIgnoreCase)
+                             || string.Equals(Environment.GetEnvironmentVariable("TIA_MCP_NO_ATTACH"), "true", StringComparison.OrdinalIgnoreCase);
+                if (noAttach)
+                {
+                    _logger?.LogInformation("TIA_MCP_NO_ATTACH is set; skipping attach to any running instance.");
+                    LastConnectError = "TIA_MCP_NO_ATTACH set; starting a new TIA Portal instance (not attaching to running instances).";
+                }
+
+                if (!noAttach && processes.Any())
                 {
                     // IMPORTANT: multiple Siemens.Automation.Portal.exe can run at once.
                     // Attaching to processes.First() is unstable and often attaches to an instance
