@@ -15,29 +15,39 @@ namespace TiaMcpServer.ModelContextProtocol
     /// </summary>
     public static class McpGuides
     {
-        public const string ServerInstructions =
+        // Common header + golden paths + tool quick-pick, shared by ALL builds (V18/V20/V21).
+        // The quick-pick table is the fix for "picking a tool got slower" after the V20
+        // build grew to ~200 tools: it lets the model jump straight to the right tool
+        // instead of scanning the whole tool list (esp. the 23 Unified HMI tools whose
+        // names resemble the Classic HMI tools).
+        private const string ServerInstructionsCommon =
 @"TIA Portal MCP server (Siemens PLC/HMI engineering via Openness). How to work well:
 
 FIRST CALL: Bootstrap — returns environment status, connection state, the recommended next tool, and operating rules. Do this before anything else. If the environment itself seems broken (TIA missing, group membership, nothing connects), call Doctor for a plain-language diagnosis with exact fixes.
 
-*** THIS PROJECT RUNS ON TIA PORTAL V18 (primary target). V20+ ONLY TOOLS ARE DISABLED IN THIS BUILD. ***
-The following are NOT callable here (they require TIA V20+ and are commented out): ExportAsDocuments, ExportBlocksAsDocuments, ImportFromDocuments, ImportBlocksFromDocuments. Do NOT call them — they error. There is NO .s7dcl human-readable SCL TEXT export on V18.
-V18 HOUSE RULES (these OVERRIDE any generic V20/V21 guidance below):
-- To READ a block's logic: use DescribeBlockLogic (readable LADDER rungs + inline SCL). Do NOT export-and-hand-parse XML.
-- To GET an EDITABLE export (the V18 'export → edit → re-import' path): use ExportBlockSourceUtf8 (SimaticML XML, encoding-safe UTF-8+BOM), edit the file, then RegenerateBlockFromSource to re-import. (These two tools are the V18 substitute for the V20 'ImportFromDocuments' flow.)
-- BEFORE editing / renumbering / deleting ANY block: call AnalyzeBlockImpact(softwarePath, blockName) first — it reports the block's callers + interface. Openness has NO reverse call-index API, so this tool IS your 'global view'; use it so you don't blindly break callers.
-- GLOBAL-BEFORE-LOCAL: understand a project from GetBlocksWithHierarchy / GetSoftwareTree first. A single exported block file is a transport artifact, NOT the source of truth.
-- If you think you need '.s7dcl' text, tell the user it requires switching to the V20 build — do NOT call the disabled V20 tools.
-
 GOLDEN PATHS (pick one, do not improvise):
 - Whole new project → ScaffoldProject with ONE JSON spec (PLC + blocks + HMI + compile + save in a single call). The DEFAULT call is a dry run (offline spec validation, nothing created); when it reports clean, call again with dryRun=false to actually create.
-- Add/modify code in an existing project → write SCL or S7DCL text, then import. On V20+ the PREFERRED path is ImportFromDocuments (.s7dcl); on THIS V18 build use ExportBlockSourceUtf8 + RegenerateBlockFromSource, or GenerateBlocksFromExternalSource (.scl). NEVER hand-write SimaticML FlgNet XML for ladder logic — it is fragile (UId bookkeeping, XML entities) and the #1 cause of failed imports. Use S7DCL ladder text instead (GetAuthoringGuide topic 'lad').
+- Add/modify code in an existing project → write SCL or S7DCL text, then import. PREFERRED path is ImportFromDocuments (.s7dcl); or GenerateBlocksFromExternalSource (.scl). NEVER hand-write SimaticML FlgNet XML for ladder logic — it is fragile (UId bookkeeping, XML entities) and the #1 cause of failed imports. Use S7DCL ladder text instead (GetAuthoringGuide topic 'lad').
 - Read/understand a project → GetProjectTree, GetBlocksWithHierarchy. To READ ONE BLOCK'S LOGIC use DescribeBlockLogic — it returns readable LADDER rungs (series ' · ', parallel ' + ') and inline SCL, and flags contacts wired to a constant (a disabled/forced rung). Far faster and more accurate than exporting and reading FlgNet XML by hand. Do NOT hand-parse ladder XML.
+
+TOOL QUICK-PICK (this build exposes ~200 tools — use this table instead of scanning the full list to choose):
+- Environment / first step → Bootstrap, Doctor
+- Project structure → GetProjectTree, GetSoftwareTree, GetBlocksWithHierarchy
+- Read ONE block's logic → DescribeBlockLogic (readable LADDER rungs + inline SCL; fastest, do not export XML)
+- Block callers / impact / interface → AnalyzeBlockImpact (Openness has no reverse call-index; this IS your global view)
+- Compile → CompileAndDiagnosePlc, CompileSoftware; read structured diagnostics with GetCompileDiagnostics
+- Export editable SCL/XML → ExportBlockSourceUtf8 (UTF-8+BOM), ExportBlock
+- Import SCL → ImportPlcExternalSource + GenerateBlocksFromExternalSource; or ImportFromDocuments for .s7dcl documents
+- Renumber / move / delete blocks → SetBlockNumber, MoveBlocksToGroup, AutoClassifyBlocks, DeleteBlock
+- External SCL sources → GetPlcExternalSources, DeletePlcExternalSource (unlock a block before renumber/export)
+- PLC-HMI CLASSIC / Comfort → GetHmi* / EnsureHmi* tools (screens, tags, connections, tag tables)
+- PLC-HMI WINCC UNIFIED (V20-only, 23 tools) → GetUnifiedHmi* / EnsureUnifiedHmi* / ApplyUnifiedHmi* tools
+- HMI connection (Unified) → EnsureUnifiedHmiConnection (single connection auto-selects the driver)
 
 BEFORE WRITING CODE call GetAuthoringGuide with topic 'scl' or 'lad' — it returns the exact verified syntax and encoding rules. Most quality problems come from skipping this.
 
-ENCODING (breaks Chinese text if wrong — verified on THIS V18 build):
-- On V18, RegenerateBlockFromSource / ImportBlock FORCE UTF-8 WITH BOM automatically. Just hand files to those tools — do NOT pre-strip the BOM. (Generic docs say raw .scl needs 'UTF-8 without BOM', but on this V18 a BOM-less .scl FAILS at line 0; our pipeline adds the BOM for you.)
+ENCODING (breaks Chinese text if wrong):
+- RegenerateBlockFromSource / ImportBlock force UTF-8 WITH BOM for you — just hand files to those tools; do NOT pre-strip the BOM.
 - .s7dcl / .s7res and ALL block/UDT/tag-table XML: UTF-8 WITH BOM.
 
 DISCIPLINE:
@@ -45,6 +55,36 @@ DISCIPLINE:
 - Names are exact: if a path/name is rejected, read the real names with GetProjectTree / GetBlocks — do not guess variants.
 - On error: the message names the recovery tool; call it. Do not retry the same call unchanged and do not switch tools at random.
 - Prefer one big declarative call (ScaffoldProject / PlcBuildAndImport) over dozens of small calls — it is faster and far less error-prone.";
+
+        // V18-only addendum: the 23 Unified HMI tools are compiled out; no .s7dcl text export.
+        private const string ServerInstructionsV18Only =
+@"
+
+*** THIS BUILD TARGETS TIA PORTAL V18. The 23 WINCC UNIFIED HMI tools (GetUnifiedHmi* / EnsureUnifiedHmi* / ApplyUnifiedHmi*) ARE COMPILED OUT and are NOT callable — they require TIA V20+. On V18 use the Classic/Comfort HMI tools (GetHmi* / EnsureHmi*). ***
+V18 HOUSE RULES (these OVERRIDE any generic V20/V21 guidance above):
+- To GET an editable export: use ExportBlockSourceUtf8 (SimaticML XML, UTF-8+BOM), edit, then RegenerateBlockFromSource to re-import. (These two tools are the V18 substitute for the V20 'ImportFromDocuments' flow.)
+- THERE IS NO .s7dcl human-readable SCL TEXT export on V18. If you need it, tell the user to switch to the V20 build — do NOT call ExportAsDocuments / ImportFromDocuments (they are disabled here).
+- BEFORE editing / renumbering / deleting ANY block: call AnalyzeBlockImpact(softwarePath, blockName) first — it reports the block's callers + interface.
+- GLOBAL-BEFORE-LOCAL: understand a project from GetBlocksWithHierarchy / GetSoftwareTree first. A single exported block file is a transport artifact, NOT the source of truth.";
+
+        // V20+ addendum: all ~200 tools available, including the 23 Unified HMI tools and .s7dcl export.
+        private const string ServerInstructionsV20Plus =
+@"
+
+*** THIS BUILD TARGETS TIA PORTAL V20. ALL ~200 tools are enabled, including the 23 WINCC UNIFIED HMI tools (GetUnifiedHmi* / EnsureUnifiedHmi* / ApplyUnifiedHmi*) and the .s7dcl document export/import flow (ExportAsDocuments / ImportFromDocuments). Classic/Comfort HMI tools (GetHmi* / EnsureHmi*) remain available for Comfort panels. ***
+V20 HOUSE RULES:
+- Export editable SCL: ExportBlockSourceUtf8 (UTF-8+BOM) + RegenerateBlockFromSource, OR the document flow ExportAsDocuments / ImportFromDocuments with .s7dcl.
+- BEFORE editing / renumbering / deleting ANY block: call AnalyzeBlockImpact(softwarePath, blockName) first — it reports the block's callers + interface.
+- GLOBAL-BEFORE-LOCAL: understand a project from GetBlocksWithHierarchy / GetSoftwareTree first.";
+
+        public const string ServerInstructions =
+            ServerInstructionsCommon
+#if TIA_V18
+            + ServerInstructionsV18Only
+#else
+            + ServerInstructionsV20Plus
+#endif
+            ;
 
         /// <summary>Cheat-sheet topics for the GetAuthoringGuide tool.</summary>
         public static readonly IReadOnlyDictionary<string, string> Topics = new Dictionary<string, string>
