@@ -653,7 +653,7 @@ namespace TiaMcpServer.ModelContextProtocol
 
         // ---- discovery ----
 
-        [McpServerTool(Name = "ListDriveModel"), Description("[L3][Drive/Startdrive] Enumerate the SINAMICS drive component tree of a device item added via Startdrive using the PUBLIC Openness HW API (no Startdrive Openness license required). Returns each child module (motor / measuring system / encoder / axis application) with its TypeName, OrderNumber, TypeIdentifier, PositionNumber and the full settable attribute list (e.g. Name, Comment). Use the output to learn exact module paths and writable attributes before calling SetDriveParameter. Requires an open TIA project.")]
+        [McpServerTool(Name = "ListDriveModel"), Description("[L3][Drive] Enumerate the SINAMICS drive component tree of a device item added via Startdrive using the PUBLIC Openness HW API (no Startdrive Openness license required). Returns each child module (motor / measuring system / encoder / axis application) with its TypeName, OrderNumber, TypeIdentifier, PositionNumber and the full settable attribute list (e.g. Name, Comment). Use the output to learn exact module paths and writable attributes before calling SetDriveParameter. Requires an open TIA project.")]
         public static ResponseJsonReport ListDriveModel(
             [System.ComponentModel.Description("deviceItemPath: SINAMICS application device item path, e.g. 'SINAMICS S_1/驱动闭环控制' (the drive-application container that holds motor/encoder modules)")] string deviceItemPath)
         {
@@ -742,7 +742,7 @@ namespace TiaMcpServer.ModelContextProtocol
 
         // ---- writes ----
 
-        [McpServerTool(Name = "SetDriveParameter"), Description("[L3][Drive/Startdrive] Set a writable module attribute (e.g. Name, Comment) on a SINAMICS drive component resolved via the PUBLIC Openness HW API. deviceItemPath must be a module path returned by ListDriveModel/GetDeviceItemTree, e.g. 'SINAMICS S_1/驱动闭环控制/电机_1'. parameter = the attribute name from ListDriveModel writableAttributes. NOTE: Startdrive P-parameters (P0840 etc.) and telegrams are NOT reachable on this HW layer - they require the Startdrive Openness public API. Requires an open TIA project.")]
+        [McpServerTool(Name = "SetDriveParameter"), Description("[L3][Drive] Set a writable module attribute (e.g. Name, Comment) on a SINAMICS drive component resolved via the PUBLIC Openness HW API. deviceItemPath must be a module path returned by ListDriveModel/GetDeviceItemTree, e.g. 'SINAMICS S_1/驱动闭环控制/电机_1'. parameter = the attribute name from ListDriveModel writableAttributes. NOTE: Startdrive P-parameters (P0840 etc.) and telegrams are NOT reachable on this HW layer - they require the Startdrive Openness public API. Requires an open TIA project.")]
         public static ResponseJsonReport SetDriveParameter(
             [System.ComponentModel.Description("deviceItemPath: module path resolved from ListDriveModel/GetDeviceItemTree, e.g. 'SINAMICS S_1/驱动闭环控制/电机_1'")] string deviceItemPath,
             [System.ComponentModel.Description("driveObject: ignored on the HW layer; kept for signature compatibility. Use deviceItemPath to address the module directly.")] string driveObject,
@@ -782,7 +782,7 @@ namespace TiaMcpServer.ModelContextProtocol
             }
         }
 
-        [McpServerTool(Name = "SetDriveTelegram"), Description("[L3][Drive/Startdrive] Telegram (报文) configuration is NOT supported by the public Openness HW API on this machine - it requires the Startdrive Openness public API (Siemens.Engineering.Sinamics.dll) which is not installed. This tool always returns a clear unsupported error. Use ListDriveModel + SetDriveParameter for module attributes, or install Startdrive Openness for telegram/P-parameter support.")]
+        [McpServerTool(Name = "SetDriveTelegram"), Description("[L3][Drive] Telegram (报文) configuration is NOT supported by the public Openness HW API on this machine - it requires the Startdrive Openness public API (Siemens.Engineering.Sinamics.dll) which is not installed. This tool always returns a clear unsupported error. Use ListDriveModel + SetDriveParameter for module attributes, or install Startdrive Openness for telegram/P-parameter support.")]
         public static ResponseJsonReport SetDriveTelegram(
             [System.ComponentModel.Description("deviceItemPath: SINAMICS application device item path.")] string deviceItemPath,
             [System.ComponentModel.Description("driveObject: drive object target (unused).")] string driveObject,
@@ -806,7 +806,7 @@ namespace TiaMcpServer.ModelContextProtocol
             };
         }
 
-        [McpServerTool(Name = "AddDriveComponent"), Description("[L3][Drive/Startdrive] Add a drive hardware component under a SINAMICS device item via the public Openness DeviceItem.PlugNew. Requires an exact, catalog-resolvable typeIdentifier - the OrderNumber shown by GetDeviceItemInfo (e.g. 'OrderNumber:1FK2102-1AG1x-xMxx' with wildcards) is a family placeholder and usually NOT pluggable; obtain a concrete identifier from the hardware catalog or an existing module's TypeIdentifierNormalized. NOTE: compact single-axis drives like S210 have a fixed topology (one motor / one encoder DRIVE-CLiQ port) - PlugNew for a second motor fails with 'Could not create the device item at the container'. Component addition is mainly meaningful on expandable drive units (S120/G120 etc.).")]
+        [McpServerTool(Name = "AddDriveComponent"), Description("[L3][Drive] Add a drive hardware component under a SINAMICS device item via the public Openness DeviceItem.PlugNew. Requires an exact, catalog-resolvable typeIdentifier - the OrderNumber shown by GetDeviceItemInfo (e.g. 'OrderNumber:1FK2102-1AG1x-xMxx' with wildcards) is a family placeholder and usually NOT pluggable; obtain a concrete identifier from the hardware catalog or an existing module's TypeIdentifierNormalized. NOTE: compact single-axis drives like S210 have a fixed topology (one motor / one encoder DRIVE-CLiQ port) - PlugNew for a second motor fails with 'Could not create the device item at the container'. Component addition is mainly meaningful on expandable drive units (S120/G120 etc.).")]
         public static ResponseMessage AddDriveComponent(
             [System.ComponentModel.Description("deviceItemPath: SINAMICS application device item path, e.g. 'SINAMICS S_1/驱动闭环控制'")] string deviceItemPath,
             [System.ComponentModel.Description("typeIdentifier: exact component type identifier / MLFB, e.g. 'DriveUnit' or a catalog MLFB")] string typeIdentifier,

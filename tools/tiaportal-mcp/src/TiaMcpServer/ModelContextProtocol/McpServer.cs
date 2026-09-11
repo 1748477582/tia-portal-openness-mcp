@@ -199,7 +199,7 @@ namespace TiaMcpServer.ModelContextProtocol
 
         #region bootstrap
 
-        [McpServerTool(Name = "Bootstrap"), Description("[L0][Bootstrap] FIRST tool any AI model should call. Read-only single-call orientation: returns TIA version, Openness group status, current connection/project state, the recommended next tool, the L0/L1 tool roster, and known TIA Openness limitations. Does NOT connect to TIA Portal — call Connect afterwards based on RecommendedNextTool.")]
+        [McpServerTool(Name = "Bootstrap"), Description("[L0][Portal] FIRST tool any AI model should call. Read-only single-call orientation: returns TIA version, Openness group status, current connection/project state, the recommended next tool, the L0/L1 tool roster, and known TIA Openness limitations. Does NOT connect to TIA Portal — call Connect afterwards based on RecommendedNextTool.")]
         public static async Task<ResponseBootstrap> Bootstrap()
         {
             try
