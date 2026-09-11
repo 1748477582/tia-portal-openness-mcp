@@ -273,7 +273,7 @@ namespace TiaMcpServer.ModelContextProtocol
                     "NAMES ARE EXACT: plc software path defaults to 'PLC_1', HMI to 'HMI_RT_1'. If a name/path is rejected, call GetProjectTree / GetSoftwareTree to read the real names instead of guessing.",
                     "ON ERROR: read the error message — it names the recovery tool (e.g. 'call OpenProject/AttachToOpenProject'). Do that instead of retrying the same call or switching tools at random.",
                     "BIG TASKS: to create or extend a whole project in one shot, prefer ScaffoldProject (one JSON spec) over many small calls; pass dryRun=true first to validate the spec offline.",
-                    "WRITING CODE: call GetAuthoringGuide('scl' or 'lad') BEFORE authoring block code — it returns the verified syntax and encoding rules. NEVER hand-write FlgNet XML for ladder logic; use S7DCL text via ImportFromDocuments/ImportBlocksFromScl.",
+                    "WRITING CODE: call GetAuthoringGuide('scl' or 'lad') BEFORE authoring block code — it returns the verified syntax and encoding rules. NEVER hand-write FlgNet XML for ladder logic; use S7DCL text via ImportFromDocuments/ImportBlocksFromDocuments.",
                     "ENCODING: .scl external source = UTF-8 without BOM; .s7dcl/.s7res and all XML = UTF-8 WITH BOM. Wrong BOM is the #1 cause of mojibake/import failures with Chinese text.",
                 };
 

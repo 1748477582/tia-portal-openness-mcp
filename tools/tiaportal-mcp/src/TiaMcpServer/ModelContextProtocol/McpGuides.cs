@@ -100,7 +100,7 @@ Connect → (OpenProject | AttachToOpenProject | CreateProject) → GetProjectTr
 
             ["scl"] =
 @"SCL AUTHORING (verified):
-Preferred import (V20+): ImportFromDocuments / ImportBlocksFromScl with .s7dcl files (UTF-8 WITH BOM). Alternative on V20+: GenerateBlocksFromExternalSource with .scl external source (UTF-8 WITHOUT BOM — a BOM makes it fail at line 0). On THIS V18 build, prefer RegenerateBlockFromSource (it forces UTF-8+BOM for you) instead of hand-making a .scl for GenerateBlocksFromExternalSource.
+Preferred import (V20+): ImportFromDocuments (one block) / ImportBlocksFromDocuments (many) with .s7dcl files (UTF-8 WITH BOM). Alternative on V20+: GenerateBlocksFromExternalSource with .scl external source — on V20 a BOM makes it fail at line 0 (use UTF-8 WITHOUT BOM there); on V18 the opposite holds and .scl must be UTF-8 WITH BOM (see the 'errors' topic). On THIS V18 build, prefer RegenerateBlockFromSource (it forces UTF-8+BOM for you) instead of hand-making a .scl for GenerateBlocksFromExternalSource.
 Skeleton (block names in English; Chinese OK in comments/titles):
   FUNCTION_BLOCK ""FB_Name""
   { S7_Optimized_Access := 'TRUE' }
@@ -130,12 +130,12 @@ Rules that prevent 90% of compile errors:
             ["lad"] =
 @"LADDER (LAD) — READING & AUTHORING (verified):
 READING/ANALYZING existing LAD: call DescribeBlockLogic(softwarePath, blockPath). It reconstructs each rung as a readable expression (series contacts = ' · ', parallel = ' + ', NC shown as '/operand'), lists coils ( )/(S)/(R) and MOVE/compare/timer boxes with operands, and FLAGS a contact wired to a literal constant ('⟨恒断·禁用本行⟩' = a NO contact on FALSE that silently disables its rung). Use it instead of exporting XML and tracing wires by hand — it is the accurate, fast path.
-AUTHORING: DO NOT hand-write SimaticML FlgNet XML — UId bookkeeping and entity escaping make it fail constantly. The reliable path is S7DCL ladder TEXT imported with ImportBlocksFromScl(importPath=directory) / ImportFromDocuments. Files: Block.s7dcl (+ optional Block.s7res for Chinese texts), both UTF-8 WITH BOM.
+AUTHORING: DO NOT hand-write SimaticML FlgNet XML — UId bookkeeping and entity escaping make it fail constantly. The reliable path is S7DCL ladder TEXT imported with ImportBlocksFromDocuments(importPath=directory) / ImportFromDocuments. Files: Block.s7dcl (+ optional Block.s7res for Chinese texts), both UTF-8 WITH BOM.
 S7DCL ladder essentials (from real V20/V21 exports):
 - A network is a RUNG; series contacts chain, parallel branches use shared wire labels (wire#w1, wire#w2) to fork and rejoin.
 - Elements: Contact (NO), negated contact (NC), Coil, S_Coil (set), R_Coil (reset), timer/counter/compare boxes via templates (e.g. GT_Contact + {S7_Templates}), Move/Add boxes with EN/ENO.
 - Operands: #local for interface vars, ""Tag_Name"" for global tags, ""DB"".member for DB access.
-- Easiest way to learn the exact dialect: ExportBlocksAsScl on ANY existing LAD block and copy its .s7dcl structure.
+- Easiest way to learn the exact dialect: ExportAsDocuments on ANY existing LAD block and copy its .s7dcl structure.
 When only a plain FC/FB CALL network is needed, BuildFlgNetCallXml / ComposePlcLadFcBlockXml are safe (they generate the XML for you).
 Mixed LAD+SCL blocks are supported by .s7dcl. After import: CompileSoftware, then SaveProject.",
 
