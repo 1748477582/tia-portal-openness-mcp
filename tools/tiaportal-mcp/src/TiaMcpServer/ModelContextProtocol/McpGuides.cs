@@ -167,7 +167,15 @@ Force / modify: GetPlcForceTables + SetForceTableEntry (force); SetWatchTableMod
 Root cause of a value: TraceTagCause (offline static: every network writing the tag + its gating operands), then TraceTagCauseLive (adds live reads of those gates).
 WHAT OPENNESS CANNOT DO (do not promise it): no ladder online power-flow view (green/blue rungs), no breakpoints/single-step/call stack. Approximate the power-flow by reading the operands live and reconstructing logic via DescribeBlockLogic.
 EDITING WHILE ONLINE: Openness CANNOT export blocks while connected online - call GoOffline(softwarePath) first, edit, then GoOnline.
-Guardrails: all read paths are read-only; never write or force without the user's explicit go-ahead.",
+Guardrails: all read paths are read-only; never write or force without the user's explicit go-ahead.
+
+⚠️ ONLINE STATE CAN LIE - ALWAYS CROSS-CHECK (verified 2026-09-16):
+GoOnline / GetOnlineState can return State=Online with IsReachable=true EVEN WHEN THE PHYSICAL LINK IS DOWN. It is an optimistic Openness-side flag, NOT proof of a live CPU. Before trusting it, or before any live read/download:
+  1) ProbeS7CpuIdentity(ip) or GetPlcRunStateS7(ip) MUST actually connect. If either returns 'TCP: Connection Error', the link is down no matter what GetOnlineState says - report that to the user instead of proceeding.
+  2) Check the host NIC really carries the PLC subnet (Windows: Get-NetAdapter - the adapter holding the PLC-subnet IP must be Status=Up, LinkSpeed>0). A 'Disconnected' NIC KEEPS its IP but has no route, so traffic silently falls back to another adapter (e.g. WLAN) and never reaches the PLC.
+  Note the route: Find-NetRoute -RemoteIPAddress <plcIp> shows which adapter traffic actually uses.
+ALSO: CompareSoftwareToOnline may return results from the project's cached online snapshot rather than a live CPU read - while the link is down, treat any 'identical' verdict as NON-AUTHORITATIVE.
+Symptom you will see when this trap is hit: GoOnline=Online + Compare returns 'identical', yet ProbeS7CpuIdentity/GetPlcRunStateS7 fail with TCP Connection Error and the NIC is Disconnected.",
 
             ["hmi"] =
 @"HMI (WinCC Unified, verified):
