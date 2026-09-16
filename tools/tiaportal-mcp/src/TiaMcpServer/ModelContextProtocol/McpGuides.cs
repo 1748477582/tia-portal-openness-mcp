@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 namespace TiaMcpServer.ModelContextProtocol
 {
@@ -40,6 +40,10 @@ TOOL QUICK-PICK (this build exposes ~200 tools — use this table instead of sca
 - Import SCL → ImportPlcExternalSource + GenerateBlocksFromExternalSource; or ImportFromDocuments for .s7dcl documents
 - Renumber / move / delete blocks → SetBlockNumber, MoveBlocksToGroup, AutoClassifyBlocks, DeleteBlock
 - External SCL sources → GetPlcExternalSources, DeletePlcExternalSource (unlock a block before renumber/export)
+- ONLINE / LIVE DEBUGGING → GoOnline + GetOnlineState + GetPlcRunStateS7 + ProbeS7CpuIdentity; read live values with ReadPlcLiveValuesS7 (fast, absolute addr) / SamplePlcLiveValuesS7 (trend, <=120s) / MonitorWatchTableLiveS7 / ReadPlcLiveValuesOpcUa. Full path in GetAuthoringGuide topic 'online'.
+- Offline vs RUNNING CPU → CompareSoftwareToOnline (per-item diff + summary).
+- WHY is this tag this value → TraceTagCause (offline: every writer + its gating conditions), TraceTagCauseLive (adds live reads).
+- DISCOVERY IS YOUR JOB, NOT THE USER'S: fetch IP via GetDevices/GetDeviceIpAddress, CPU identity via ProbeS7CpuIdentity, and PUT/GET state via GetPutGetAccess BEFORE asking anyone anything.
 - PLC-HMI CLASSIC / Comfort → GetHmi* / EnsureHmi* tools (screens, tags, connections, tag tables)
 - PLC-HMI WINCC UNIFIED (V20-only, 23 tools) → GetUnifiedHmi* / EnsureUnifiedHmi* / ApplyUnifiedHmi* tools
 - HMI connection (Unified) → EnsureUnifiedHmiConnection (single connection auto-selects the driver)
@@ -96,7 +100,8 @@ Connect → (OpenProject | AttachToOpenProject | CreateProject) → GetProjectTr
 - PlcBuildAndImport: batch-import block set with compileAfter; also supports dryRun.
 - softwarePath is the PLC SOFTWARE name (e.g. '5T车', 'PLC_1'), NOT the device/station name. When rejected, GetProjectTree shows the real one; fuzzy matching exists but exact is faster.
 - Openness export does not work while online: tools auto GoOffline where safe; if you see 'not supported in online mode', call GoOffline(softwarePath) and retry.
-- Cold start is slow (TIA launch). If many operations are planned, keep one session; do not Disconnect between calls.",
+- Cold start is slow (TIA launch). If many operations are planned, keep one session; do not Disconnect between calls.
+- ONLINE / LIVE DEBUGGING has its own path (discovery -> read -> trend -> compare -> force): see topic 'online'.",
 
             ["scl"] =
 @"SCL AUTHORING (verified):
@@ -146,6 +151,23 @@ Mixed LAD+SCL blocks are supported by .s7dcl. After import: CompileSoftware, the
 - Tag tables: BuildPlcTagTableXml → ImportPlcTagTable; logical addresses like %I0.0 / %Q0.1 / %MW10.
 - Instance DBs are created automatically when a FB call is compiled — do not author them by hand.
 - Reading live values: ReadPlcLiveValuesS7 needs PUT/GET enabled and non-optimized access for absolute addressing; check GetPutGetAccess first. Optimized-block symbolic live read is NOT possible over classic S7 — do not promise it.",
+
+            ["online"] =
+@"ONLINE / LIVE DEBUGGING (verified). Discover the environment YOURSELF - never ask the user for IP, CPU model, or PUT/GET state:
+  GetDevices / GetDeviceItemNetworkInfo -> device + IP; GetDeviceIpAddress -> IP;
+  ProbeS7CpuIdentity(ip) -> confirm it is the intended CPU; GetPutGetAccess(devicePath) -> is PUT/GET enabled (REQUIRED for absolute reads).
+READ live values - pick by block access type:
+- NON-optimized block -> ReadPlcLiveValuesS7 with absolute addresses (DB10.DBD0:REAL, DB1.DBX2.3, M0.0, MW12, DB5.DBD8:DINT): one round-trip, fastest.
+- OPTIMIZED block (TIA default) -> classic S7 CANNOT reach it by absolute address. Use ReadPlcLiveValuesOpcUa (needs the CPU OPC UA server), or switch the DB to non-optimized access, or read an existing watch table.
+- Trend over time -> SamplePlcLiveValuesS7 (one connection, intervalMs, hard cap 120 s / 5000 samples; returns time-series + min/max per address).
+- Existing TIA watch table -> MonitorWatchTableLiveS7 / ReadPlcWatchTableCurrentValuesReadOnly.
+CPU state: GetPlcRunStateS7 (RUN/STOP/UNKNOWN, clock, best-effort SZL diagnostic buffer) + GetOnlineState (TIA-side).
+Offline vs running program: CompareSoftwareToOnline -> per-item LeftName/RightName/ComparisonResult + summary.
+Force / modify: GetPlcForceTables + SetForceTableEntry (force); SetWatchTableModifyValue (modify one value).
+Root cause of a value: TraceTagCause (offline static: every network writing the tag + its gating operands), then TraceTagCauseLive (adds live reads of those gates).
+WHAT OPENNESS CANNOT DO (do not promise it): no ladder online power-flow view (green/blue rungs), no breakpoints/single-step/call stack. Approximate the power-flow by reading the operands live and reconstructing logic via DescribeBlockLogic.
+EDITING WHILE ONLINE: Openness CANNOT export blocks while connected online - call GoOffline(softwarePath) first, edit, then GoOnline.
+Guardrails: all read paths are read-only; never write or force without the user's explicit go-ahead.",
 
             ["hmi"] =
 @"HMI (WinCC Unified, verified):
