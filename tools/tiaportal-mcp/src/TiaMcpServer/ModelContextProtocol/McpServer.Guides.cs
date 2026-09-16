@@ -11,9 +11,9 @@ namespace TiaMcpServer.ModelContextProtocol
     // errors — this tool hands them the verified rules right before they write code.
     public static partial class McpServer
     {
-        [McpServerTool(Name = "GetAuthoringGuide"), Description("[L0][Portal] Verified syntax + workflow cheat sheet for authoring TIA content through this server. CALL THIS BEFORE writing any SCL/LAD/DB/HMI content — it prevents the common encoding, syntax and tool-routing mistakes. Topics: workflow, scl, lad, db, hmi, errors. Read-only, does not touch TIA Portal.")]
+        [McpServerTool(Name = "GetAuthoringGuide"), Description("[L0][Portal] Verified syntax + workflow cheat sheet for authoring TIA content through this server. CALL THIS BEFORE writing any SCL/LAD/DB/HMI content — it prevents the common encoding, syntax and tool-routing mistakes. Topics: workflow, scl, lad, db, online, hmi, errors. Read-only, does not touch TIA Portal.")]
         public static ResponseMessage GetAuthoringGuide(
-            [Description("topic: one of workflow | scl | lad | db | hmi | errors")] string topic)
+            [Description("topic: one of workflow | scl | lad | db | online | hmi | errors")] string topic)
         {
             var text = McpGuides.Topic(topic);
             if (text == null)
