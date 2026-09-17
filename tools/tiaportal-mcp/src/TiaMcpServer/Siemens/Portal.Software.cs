@@ -1250,6 +1250,10 @@ namespace TiaMcpServer.Siemens
 
         public (string? Name, string ProgramType, List<string> Screens)? GetHmiProgramInfo(string softwarePath)
         {
+            // Openness compliance (CRITICAL): SoftwareContainer.Software is COM-backed and must be
+            // dereferenced on the STA thread - see WarmUpSoftware / DescribeHmiSoftware.
+            return _sta.Run<(string? Name, string ProgramType, List<string> Screens)?>(() =>
+            {
             _logger?.LogInformation($"Getting HMI program info by path: {softwarePath}");
 
             if (IsProjectNull())
@@ -1280,6 +1284,7 @@ namespace TiaMcpServer.Siemens
 #endif
 
             return (sw.ToString(), "Unknown", new List<string>());
+            });
         }
 
         public ModelContextProtocol.ResponseObjectDescribe DescribeHmiSoftware(string softwarePath, int maxMembers = 200)
@@ -2678,6 +2683,52 @@ namespace TiaMcpServer.Siemens
                 Members = DescribeMembers(connection, 220),
                 Message = $"HMI connection '{connectionName}' ensured. PartnerResolved={partner.Summary}; {SummarizeHmiObjectReadback(connection, "Name", "CommunicationDriver", "Partner", "Station", "Node", "InitialAddress", "PlcName", "ControllerName", "PartnerName")}"
             };
+            });
+        }
+
+        public ModelContextProtocol.ResponseObjectDescribe EnsureClassicHmiConnection(string hmiSoftwarePath, string connectionName = "HMI_Connection_1", string plcName = "PLC_1")
+        {
+            return _sta.Run(() =>
+            {
+                if (IsProjectNull()) throw new PortalException(PortalErrorCode.InvalidState, "No project open.");
+                var sw = ResolveHmiSoftwareOrThrow(hmiSoftwarePath);
+                var connections = TryGetPropertyValue(sw, "Connections");
+                if (connections == null) throw new PortalException(PortalErrorCode.NotFound, $"Connections collection not found on HMI '{hmiSoftwarePath}'.");
+
+                var report = new System.Text.StringBuilder();
+                object? connection = FindExistingByName(connections, connectionName) ?? TryFindByNameInCollection(connections, Array.Empty<string>(), connectionName);
+                if (connection == null)
+                {
+                    var connectionType = FindTypeBySuffix("Siemens.Engineering.Hmi.Communication.Connection")
+                        ?? FindTypeBySuffix("Hmi.Communication.Connection")
+                        ?? FindTypeBySuffix("Communication.Connection");
+                    if (connectionType == null) throw new PortalException(PortalErrorCode.NotFound, "Classic HMI Connection type not found in loaded assemblies.");
+                    connection = TryInvokeExplicitEngineeringMethod(connections, "Create", new object?[] { connectionType, new Dictionary<string, object?> { ["Name"] = connectionName } }, out var createErr);
+                    if (connection == null)
+                    {
+                        connection = FindExistingByName(connections, connectionName) ?? TryFindByNameInCollection(connections, Array.Empty<string>(), connectionName);
+                    }
+                    if (connection == null) throw new PortalException(PortalErrorCode.ImportFailed, "Classic HMI connection create returned null. " + (createErr ?? ""));
+                    report.AppendLine("Create=OK");
+                }
+                else
+                {
+                    report.AppendLine("Create=exists");
+                }
+
+                TrySetProperty(connection, "Name", connectionName);
+
+                try { TrySetProperty(connection, "CommunicationDriver", "SIMATIC S7-1200, S7-1500"); report.AppendLine("CommunicationDriver=S7-1500 set"); }
+                catch (Exception ex) { report.AppendLine("CommunicationDriver skip: " + ex.Message); }
+
+                return new ModelContextProtocol.ResponseObjectDescribe
+                {
+                    ObjectKind = "HmiConnection",
+                    ObjectPath = $"{hmiSoftwarePath}:{connectionName}",
+                    TypeName = connection.GetType().FullName,
+                    Members = DescribeMembers(connection, 220),
+                    Message = $"Classic HMI connection '{connectionName}' ensured on '{hmiSoftwarePath}'. {report}"
+                };
             });
         }
 
@@ -4634,14 +4685,19 @@ namespace TiaMcpServer.Siemens
 
         public List<string>? GetHmiScreens(string softwarePath)
         {
+            return _sta.Run(() =>
+            {
             if (IsProjectNull()) return null;
             var softwareContainer = GetSoftwareContainer(softwarePath);
             if (softwareContainer?.Software == null) return null;
             return TryListScreens(softwareContainer.Software);
+            });
         }
 
         public List<string>? GetHmiTagTables(string softwarePath)
         {
+            return _sta.Run(() =>
+            {
             if (IsProjectNull()) return null;
             var softwareContainer = GetSoftwareContainer(softwarePath);
             if (softwareContainer?.Software == null) return null;
@@ -4649,10 +4705,13 @@ namespace TiaMcpServer.Siemens
             var tables = TryGetHmiTagTablesCollection(sw);
             if (tables == null) return new List<string>();
             return TryListNamesFromCollection(tables, Array.Empty<string>(), "TagTables");
+            });
         }
 
         public List<string>? GetHmiTags(string softwarePath, string tagTableName = "")
         {
+            return _sta.Run(() =>
+            {
             if (IsProjectNull()) return null;
             var softwareContainer = GetSoftwareContainer(softwarePath);
             if (softwareContainer?.Software == null) return null;
@@ -4665,10 +4724,13 @@ namespace TiaMcpServer.Siemens
 
             var root = tagTable ?? tagRoot;
             return TryListNamesFromCollection(root, new[] { "Tags" }, "Tags");
+            });
         }
 
         public List<string>? GetHmiConnections(string softwarePath)
         {
+            return _sta.Run(() =>
+            {
             if (IsProjectNull()) return null;
             var softwareContainer = GetSoftwareContainer(softwarePath);
             if (softwareContainer?.Software == null) return null;
@@ -4676,6 +4738,7 @@ namespace TiaMcpServer.Siemens
             var connections = TryGetPropertyValue(sw, "Connections");
             if (connections == null) return new List<string>();
             return TryListNamesFromCollection(connections, Array.Empty<string>(), "Connections");
+            });
         }
 
         public void ExportHmiScreen(string softwarePath, string screenName, string exportPath)

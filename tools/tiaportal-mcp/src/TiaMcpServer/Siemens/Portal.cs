@@ -52,6 +52,13 @@ namespace TiaMcpServer.Siemens
         // their working session. Each of these flags is set at the point of acquisition.
         private bool _ownsPortal;    // true only when this server started the TIA instance
         private bool _ownsProject;   // true only when this server opened/created the project
+        // G4: enforce a SINGLE Openness client per TIA instance. Siemens Openness permits exactly
+        // one Openness connection per TIA process; two MCP server processes attaching to the same
+        // user TIA corrupt its COM session and crash TIA (surfacing during COM-heavy "generate
+        // program" ops, or when the idle sibling instance auto-disconnects and disposes the shared
+        // portal). A named mutex keyed by TIA major version makes the second instance refuse to
+        // attach instead of destabilizing the user's session.
+        private System.Threading.Mutex? _attachMutex;
         private ProjectBase? _project;
         private LocalSession? _session;
         // Resolving a softwarePath walks the device tree via Openness (~40 COM calls per call). Cache it per
@@ -243,8 +250,50 @@ namespace TiaMcpServer.Siemens
         /// <summary>Void variant of <see cref="RunOnSta{T}"/>.</summary>
         public void RunOnSta(Action action) => _sta.Run(action);
 
+        // G4: Acquire the single-attach mutex for this TIA major version. MUST be called on the
+        // STA thread (ConnectPortal's body runs via _sta.Run). If another instance already owns
+        // it, refuse to attach — double-attach crashes the user's TIA. On success this thread owns
+        // the mutex and must release it (ReleaseSingleAttachLock) on disconnect/dispose.
+        private void AcquireSingleAttachLock()
+        {
+            var mutexName = $"TiaMcpServer.SingleAttach.V{Engineering.TiaMajorVersion}";
+            System.Threading.Mutex? m = null;
+            try
+            {
+                m = new System.Threading.Mutex(true, mutexName, out var createdNew);
+                if (createdNew)
+                {
+                    _attachMutex = m;
+                    return;
+                }
+                // Named mutex already existed and is owned by another instance → we did NOT acquire it.
+                try { m.Dispose(); } catch { }
+                _attachMutex = null;
+                throw new PortalException(PortalErrorCode.OpennessError,
+                    $"另一个 TiaMcpServer 实例已占用 TIA V{Engineering.TiaMajorVersion} 的 Openness 连接。" +
+                    "禁止重复 Attach：Siemens Openness 为单客户端模型，双 Attach 会破坏用户 TIA 的 COM 会话并导致其崩溃。" +
+                    "请先停止多余的 MCP 实例（仅保留一个），再重新连接。");
+            }
+            catch (System.Threading.AbandonedMutexException)
+            {
+                // Previous owner crashed without releasing; the constructor granted us ownership.
+                _attachMutex = m;
+            }
+        }
+
+        private void ReleaseSingleAttachLock()
+        {
+            try { _attachMutex?.ReleaseMutex(); } catch { }
+            try { _attachMutex?.Dispose(); } catch { }
+            _attachMutex = null;
+        }
+
         public void Dispose()
         {
+            // G4: ALWAYS release the single-attach lock first (on the STA thread), even if later
+            // steps fail — otherwise the mutex stays owned until process exit and blocks reconnects.
+            try { _sta.Run(() => ReleaseSingleAttachLock()); } catch { }
+
             // CRITICAL FIX (Openness compliance): all COM calls (Save/Close/Dispose) MUST run on
             // the STA thread BEFORE the STA executor is shut down. The previous order disposed the
             // STA executor first, so Save/Close/Dispose then executed off-STA — where Siemens.Engineering
@@ -322,6 +371,14 @@ namespace TiaMcpServer.Siemens
         /// </summary>
         private void ForceComCleanup()
         {
+            // OWNERSHIP RULE: when we only ATTACHED to the user's TIA, do NOT forcibly GC/collect
+            // RCWs. The other instance (or the user's own session) may still be actively using those
+            // COM objects; an aggressive cross-thread RCW release can crash the shared TIA process.
+            if (!_ownsPortal)
+            {
+                _logger?.LogInformation("COM cleanup: skipped forced GC (attached session — not owning TIA).");
+                return;
+            }
             try
             {
                 GC.Collect();
@@ -467,6 +524,10 @@ namespace TiaMcpServer.Siemens
                 _session = null;
                 _portal = null;
 
+                // G4: claim the single-attach lock BEFORE touching any running TIA. A second
+                // instance will refuse to attach rather than corrupt the user's TIA session.
+                AcquireSingleAttachLock();
+
                 // connect to running TIA Portal
                 var processes = TiaPortal.GetProcesses();
                 _logger?.LogInformation($"TIA Portal process count: {processes.Count()}");
@@ -596,6 +657,9 @@ namespace TiaMcpServer.Siemens
             }
             catch (Exception ex)
             {
+                // G4: connection failed before we ever owned a portal — release the single-attach
+                // lock so a later retry can acquire it (the mutex auto-releases only on process exit).
+                ReleaseSingleAttachLock();
                 // 统一错误处理：硬失败抛结构化异常，替代 return false + LastConnectError 侧信道
                 throw new PortalException(PortalErrorCode.OpennessError, $"ConnectPortal failed: {FormatExceptionDetail(ex)}", inner: ex);
             }
@@ -710,8 +774,21 @@ namespace TiaMcpServer.Siemens
                 }
                 _project = null;
                 _session = null;
-                _portal?.Dispose();
+                // OWNERSHIP RULE: only dispose the TIA instance we started. When we merely ATTACHED
+                // to the user's TIA, _portal?.Dispose() would tear down their running session and
+                // crash TIA (especially fatal when a sibling idle instance auto-disconnects while the
+                // other is mid-generation). Leave an attached portal alive for the user.
+                if (_ownsPortal)
+                {
+                    _portal?.Dispose();
+                }
+                else
+                {
+                    _logger?.LogInformation("Portal was ATTACHED (not started by this server) — not disposing it on disconnect.");
+                }
                 _portal = null;
+                // G4: release the single-attach lock so another instance may connect later.
+                ReleaseSingleAttachLock();
             });
             });
         }

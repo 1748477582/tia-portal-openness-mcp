@@ -719,6 +719,7 @@ namespace TiaMcpServer.Siemens
                     softwareContainer = GetSoftwareContainerInDevices(_project.Devices, pathSegments, index);
                     if (softwareContainer != null)
                     {
+                        WarmUpSoftware(softwareContainer);
                         return softwareContainer;
                     }
                 }
@@ -729,12 +730,38 @@ namespace TiaMcpServer.Siemens
                     softwareContainer = GetSoftwareContainerInGroups(_project.DeviceGroups, pathSegments, index);
                     if (softwareContainer != null)
                     {
+                        WarmUpSoftware(softwareContainer);
                         return softwareContainer;
                     }
                 }
 
                 return null;
             });
+        }
+
+        /// <summary>
+        /// Openness compliance (CRITICAL): SoftwareContainer.Software is a COM-backed property.
+        /// Reading it for the first time marshals into the TIA session, so it must happen while we
+        /// are still on the STA thread. Every HMI helper (GetHmiScreens / GetHmiConnections /
+        /// EnsureUnifiedHmiScreen / ExportHmiProgram / ...) dereferences .Software, and they all
+        /// reach it through GetSoftwareContainer - so warming it up here, once, on the STA thread
+        /// keeps those later reads on the already-marshalled RCW instead of raising
+        /// RPC_E_WRONG_THREAD ("Cross-thread operation is not valid in Openness within STA").
+        /// Failure is non-fatal: containers without software simply stay cold.
+        /// </summary>
+        private static void WarmUpSoftware(SoftwareContainer? softwareContainer)
+        {
+            if (softwareContainer == null)
+                return;
+
+            try
+            {
+                _ = softwareContainer.Software;
+            }
+            catch (Exception)
+            {
+                // Not every container carries software (e.g. rail / bus adapters). Ignore.
+            }
         }
 
         private SoftwareContainer? GetSoftwareContainerInDevices(DeviceComposition devices, string[] pathSegments, int index)

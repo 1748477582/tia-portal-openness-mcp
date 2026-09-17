@@ -248,6 +248,24 @@ namespace TiaMcpServer.ModelContextProtocol
             }
         }
 
+        [McpServerTool(Name = "EnsureClassicHmiConnection"), Description("[L2][HMI-Classic] Create or verify the PLC<->HMI communication connection for a Classic/Basic WinCC HMI (HMI_Connection_1 by default). Requires: Connect + OpenProject + both PLC and Classic HMI devices. Needed before importing symbolic PLC-bound HMI tags. Best-effort driver configuration; verify the connection partner in TIA if tags show unresolved binding.")]
+        public static ResponseObjectDescribe EnsureClassicHmiConnection(
+            [Description("hmiSoftwarePath: path to HMI software (e.g. 'HMI_RT_1')")] string hmiSoftwarePath,
+            [Description("connectionName: HMI connection name")] string connectionName = "HMI_Connection_1",
+            [Description("plcName: PLC device symbolic name")] string plcName = "PLC_1")
+        {
+            try
+            {
+                var res = Portal.EnsureClassicHmiConnection(hmiSoftwarePath, connectionName, plcName);
+                res.Meta = new JsonObject { ["timestamp"] = DateTime.Now, ["success"] = true };
+                return res;
+            }
+            catch (Exception ex) when (ex is not McpException)
+            {
+                throw McpError.WithRecovery(ex, $"Unexpected error ensuring Classic HMI connection '{connectionName}': {ex.Message}{McpHints.Recovery(ex)}");
+            }
+        }
+
 #if !TIA_V18
         [McpServerTool(Name = "EnsureUnifiedHmiScreenItem"), Description("[L2][HMI-Unified] Create or verify a single Unified HMI control (button, lamp, IO field, etc.) on a screen. Requires: Connect + OpenProject + EnsureUnifiedHmiScreen. itemType: Button, Rectangle (lamp/indicator), IOField (value display/entry), or full CLR type name. For a complete screen layout use ApplyUnifiedHmiScreenDesignJson instead.")]
 #endif
@@ -379,7 +397,7 @@ namespace TiaMcpServer.ModelContextProtocol
             }
         }
 
-// [DISABLED-A]         [McpServerTool(Name = "BuildClassicHmiScreenXml"), Description("[L2][HMI]Offline-only helper: build a Classic/Basic WinCC HMI screen XML document from structured JSON. It does not connect to TIA Portal, import screens, or modify projects. Validate in a temporary Classic HMI project before using on a real project.")]
+         [McpServerTool(Name = "BuildClassicHmiScreenXml"), Description("[L2][HMI]Offline-only helper: build a Classic/Basic WinCC HMI screen XML document from structured JSON. It does not connect to TIA Portal, import screens, or modify projects. Validate in a temporary Classic HMI project before using on a real project.")]
         public static ResponseXmlBuild BuildClassicHmiScreenXml(
             [Description("designJson: JSON object with Screen/Items. Items support Type=Text/Button/IOField/Lamp/Rectangle plus Name/Left/Top/Width/Height/Text/Properties.")] string designJson)
         {
@@ -393,7 +411,7 @@ namespace TiaMcpServer.ModelContextProtocol
             }
         }
 
-// [DISABLED-A]         [McpServerTool(Name = "BuildClassicHmiTagTableXml"), Description("[L2][HMI]Offline-only helper: build a Classic/Basic WinCC HMI tag table XML document from structured JSON. Supports plain HMI tags and symbolic PLC bindings through Connection + ControllerTag/PlcTag. It does not connect to TIA Portal, import tags, or modify projects.")]
+         [McpServerTool(Name = "BuildClassicHmiTagTableXml"), Description("[L2][HMI]Offline-only helper: build a Classic/Basic WinCC HMI tag table XML document from structured JSON. Supports plain HMI tags and symbolic PLC bindings through Connection + ControllerTag/PlcTag. It does not connect to TIA Portal, import tags, or modify projects.")]
         public static ResponseXmlBuild BuildClassicHmiTagTableXml(
             [Description("tableJson: JSON object with Name/TableName and Tags[]. Tag fields: Name, DataType, Length, optional Connection and ControllerTag/PlcTag.")] string tableJson)
         {
@@ -407,7 +425,7 @@ namespace TiaMcpServer.ModelContextProtocol
             }
         }
 
-// [DISABLED-A]         [McpServerTool(Name = "BuildClassicHmiMinimalPackage"), Description("[L2][HMI]Offline-only helper: build a minimal Classic/Basic HMI package from structured JSON. It returns tag-table XML, screen XML, import order, and readiness checks that screen item tag references are declared in the tag table. It does not connect to TIA Portal, import files, or modify projects.")]
+         [McpServerTool(Name = "BuildClassicHmiMinimalPackage"), Description("[L2][HMI]Offline-only helper: build a minimal Classic/Basic HMI package from structured JSON. It returns tag-table XML, screen XML, import order, and readiness checks that screen item tag references are declared in the tag table. It does not connect to TIA Portal, import files, or modify projects.")]
         public static ResponseJsonReport BuildClassicHmiMinimalPackage(
             [Description("packageJson: JSON object with Name, ScreenDesign, and TagTable. Screen items may reference HMI tags through Tag/HmiTag/ProcessValueTag or Properties.*Tag.")] string packageJson)
         {
@@ -434,7 +452,7 @@ namespace TiaMcpServer.ModelContextProtocol
             }
         }
 
-// [DISABLED-A]         [McpServerTool(Name = "WriteClassicHmiMinimalPackageFiles"), Description("[L2][HMI]Offline-only helper: build a minimal Classic/Basic HMI package and write tag-table XML, screen XML, and manifest JSON to an output directory. It does not connect to TIA Portal, import files, or modify projects.")]
+         [McpServerTool(Name = "WriteClassicHmiMinimalPackageFiles"), Description("[L2][HMI]Offline-only helper: build a minimal Classic/Basic HMI package and write tag-table XML, screen XML, and manifest JSON to an output directory. It does not connect to TIA Portal, import files, or modify projects.")]
         public static ResponseJsonReport WriteClassicHmiMinimalPackageFiles(
             [Description("packageJson: JSON object with Name, ScreenDesign, and TagTable.")] string packageJson,
             [Description("outputDirectory: directory where tag-table XML, screen XML, and manifest JSON will be written.")] string outputDirectory)
@@ -474,7 +492,7 @@ namespace TiaMcpServer.ModelContextProtocol
             }
         }
 
-// [DISABLED-A]         [McpServerTool(Name = "ValidateClassicHmiMinimalPackageFiles"), Description("[L2][HMI]Offline-only helper: validate an already written Classic/Basic HMI minimal package folder or manifest. It reads manifest/XML, checks parseability and HMI tag references, and does not connect to TIA Portal or modify projects.")]
+         [McpServerTool(Name = "ValidateClassicHmiMinimalPackageFiles"), Description("[L2][HMI]Offline-only helper: validate an already written Classic/Basic HMI minimal package folder or manifest. It reads manifest/XML, checks parseability and HMI tag references, and does not connect to TIA Portal or modify projects.")]
         public static ResponseJsonReport ValidateClassicHmiMinimalPackageFiles(
             [Description("path: package output directory or *_manifest.json path to validate.")] string path)
         {
@@ -502,7 +520,7 @@ namespace TiaMcpServer.ModelContextProtocol
             }
         }
 
-// [DISABLED-A]         [McpServerTool(Name = "ValidateClassicHmiMinimalPackagePlcSync"), Description("[L2][HMI]Offline-only helper: validate that Classic/Basic HMI tag-table ControllerTag/PlcTag bindings exist in a caller-provided exact PLC symbol list. It does not connect to TIA Portal or modify projects.")]
+         [McpServerTool(Name = "ValidateClassicHmiMinimalPackagePlcSync"), Description("[L2][HMI]Offline-only helper: validate that Classic/Basic HMI tag-table ControllerTag/PlcTag bindings exist in a caller-provided exact PLC symbol list. It does not connect to TIA Portal or modify projects.")]
         public static ResponseJsonReport ValidateClassicHmiMinimalPackagePlcSync(
             [Description("path: package output directory or *_manifest.json path to validate.")] string path,
             [Description("plcSymbolsJson: JSON array of exact PLC symbols, or object with Symbols[]. Example: [\"DB1_MotorData.Motor.Start\"].")] string plcSymbolsJson)
@@ -531,7 +549,7 @@ namespace TiaMcpServer.ModelContextProtocol
             }
         }
 
-// [DISABLED-A]         [McpServerTool(Name = "RunClassicHmiOfflineValidationSuite"), Description("[L2][HMI]Offline-only helper: run the Classic/Basic HMI validation suite covering PLC symbol extraction, HMI package generation, HMI tag references, and PLC-HMI sync positive/negative gates. It writes reports only to the requested report directory.")]
+         [McpServerTool(Name = "RunClassicHmiOfflineValidationSuite"), Description("[L2][HMI]Offline-only helper: run the Classic/Basic HMI validation suite covering PLC symbol extraction, HMI package generation, HMI tag references, and PLC-HMI sync positive/negative gates. It writes reports only to the requested report directory.")]
         public static ResponseJsonReport RunClassicHmiOfflineValidationSuite(
             [Description("reportDirectory: directory where suite files and reports will be written.")] string reportDirectory)
         {
@@ -558,7 +576,7 @@ namespace TiaMcpServer.ModelContextProtocol
             }
         }
 
-// [DISABLED-A]         [McpServerTool(Name = "RunClassicHmiTemporaryImportPreflight"), Description("[L2][HMI]Offline-only helper: run the Classic/Basic HMI temporary-import preflight. It checks TIA V21 environment, Openness group, package files, PLC-HMI sync, and emits an import/readback plan without connecting to TIA Portal or creating projects.")]
+         [McpServerTool(Name = "RunClassicHmiTemporaryImportPreflight"), Description("[L2][HMI]Offline-only helper: run the Classic/Basic HMI temporary-import preflight. It checks TIA V21 environment, Openness group, package files, PLC-HMI sync, and emits an import/readback plan without connecting to TIA Portal or creating projects.")]
         public static ResponseJsonReport RunClassicHmiTemporaryImportPreflight(
             [Description("workspaceRoot: repository/workspace root.")] string workspaceRoot,
             [Description("reportDirectory: directory where preflight files and reports will be written.")] string reportDirectory)
@@ -586,7 +604,7 @@ namespace TiaMcpServer.ModelContextProtocol
             }
         }
 
-// [DISABLED-A]         [McpServerTool(Name = "RunHmiTemplatePlcSyncPrecheckSuite"), Description("[L2][Reports]Offline-only helper: verify Unified HMI template RequiredTags against real PLC tag/DB-member XML symbols before any HMI binding. It does not connect to TIA Portal or modify projects.")]
+         [McpServerTool(Name = "RunHmiTemplatePlcSyncPrecheckSuite"), Description("[L2][Reports]Offline-only helper: verify Unified HMI template RequiredTags against real PLC tag/DB-member XML symbols before any HMI binding. It does not connect to TIA Portal or modify projects.")]
         public static ResponseJsonReport RunHmiTemplatePlcSyncPrecheckSuite(
             [Description("templateDirectory: directory containing Unified HMI template JSON files.")] string templateDirectory,
             [Description("plcXmlPath: PLC XML file or directory exported from TIA, containing tag tables and/or GlobalDB XML.")] string plcXmlPath,
@@ -1030,7 +1048,7 @@ namespace TiaMcpServer.ModelContextProtocol
             }
         }
 
-// [DISABLED-A]         [McpServerTool(Name = "RunHmiActionScriptRecipeSafetySelfTest"), Description("[L2][Diagnostics]Offline-only helper: prove deterministic HMI button action scripts are allowed only for safe set/reset/toggle bit recipes, while high-risk writes and unverified navigation/popup recipes are blocked.")]
+         [McpServerTool(Name = "RunHmiActionScriptRecipeSafetySelfTest"), Description("[L2][Diagnostics]Offline-only helper: prove deterministic HMI button action scripts are allowed only for safe set/reset/toggle bit recipes, while high-risk writes and unverified navigation/popup recipes are blocked.")]
         public static ResponseJsonReport RunHmiActionScriptRecipeSafetySelfTest()
         {
             try
