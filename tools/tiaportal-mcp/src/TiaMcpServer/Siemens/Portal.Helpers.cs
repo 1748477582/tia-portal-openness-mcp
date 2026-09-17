@@ -696,36 +696,45 @@ namespace TiaMcpServer.Siemens
                 return null;
             }
 
-            string[] pathSegments = softwarePath.Split('/');
-            int index = 0;
+            // Openness compliance (CRITICAL): _project.Devices / _project.DeviceGroups are COM
+            // properties, and the DeviceComposition handed to the walkers below is a live RCW.
+            // Touching them from the MCP dispatch thread raises RPC_E_WRONG_THREAD / Marshal
+            // errors, which surface as "HMI tool just fails" and can tear the process down.
+            // Use the STA pump that every other COM-touching path in this file already uses.
+            // _sta.Run is reentrant: when a caller has already dispatched us onto the STA it
+            // simply inlines the delegate, so wrapping here is safe and idempotent.
+            return _sta.Run<SoftwareContainer?>(() =>
+            {
+                string[] pathSegments = softwarePath.Split('/');
+                int index = 0;
 
-            if (index >= pathSegments.Length)
+                if (index >= pathSegments.Length)
+                    return null;
+
+                SoftwareContainer? softwareContainer = null;
+
+                // in Devices
+                if (_project.Devices != null)
+                {
+                    softwareContainer = GetSoftwareContainerInDevices(_project.Devices, pathSegments, index);
+                    if (softwareContainer != null)
+                    {
+                        return softwareContainer;
+                    }
+                }
+
+                // in Groups
+                if (_project.DeviceGroups != null)
+                {
+                    softwareContainer = GetSoftwareContainerInGroups(_project.DeviceGroups, pathSegments, index);
+                    if (softwareContainer != null)
+                    {
+                        return softwareContainer;
+                    }
+                }
+
                 return null;
-
-            string segment = pathSegments[index];
-            SoftwareContainer? softwareContainer = null;
-
-            // in Devices
-            if (_project.Devices != null)
-            {
-                softwareContainer = GetSoftwareContainerInDevices(_project.Devices, pathSegments, index);
-                if (softwareContainer != null)
-                {
-                    return softwareContainer;
-                }
-            }
-
-            // in Groups
-            if (_project.DeviceGroups != null)
-            {
-                softwareContainer = GetSoftwareContainerInGroups(_project.DeviceGroups, pathSegments, index);
-                if (softwareContainer != null)
-                {
-                    return softwareContainer;
-                }
-            }
-
-            return null;
+            });
         }
 
         private SoftwareContainer? GetSoftwareContainerInDevices(DeviceComposition devices, string[] pathSegments, int index)

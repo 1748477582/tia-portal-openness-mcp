@@ -166,6 +166,15 @@ Offline vs running program: CompareSoftwareToOnline -> per-item LeftName/RightNa
 Force / modify: GetPlcForceTables + SetForceTableEntry (force); SetWatchTableModifyValue (modify one value).
 Root cause of a value: TraceTagCause (offline static: every network writing the tag + its gating operands), then TraceTagCauseLive (adds live reads of those gates).
 WHAT OPENNESS CANNOT DO (do not promise it): no ladder online power-flow view (green/blue rungs), no breakpoints/single-step/call stack. Approximate the power-flow by reading the operands live and reconstructing logic via DescribeBlockLogic.
+WRITE OPERATIONS REQUIRE OFFLINE (verified). Openness REJECTS hardware/program changes while the PLC is online - you get an access error (TIA Chinese UI: 无法连接访问) or 'not supported in online mode':
+  - Hardware edits: AddDevice / AddDeviceWithFallback / AddGsdDeviceWithProbe / AddHardwareCatalogDeviceWithProbe / SetDeviceItemAttribute / AttachDeviceNodeToSubnet / ConnectDeviceNodesToProfinetSubnet / AddDriveComponent.
+  - Program edits: ImportBlock / ImportBlocksFromDirectory / ImportType / RegenerateBlockFromSource / ImportFromDocuments / SetBlockNumber / MoveBlock(s)ToGroup / DeleteBlock / CreatePlcBlockGroup / AutoClassifyBlocks / PlcBuildAndImport.
+  - Reading by EXPORT also fails online: ExportBlock / ExportBlockSourceUtf8 / DescribeBlockLogic / AnalyzeBlockImpact / TraceTagCause.
+FIX THIS YOURSELF - do not make the user do it:
+  1) GetOnlineState(softwarePath). If Online or Connecting, call GoOffline(softwarePath) (use GoOfflineAll if unsure which PLC).
+  2) Do the edit / import / export.
+  3) GoOffline does NOT close the project. Tell the user you took the PLC offline, and offer GoOnline again when the work is done - they may have been monitoring.
+LIVE READS ARE SEPARATE: ReadPlcLiveValuesS7 / SamplePlcLiveValuesS7 / ProbeS7CpuIdentity / GetPlcRunStateS7 use their own direct S7 connection and DO work while TIA is offline.
 EDITING WHILE ONLINE: Openness CANNOT export blocks while connected online - call GoOffline(softwarePath) first, edit, then GoOnline.
 Guardrails: all read paths are read-only; never write or force without the user's explicit go-ahead.
 
@@ -193,6 +202,7 @@ Order matters: create/complete the PLC side FIRST (tags/DB must exist), then HMI
 - 'The engineering version Vxx is not supported' → importing XML from another TIA version; the server normalizes this automatically on ImportBlock/ImportType — if you built the XML yourself, do not write <Engineering version> at all, or re-import through the provided Build*Xml tools.
 - Chinese text becomes '???' → wrong encoding. XML/.s7dcl need UTF-8 WITH BOM. On THIS V18 build, .scl must ALSO be UTF-8 WITH BOM (our RegenerateBlockFromSource/ImportBlock force it) — a BOM-less .scl FAILS at line 0 here, contrary to generic docs.
 - 'not supported in online mode' → GoOffline(softwarePath), retry the export/import.
+- 'Access denied' / 无法连接访问 / 'cannot be executed online' when adding hardware or changing program → TIA is ONLINE; Openness forbids it. Call GoOffline(softwarePath), do the change, then GoOnline again. This is an API restriction, not a bug.
 - 'PLC_1 NotFound' → softwarePath must be the PLC software name from GetProjectTree, not 'PLC_1' guessed, not the station name.
 - Compile errors after import → CompileAndDiagnosePlc returns structured diagnostics; fix the source text and re-import the same block (overwrite), do not create renamed copies.
 - Connect hangs / security error → an orphan TIA process is stuck; ask the user to close TIA instances (or kill Siemens.Automation.Portal.exe) and retry.

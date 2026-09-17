@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using Siemens.Engineering;
 using Siemens.Engineering.Cax;
 using Siemens.Engineering.Compiler;
@@ -45,6 +45,13 @@ namespace TiaMcpServer.Siemens
         private readonly char[] _regexChars = ['.', '^', '$', '*', '+', '?', '(', '[', '{', '\\', '|'];
 
         private TiaPortal? _portal;
+
+        // Ownership tracking (critical): Dispose() must NOT close a project or shut down a
+        // TIA instance that the USER started. Attaching is non-destructive; disposing an
+        // attached portal closes the user's TIA, and closing an attached project discards
+        // their working session. Each of these flags is set at the point of acquisition.
+        private bool _ownsPortal;    // true only when this server started the TIA instance
+        private bool _ownsProject;   // true only when this server opened/created the project
         private ProjectBase? _project;
         private LocalSession? _session;
         // Resolving a softwarePath walks the device tree via Openness (~40 COM calls per call). Cache it per
@@ -247,14 +254,27 @@ namespace TiaMcpServer.Siemens
             //   then ForceComCleanup() (process-level GC of RCWs).
 
             // G3: best-effort auto-save on process exit to avoid silent data loss.
+            // OWNERSHIP RULE: never Close a project we merely attached to, and never
+            // Dispose a TIA instance the user started. Doing either silently destroys the
+            // user's working session (project disappears / TIA closes) whenever the MCP
+            // connector restarts. Save is always safe; Close/Dispose are not.
             try
             {
                 if (!IsProjectNull())
                 {
                     _sta.Run(() =>
                     {
-                        (_project as Project)?.Save();
-                        (_project as Project)?.Close();
+                        try { (_project as Project)?.Save(); }
+                        catch (Exception ex) { _logger?.LogWarning(ex, "Auto-save on Dispose failed."); }
+
+                        if (_ownsProject)
+                        {
+                            (_project as Project)?.Close();
+                        }
+                        else
+                        {
+                            _logger?.LogInformation("Project was ATTACHED (not opened by this server) — leaving it open for the user.");
+                        }
                     });
                     _logger?.LogInformation("Project auto-saved on Dispose.");
                 }
@@ -266,7 +286,14 @@ namespace TiaMcpServer.Siemens
 
             try
             {
-                _sta.Run(() => _portal?.Dispose());
+                if (_ownsPortal)
+                {
+                    _sta.Run(() => _portal?.Dispose());
+                }
+                else
+                {
+                    _logger?.LogInformation("TIA Portal was ATTACHED (not started by this server) — not disposing it.");
+                }
             }
             catch (Exception ex)
             {
@@ -505,6 +532,8 @@ namespace TiaMcpServer.Siemens
                             {
                                 _portal = candidate;
                                 _logger?.LogInformation($"Selected attached TIA Portal PID={proc.Id}");
+                                _ownsPortal = false;   // attached, not started by us
+                                _ownsProject = false;  // user's project — never auto-close
 
                                 if (hasSession)
                                 {
@@ -544,6 +573,8 @@ namespace TiaMcpServer.Siemens
                     {
                         _portal = firstAttachable;
                         _logger?.LogInformation($"Falling back to first attachable TIA Portal ({firstAttachableInfo})");
+                        _ownsPortal = false;
+                        _ownsProject = false;
                         LastConnectError = $"Attached to first available portal ({firstAttachableInfo}), but it has no visible projects/sessions.";
                         return true;
                     }
@@ -559,6 +590,7 @@ namespace TiaMcpServer.Siemens
                     : TiaPortalMode.WithoutUserInterface;
                 _logger?.LogInformation($"Starting a new TIA Portal instance ({launchMode}).");
                 _portal = new TiaPortal(launchMode);
+                _ownsPortal = true;   // we started it, so we may dispose it
 
                 return true;
             }
@@ -747,6 +779,7 @@ namespace TiaMcpServer.Siemens
 
         public bool AttachToOpenProject(string projectName)
         {
+            _ownsProject = false;  // attached to the user's open project — must not be closed by Dispose
             return _sta.Run(() =>
             {
             _logger?.LogInformation($"Attaching to open project: {projectName}");
@@ -917,6 +950,7 @@ namespace TiaMcpServer.Siemens
 
         public bool OpenProject(string projectPath)
         {
+            _ownsProject = true;   // opened by this server
             return _sta.Run(() =>
             {
             _logger?.LogInformation($"Opening project: {projectPath}");
@@ -1031,6 +1065,7 @@ namespace TiaMcpServer.Siemens
 
         public bool CreateProject(string directoryPath, string projectName)
         {
+            _ownsProject = true;   // created by this server
             return _sta.Run(() =>
             {
             _logger?.LogInformation($"Creating project: dir={directoryPath}, name={projectName}");
