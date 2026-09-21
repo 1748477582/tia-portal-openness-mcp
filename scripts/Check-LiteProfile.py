@@ -31,7 +31,7 @@ REQUIRED = [
     # 定位 / 诊断
     "Bootstrap", "Doctor", "GetAuthoringGuide", "GetState",
     # 会话 + 工程
-    "Connect", "Disconnect", "OpenProject", "CreateProject", "AttachToOpenProject",
+    "Connect", "ConnectIsolated", "Disconnect", "OpenProject", "CreateProject", "AttachToOpenProject",
     "CloseProject", "SaveProject", "GetProject", "GetProjectTree", "GetSoftwareTree",
     # 读 / 理解
     "GetBlocks", "GetBlockInfo", "DescribeBlockLogic", "GetPlcTagTables", "GetCrossReferences",

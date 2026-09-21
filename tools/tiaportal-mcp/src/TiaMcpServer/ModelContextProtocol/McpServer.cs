@@ -86,6 +86,34 @@ namespace TiaMcpServer.ModelContextProtocol
             }
         }
 
+        [McpServerTool(Name = "ConnectIsolated"), Description("[L1][Portal] Start a BRAND-NEW TIA Portal instance (headless by default; --with-ui makes it visible) instead of attaching to a running one. USE THIS when the user is working in the TIA Portal UI: plain Connect attaches to their instance and OpenProject then (correctly) refuses to touch their already-open project, so the whole server is unusable until they close it. It never attaches to, modifies or closes any TIA window or project the user already has open — so it also can NOT drive the project the user has open; for that use Connect. Must be the FIRST connection action in a fresh MCP process. Afterwards use OpenProject or CreateProject as usual, then CloseProject and Disconnect.")]
+        public static ResponseConnect ConnectIsolated()
+        {
+            Logger?.LogInformation("ConnectIsolated: starting an isolated TIA Portal instance...");
+            try
+            {
+                Portal.ConnectIsolated();
+                return new ResponseConnect
+                {
+                    Message = "Connected to an isolated (new) TIA-Portal instance; the user's running instance was not touched.",
+                    Meta = new JsonObject
+                    {
+                        ["timestamp"] = DateTime.Now,
+                        ["success"] = true,
+                        ["isolated"] = true
+                    }
+                };
+            }
+            catch (PortalException pex)
+            {
+                throw McpError.WithRecovery(pex, $"Failed to start an isolated TIA-Portal instance [{pex.Code}]: {pex.Message}");
+            }
+            catch (Exception ex) when (ex is not McpException)
+            {
+                throw McpError.WithRecovery(ex, $"Unexpected error starting an isolated TIA-Portal instance: {ex.Message}{McpHints.Recovery(ex)}");
+            }
+        }
+
         [McpServerTool(Name = "ListPortalProcessProjects"), Description("[L1][Portal]List running TIA Portal processes and the projects/sessions visible in each process.")]
         public static ResponseStringList ListPortalProcessProjects()
         {

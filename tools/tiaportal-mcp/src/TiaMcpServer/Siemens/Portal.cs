@@ -666,6 +666,49 @@ namespace TiaMcpServer.Siemens
             });
         }
 
+        /// <summary>
+        /// Start a BRAND-NEW TIA Portal instance instead of attaching to a running one — the escape
+        /// hatch for "the user is working in the TIA Portal UI". Plain Connect attaches to their
+        /// instance, and OpenProject then (correctly) refuses to touch their already-open project,
+        /// which leaves the whole server unusable until they close TIA. This never attaches to,
+        /// modifies or closes any TIA window or project the user already has open.
+        ///
+        /// Deliberately does NOT take the single-attach lock: that lock guards a SHARED TIA instance,
+        /// and this path creates its own, so there is nothing to share. Headless by default;
+        /// --with-ui makes the isolated instance visible.
+        /// </summary>
+        public bool ConnectIsolated()
+        {
+            return _sta.Run(() =>
+            {
+                if (_portal != null || _project != null || _session != null)
+                    throw new PortalException(PortalErrorCode.InvalidState,
+                        "ConnectIsolated: this MCP session already has a TIA connection. "
+                        + "Start a fresh MCP process before calling ConnectIsolated.");
+
+                LastConnectError = null;
+                _logger?.LogInformation("ConnectIsolated: starting a brand-new TIA Portal instance (no attach).");
+                try
+                {
+                    var launchMode = Engineering.LaunchWithUserInterface
+                        ? TiaPortalMode.WithUserInterface
+                        : TiaPortalMode.WithoutUserInterface;
+                    _logger?.LogInformation($"ConnectIsolated: new instance ({launchMode}).");
+                    _portal = new TiaPortal(launchMode);
+                    _ownsPortal = true;    // we started it, so we may dispose it
+                    _ownsProject = false;  // no project yet
+                    _project = null;
+                    _session = null;
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    throw new PortalException(PortalErrorCode.OpennessError,
+                        $"ConnectIsolated failed: {FormatExceptionDetail(ex)}", inner: ex);
+                }
+            });
+        }
+
         public List<string> ListPortalProcessProjects()
         {
             return _sta.Run(() =>

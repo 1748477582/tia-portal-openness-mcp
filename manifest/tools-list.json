@@ -1,8 +1,8 @@
 {
   "package": "TIA_MCP_Delivery_v2.3.0",
-  "generatedAt": "2026-09-21T16:16:38.769819+08:00",
+  "generatedAt": "2026-09-21T16:28:52.928791+08:00",
   "source": "live MCP tools/list of TiaMcpServer.exe (dev build)",
-  "toolCount": 211,
+  "toolCount": 212,
   "note": "Full roster. Regenerate with scripts/Generate-ToolsList.py after any tool add/remove. Runtime tools/list remains authoritative when the server is running.",
   "tools": [
     {
@@ -527,6 +527,15 @@
         "subnetName"
       ],
       "description": "[L1][Hardware] PREFERRED for PROFINET network setup. Finds the first IE/PROFINET node under two devices, creates/reuses a subnet on the first, connects the second, and returns readback evidence. Requires: Connect + OpenProject + both devices added. Typical: firstRootPath='PLC_1', secondRootPath='HMI_KTP700_1/HMI_KTP700_1.IE_CP_1'. Verified for S7-1200 + KTP700 Basic PN."
+    },
+    {
+      "name": "ConnectIsolated",
+      "layer": "L1",
+      "domain": "Portal",
+      "method": "ConnectIsolated",
+      "returnType": "",
+      "parameters": [],
+      "description": "[L1][Portal] Start a BRAND-NEW TIA Portal instance (headless by default; --with-ui makes it visible) instead of attaching to a running one. USE THIS when the user is working in the TIA Portal UI: plain Connect attaches to their instance and OpenProject then (correctly) refuses to touch their already-open project, so the whole server is unusable until they close it. It never attaches to, modifies or closes any TIA window or project the user already has open — so it also can NOT drive the project the user has open; for that use Connect. Must be the FIRST connection action in a fresh MCP process. Afterwards use OpenProject or CreateProject as usual, then CloseProject and Disconnect."
     },
     {
       "name": "CreatePlcBlockGroup",
