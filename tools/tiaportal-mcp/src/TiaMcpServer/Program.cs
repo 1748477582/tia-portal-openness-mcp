@@ -657,10 +657,14 @@ namespace TiaMcpServer
                         })
                         .WithStdioServerTransport();
                     // TIA_MCP_PROFILE=lite → only [L0]/[L1] essentials (weak models / capped hosts).
+                    // 两个档都过 WrapWithResponseGuard：超阈值的响应被寄存成「句柄 + 头部切片」，
+                    // 而不是被宿主一刀截断、剩下的内容再也拿不回来。
                     if (ModelContextProtocol.McpServer.IsLiteProfile())
-                        mcp.WithTools(ModelContextProtocol.McpServer.GetLiteTools());
+                        mcp.WithTools(ModelContextProtocol.McpServer.WrapWithResponseGuard(
+                            ModelContextProtocol.McpServer.GetLiteTools()));
                     else
-                        mcp.WithToolsFromAssembly();
+                        mcp.WithTools(ModelContextProtocol.McpServer.WrapWithResponseGuard(
+                            ModelContextProtocol.McpServer.GetAllTools()));
                     mcp.WithPromptsFromAssembly();
                 }
                 catch (ReflectionTypeLoadException ex)
@@ -750,9 +754,11 @@ namespace TiaMcpServer
                     })
                     .WithStreamServerTransport(httpToMcp, mcpToHttp);
                 if (ModelContextProtocol.McpServer.IsLiteProfile())
-                    mcpHttp.WithTools(ModelContextProtocol.McpServer.GetLiteTools());
+                    mcpHttp.WithTools(ModelContextProtocol.McpServer.WrapWithResponseGuard(
+                        ModelContextProtocol.McpServer.GetLiteTools()));
                 else
-                    mcpHttp.WithToolsFromAssembly();
+                    mcpHttp.WithTools(ModelContextProtocol.McpServer.WrapWithResponseGuard(
+                        ModelContextProtocol.McpServer.GetAllTools()));
                 mcpHttp.WithPromptsFromAssembly();
 
                 builder.Services.AddSingleton<TiaMcpServer.Siemens.Portal>();

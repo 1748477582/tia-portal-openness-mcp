@@ -50,6 +50,8 @@ REQUIRED = [
     "GenerateBlocksFromExternalSource",
     # 校验
     "CompileSoftware", "CompileAndDiagnosePlc",
+    # 大响应寄存 —— 超阈值响应拿回全文的**唯一**途径，掉出 lite 就等于那条路断了
+    "GetExport", "ListExports", "SaveExport",
 ]
 
 # VS Code 拒绝启用超过这个数的工具；lite 存在的意义之一就是压在这条线以内。

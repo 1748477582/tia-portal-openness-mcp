@@ -78,6 +78,9 @@ namespace TiaMcpServer.OfflineChecks
             Console.WriteLine("\nLadTextRenderer:");
             LadTextRendererTests.Run();
 
+            Console.WriteLine("\nExportStore:");
+            ExportStoreTests.Run();
+
             Console.WriteLine($"\n{T.Passed} passed, {T.Failed} failed");
             return T.Failed == 0 ? 0 : 1;
         }

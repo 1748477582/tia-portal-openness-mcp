@@ -28,5 +28,9 @@
     <!-- SimaticML(FlgNet/StructuredText) 文本回读：Siemens-free（只依赖 System.Xml.Linq）。
          盯的是「回读出来的逻辑和工程里真实逻辑不一致」——错了不报错、不崩，只会让人看到不存在的逻辑。 -->
     <Compile Include="..\..\src\TiaMcpServer\ModelContextProtocol\LadTextRenderer.cs" Link="LadTextRenderer.cs" />
+    <!-- 大响应寄存的判定与切片：零依赖（只 System.* + Linq），专门抽成这样就是为了能在这里被喂真输入。
+         它坏了不会崩 —— 只会让某一页报废、或让调用方在同一位置无限打转 —— 属于「坏了也悄无声息」那一类，
+         只有会失败的用例盯得住（代理对切点、越界夹紧、以及三态错误 expired/evicted/unknown 的区分）。 -->
+    <Compile Include="..\..\src\TiaMcpServer\ModelContextProtocol\ExportStore.cs" Link="ExportStore.cs" />
   </ItemGroup>
 </Project>

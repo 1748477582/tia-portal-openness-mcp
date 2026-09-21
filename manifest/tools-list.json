@@ -1,8 +1,8 @@
 {
   "package": "TIA_MCP_Delivery_v2.3.0",
-  "generatedAt": "2026-09-21T16:28:52.928791+08:00",
+  "generatedAt": "2026-09-21T16:55:42.094546+08:00",
   "source": "live MCP tools/list of TiaMcpServer.exe (dev build)",
-  "toolCount": 212,
+  "toolCount": 217,
   "note": "Full roster. Regenerate with scripts/Generate-ToolsList.py after any tool add/remove. Runtime tools/list remains authoritative when the server is running.",
   "tools": [
     {
@@ -425,6 +425,17 @@
       "description": "[L1][PLC-Online][PreCondition:Connect+OpenProject+CompileSoftware] Check whether a PLC is ready to receive a program download WITHOUT actually downloading. Verifies: DownloadProvider service is available, a network/IP configuration exists in the hardware config. Returns Ready=true only when all checks pass. Use this before DownloadToPlc to surface problems early (missing IP, no hardware config, etc.). Does NOT compile — run CompileSoftware first to ensure blocks are consistent."
     },
     {
+      "name": "ClearExports",
+      "layer": "L1",
+      "domain": "Exports",
+      "method": "ClearExports",
+      "returnType": "",
+      "parameters": [
+        "olderThanHours"
+      ],
+      "description": "[L1][Exports] Drop parked responses in bulk. NOTE: handles already expire on their own at 24h, so the default olderThanHours=24 almost always deletes nothing — pass olderThanHours=0 to actually free the store now."
+    },
+    {
       "name": "CloseProject",
       "layer": "L1",
       "domain": "Project",
@@ -572,6 +583,17 @@
         "blockName"
       ],
       "description": "[L2][PLC-Software] Delete a PLC block by exact name (searched across all program-block groups). Idempotent for absent blocks: if the block is not found it reports not-found with success=true instead of erroring. Requires: Connect + OpenProject. After deleting, call CompileAndDiagnosePlc to confirm the project still compiles. Deletion is destructive and cannot be undone except by re-importing the block's exported source, so only delete blocks you own/created."
+    },
+    {
+      "name": "DeleteExport",
+      "layer": "L1",
+      "domain": "Exports",
+      "method": "DeleteExport",
+      "returnType": "",
+      "parameters": [
+        "exportId"
+      ],
+      "description": "[L1][Exports] Drop one export handle once you are done with it. Optional — handles expire on their own after 24 hours and the oldest are evicted automatically when the store fills up."
     },
     {
       "name": "DeletePlcExternalSource",
@@ -1376,6 +1398,19 @@
       "description": "[L1][Hardware] List all hardware devices (PLCs, HMI panels, drives) in the project with their attributes. Requires: Connect + OpenProject. Prefer GetProjectTree for a visual overview; use this when you need the exact device Name and attribute values for subsequent operations like AddDevice or SetDeviceItemAttribute."
     },
     {
+      "name": "GetExport",
+      "layer": "L1",
+      "domain": "Exports",
+      "method": "GetExport",
+      "returnType": "",
+      "parameters": [
+        "exportId",
+        "offset",
+        "length"
+      ],
+      "description": "[L1][Exports] Read one page of a large response that was parked under an export handle. When a tool's response exceeds the size limit the engine stores the full text and returns only its head plus an 'exportId'; call this with that id to read the rest. Page forward by passing the 'nextOffset' from the previous page until 'eof' is true. Each page is a raw CHARACTER SLICE of the original text — it can cut a line or a JSON value in half. Concatenate every page first, THEN parse; never parse a single page on its own. Handles live for 24 hours and only inside the current engine session."
+    },
+    {
       "name": "GetHmiConnections",
       "layer": "L2",
       "domain": "HMI",
@@ -2028,6 +2063,18 @@
       "description": "[L2][Drive] Enumerate the SINAMICS drive component tree of a device item added via Startdrive using the PUBLIC Openness HW API (no Startdrive Openness license required). Returns each child module (motor / measuring system / encoder / axis application) with its TypeName, OrderNumber, TypeIdentifier, PositionNumber and the full settable attribute list (e.g. Name, Comment). Use the output to learn exact module paths and writable attributes before calling SetDriveParameter. Requires an open TIA project."
     },
     {
+      "name": "ListExports",
+      "layer": "L1",
+      "domain": "Exports",
+      "method": "ListExports",
+      "returnType": "",
+      "parameters": [
+        "tool",
+        "limit"
+      ],
+      "description": "[L1][Exports] List the export handles currently held by this engine session — id, the tool that produced each one, its target, age, and total size. Use it when you have lost an exportId, or to check what is still available before paging."
+    },
+    {
       "name": "ListObjectChildren",
       "layer": "L2",
       "domain": "Reflection",
@@ -2416,6 +2463,20 @@
         "newProjectPath"
       ],
       "description": "[L2][Project]Save current TIA-Portal project/session with a new name"
+    },
+    {
+      "name": "SaveExport",
+      "layer": "L1",
+      "domain": "Exports",
+      "method": "SaveExport",
+      "returnType": "",
+      "parameters": [
+        "exportId",
+        "outputPath",
+        "raw",
+        "overwrite"
+      ],
+      "description": "[L1][Exports] Write a parked response to a file in one step, instead of paging it through the conversation. Prefer this whenever the user wants the whole thing (a full cross-reference dump, a whole block list, a whole block export): it costs one call and no context. By default the tool's PAYLOAD is written (e.g. the CSV itself), not the JSON envelope around it — so saving a truncated table to 'IO.csv' really gives you a CSV you can open in Excel. Pass raw=true to write the untouched response text instead. Written as UTF-8 with BOM so Chinese opens correctly in Notepad and Excel."
     },
     {
       "name": "SaveProject",
