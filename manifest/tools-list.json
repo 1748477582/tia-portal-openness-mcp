@@ -1,17 +1,21 @@
-﻿{
-  "package": "TIA_MCP_Delivery_v2.2.8_20260703",
-  "generatedAt": "2026-07-03T19:00:00+08:00",
-  "source": "live MCP tools/list of TiaMcpServer.exe 2.2.8 (regenerated; layer/domain parsed from description tags)",
-  "toolCount": 200,
-  "note": "Static snapshot generated from [McpServerTool] attributes. Runtime tools/list remains authoritative when server is running.",
+{
+  "package": "TIA_MCP_Delivery_v2.3.0",
+  "generatedAt": "2026-09-21T14:08:28.295946+08:00",
+  "source": "live MCP tools/list of TiaMcpServer.exe (dev build)",
+  "toolCount": 211,
+  "note": "Full roster. Regenerate with scripts/Generate-ToolsList.py after any tool add/remove. Runtime tools/list remains authoritative when the server is running.",
   "tools": [
     {
       "name": "AddDevice",
       "layer": "L2",
       "domain": "Hardware",
       "method": "AddDevice",
-      "returnType": "ResponseMessage",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "orderNumber",
+        "version",
+        "deviceName"
+      ],
       "description": "[L2][Hardware] Add one hardware device using an exact MLFB/order number and version from the TIA hardware catalog. Requires: Connect + OpenProject. Use SearchHardwareCatalog first to find the exact MLFB/version. For unknown or approximate device names, use AddDeviceWithFallback or AddHardwareCatalogDeviceWithProbe instead."
     },
     {
@@ -19,17 +23,40 @@
       "layer": "L1",
       "domain": "Hardware",
       "method": "AddDeviceWithFallback",
-      "returnType": "ResponseDeviceProbe",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "preferredMlfb",
+        "preferredVersion",
+        "deviceName",
+        "family"
+      ],
       "description": "[L1][Hardware] PREFERRED for natural-language device insertion. Adds a Siemens hardware device by probing the installed TIA catalog with fallback versions. Requires: Connect + OpenProject. Example: 'add CPU 1211C AC/DC/RLY' → family='S7-1200'. Families: S7-1200, S7-1500, WinCCUnifiedPC. For third-party/GSD devices use AddGsdDeviceWithProbe."
+    },
+    {
+      "name": "AddDriveComponent",
+      "layer": "L3",
+      "domain": "Drive",
+      "method": "AddDriveComponent",
+      "returnType": "",
+      "parameters": [
+        "deviceItemPath",
+        "typeIdentifier",
+        "name",
+        "positionNumber"
+      ],
+      "description": "[L3][Drive] Add a drive hardware component under a SINAMICS device item via the public Openness DeviceItem.PlugNew. Requires an exact, catalog-resolvable typeIdentifier - the OrderNumber shown by GetDeviceItemInfo (e.g. 'OrderNumber:1FK2102-1AG1x-xMxx' with wildcards) is a family placeholder and usually NOT pluggable; obtain a concrete identifier from the hardware catalog or an existing module's TypeIdentifierNormalized. NOTE: compact single-axis drives like S210 have a fixed topology (one motor / one encoder DRIVE-CLiQ port) - PlugNew for a second motor fails with 'Could not create the device item at the container'. Component addition is mainly meaningful on expandable drive units (S120/G120 etc.)."
     },
     {
       "name": "AddGsdDeviceWithProbe",
       "layer": "L2",
       "domain": "Hardware",
       "method": "AddGsdDeviceWithProbe",
-      "returnType": "ResponseGsdDeviceProbe",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "keyword",
+        "deviceName",
+        "preferredDap"
+      ],
       "description": "[L2][Hardware]Add a third-party GSD/GSDML hardware device by first searching the installed TIA hardware catalog, ranking candidates, and inserting with the exact catalog TypeIdentifier. Does not fall back to unrelated Siemens devices."
     },
     {
@@ -37,17 +64,36 @@
       "layer": "L2",
       "domain": "Hardware",
       "method": "AddHardwareCatalogDeviceWithProbe",
-      "returnType": "ResponseHardwareCatalogDeviceProbe",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "keyword",
+        "deviceName",
+        "preferredText"
+      ],
       "description": "[L2][Hardware]Add a hardware device by searching the installed TIA hardware catalog, ranking insertable TypeIdentifier candidates, and inserting the best match. Use for Siemens devices/HMI panels when exact TypeIdentifier is unknown, e.g. KTP700 Basic PN."
+    },
+    {
+      "name": "AnalyzeBlockImpact",
+      "layer": "L2",
+      "domain": "PLC-Software",
+      "method": "AnalyzeBlockImpact",
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "blockName",
+        "blockScope"
+      ],
+      "description": "[L2][PLC-Software] IMPACT ANALYSIS (global view). Given one block, reports (1) its interface pins (Input/Output/Static/Constant/Return with datatypes) and (2) which other blocks CALL it, by scanning all in-scope code blocks' exported SimaticML for <Call> references. Openness has no reverse call-index API, so this reuses the Export+XML-parse approach proven by TraceTagCause. ALWAYS run this BEFORE editing a block so you see the whole blast radius, not just the single exported file. For a forward call graph (which blocks a block CALLs), use GetCallChain direction=callees. Requires: Connect + OpenProject in OFFLINE mode (Openness cannot export while TIA is online). blockScope regex limits which blocks are scanned (default empty = scan all code blocks)."
     },
     {
       "name": "AnalyzeGlobalLibraryPackage",
       "layer": "L2",
       "domain": "HMI-Library",
       "method": "AnalyzeGlobalLibraryPackage",
-      "returnType": "ResponseJsonReport",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "libraryPath"
+      ],
       "description": "[L2][HMI-Library]Analyze a TIA global library folder offline by file-system structure. It does not connect to TIA Portal, open the library, import content, or modify files."
     },
     {
@@ -55,8 +101,12 @@
       "layer": "L2",
       "domain": "HMI-Library",
       "method": "AnalyzeHmiTemplateReference",
-      "returnType": "ResponseJsonReport",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "templateDirectory",
+        "referenceProjectPath",
+        "referenceGlobalLibraryPath"
+      ],
       "description": "[L2][HMI-Library]Analyze local Unified HMI JSON templates against reference-project/runtime/global-library hints offline. It does not connect to TIA Portal or modify projects."
     },
     {
@@ -64,8 +114,10 @@
       "layer": "L2",
       "domain": "HMI-Library",
       "method": "AnalyzeUnifiedHmiTemplateLayout",
-      "returnType": "ResponseJsonReport",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "templateDirectory"
+      ],
       "description": "[L2][HMI-Library]Offline-only QA for Unified HMI JSON templates. Checks theme metadata, screen bounds, duplicate item names, size issues, layout overlap warnings, density, and execution JSON shape. It does not connect to TIA Portal or modify projects."
     },
     {
@@ -73,8 +125,12 @@
       "layer": "L2",
       "domain": "HMI-Unified",
       "method": "ApplyUnifiedHmiLayout",
-      "returnType": "ResponseMessage",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "hmiSoftwarePath",
+        "screenName",
+        "layoutJson"
+      ],
       "description": "[L2][HMI-Unified] Apply a grid layout to a real Unified HMI screen through ApplyUnifiedHmiScreenDesignJson. Requires a connected TIA project; verify changed items with DescribeHmiScreenItem/readback before saving."
     },
     {
@@ -82,7 +138,7 @@
       "layer": "L2",
       "domain": "HMI-Unified",
       "method": "ApplyUnifiedHmiScreenDesignJson",
-      "returnType": "ResponseMessage",
+      "returnType": "",
       "parameters": [
         "hmiSoftwarePath",
         "screenName",
@@ -96,17 +152,37 @@
       "layer": "L2",
       "domain": "HMI-Unified",
       "method": "ApplyUnifiedHmiTheme",
-      "returnType": "ResponseMessage",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "hmiSoftwarePath",
+        "screenName",
+        "themeJson"
+      ],
       "description": "[L2][HMI-Unified] Apply a theme/palette to a real Unified HMI screen through ApplyUnifiedHmiScreenDesignJson. Requires a connected TIA project; verify with DescribeHmiScreenItem/readback before saving."
+    },
+    {
+      "name": "ArchiveProject",
+      "layer": "L2",
+      "domain": "Project",
+      "method": "ArchiveProject",
+      "returnType": "",
+      "parameters": [
+        "archivePath"
+      ],
+      "description": "[L2][Project] Archive (export) the currently open TIA Portal project to a .zap file for backup/version handoff. Requires: Connect + OpenProject. The archive is created at archivePath (parent directory is created automatically). This is a SAFE read-only export — it does NOT modify or close the open project. Prefer this over SaveAsProject when you only need a distributable snapshot."
     },
     {
       "name": "AttachDeviceNodeToSubnet",
       "layer": "L2",
       "domain": "Hardware",
       "method": "AttachDeviceNodeToSubnet",
-      "returnType": "ResponseMessage",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "deviceItemPath",
+        "interfaceIndex",
+        "subnetName",
+        "anchorDeviceItemPath"
+      ],
       "description": "[L2][Hardware] Attach one real device network node to an existing PROFINET subnet and return readback evidence. deviceItemPath must come from GetProjectTree/GetDeviceItemTree, interfaceIndex selects a discovered Industrial Ethernet/PROFINET node, and online/force operations are never used."
     },
     {
@@ -114,17 +190,37 @@
       "layer": "L1",
       "domain": "Project",
       "method": "AttachToOpenProject",
-      "returnType": "ResponseMessage",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "projectName"
+      ],
       "description": "[L1][Project]Attach MCP to an already-open TIA Portal project by name (avoids disposed project handles)."
+    },
+    {
+      "name": "AutoClassifyBlocks",
+      "layer": "L2",
+      "domain": "PLC-Software",
+      "method": "AutoClassifyBlocks",
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "folderMappingJson",
+        "autoCreate"
+      ],
+      "description": "[L2][PLC-Software] Auto-organize ALL PLC blocks into subtype folders (FB/FC/DB/OB/Other). Each block is routed to a folder matching its subtype. If your project already has subtype folders with custom names, pass folderMappingJson e.g. {\"FB\":\"功能块\",\"FC\":\"函数\",\"DB\":\"数据块\",\"OB\":\"组织块\"} to map subtype->folder. Folders are created when missing (autoCreate=true). Uses the same export/delete/import round-trip; per-item failures reported, not fatal. Requires: Connect + OpenProject. After, run CompileAndDiagnosePlc."
     },
     {
       "name": "BindUnifiedHmiButtonPressedTag",
       "layer": "L2",
       "domain": "HMI-Unified",
       "method": "BindUnifiedHmiButtonPressedTag",
-      "returnType": "ResponseMessage",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "hmiSoftwarePath",
+        "screenName",
+        "buttonName",
+        "tagName"
+      ],
       "description": "[L2][HMI-Unified]Bind a Unified HMI button PressedStateTags entry to an HMI tag (momentary press behavior, best-effort)."
     },
     {
@@ -132,62 +228,69 @@
       "layer": "L2",
       "domain": "HMI-Unified",
       "method": "BindUnifiedHmiTagDynamization",
-      "returnType": "ResponseMessage",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "hmiSoftwarePath",
+        "screenName",
+        "itemName",
+        "propertyName",
+        "tagName",
+        "dataType",
+        "plcTag",
+        "address"
+      ],
       "description": "[L2][HMI-Unified]Ensure a Unified HMI TagDynamization exists for an item property and bind it to an HMI tag."
     },
     {
       "name": "Bootstrap",
       "layer": "L0",
-      "domain": "Bootstrap",
+      "domain": "Portal",
       "method": "Bootstrap",
-      "returnType": "Task<ResponseBootstrap>",
+      "returnType": "",
       "parameters": [],
-      "description": "[L0][Bootstrap] FIRST tool any AI model should call. Read-only single-call orientation: returns TIA version, Openness group status, current connection/project state, the recommended next tool, the L0/L1 tool roster, and known TIA Openness limitations. Does NOT connect to TIA Portal — call Connect afterwards based on RecommendedNextTool."
+      "description": "[L0][Portal] FIRST tool any AI model should call. Read-only single-call orientation: returns TIA version, Openness group status, current connection/project state, the recommended next tool, the L0/L1 tool roster, and known TIA Openness limitations. Does NOT connect to TIA Portal — call Connect afterwards based on RecommendedNextTool."
     },
     {
       "name": "BuildClassicHmiMinimalPackage",
       "layer": "L2",
-      "domain": "HMI-Classic",
+      "domain": "HMI",
       "method": "BuildClassicHmiMinimalPackage",
-      "returnType": "ResponseJsonReport",
-      "parameters": [],
-      "description": "[L2][HMI-Classic]Offline-only helper: build a minimal Classic/Basic HMI package from structured JSON. It returns tag-table XML, screen XML, import order, and readiness checks that screen item tag references are declared in the tag table. It does not connect to TIA Portal, import files, or modify projects."
+      "returnType": "",
+      "parameters": [
+        "packageJson"
+      ],
+      "description": "[L2][HMI]Offline-only helper: build a minimal Classic/Basic HMI package from structured JSON. It returns tag-table XML, screen XML, import order, and readiness checks that screen item tag references are declared in the tag table. It does not connect to TIA Portal, import files, or modify projects."
     },
     {
       "name": "BuildClassicHmiScreenXml",
       "layer": "L2",
-      "domain": "HMI-Classic",
+      "domain": "HMI",
       "method": "BuildClassicHmiScreenXml",
-      "returnType": "ResponseXmlBuild",
+      "returnType": "",
       "parameters": [
-        {
-          "name": "Type",
-          "type": "[Description(\"designJson: JSON object with Screen/Items. Items support"
-        }
+        "designJson"
       ],
-      "description": "[L2][HMI-Classic]Offline-only helper: build a Classic/Basic WinCC HMI screen XML document from structured JSON. It does not connect to TIA Portal, import screens, or modify projects. Validate in a temporary Classic HMI project before using on a real project."
+      "description": "[L2][HMI]Offline-only helper: build a Classic/Basic WinCC HMI screen XML document from structured JSON. It does not connect to TIA Portal, import screens, or modify projects. Validate in a temporary Classic HMI project before using on a real project."
     },
     {
       "name": "BuildClassicHmiTagTableXml",
       "layer": "L2",
-      "domain": "HMI-Classic",
+      "domain": "HMI",
       "method": "BuildClassicHmiTagTableXml",
-      "returnType": "ResponseXmlBuild",
-      "parameters": [],
-      "description": "[L2][HMI-Classic]Offline-only helper: build a Classic/Basic WinCC HMI tag table XML document from structured JSON. Supports plain HMI tags and symbolic PLC bindings through Connection + ControllerTag/PlcTag. It does not connect to TIA Portal, import tags, or modify projects."
+      "returnType": "",
+      "parameters": [
+        "tableJson"
+      ],
+      "description": "[L2][HMI]Offline-only helper: build a Classic/Basic WinCC HMI tag table XML document from structured JSON. Supports plain HMI tags and symbolic PLC bindings through Connection + ControllerTag/PlcTag. It does not connect to TIA Portal, import tags, or modify projects."
     },
     {
       "name": "BuildFlgNetCallXml",
       "layer": "L2",
       "domain": "PLC-Builders",
       "method": "BuildFlgNetCallXml",
-      "returnType": "ResponseXmlBuild",
+      "returnType": "",
       "parameters": [
-        {
-          "name": "sourceKind",
-          "type": "[Description(\"flgNetJson: JSON object with callName/name and parameters[]. Global parameters use symbolPath[] or dotted symbol; constants use"
-        }
+        "flgNetJson"
       ],
       "description": "[L2][PLC-Builders][Offline] NARROW SCOPE: builds ONLY a LAD network that calls one FC with parameters. For general ladder (contacts/coils/SR/compare/Move/math) author S7DCL text and import with ImportBlocksFromDocuments — there is no XML builder for those, and hand-written FlgNet XML is the usual cause of import errors. Build a TIA V21 LAD FlgNet/v5 FC call network XML from structured JSON. Input: {callName,parameters:[{name,section,dataType,sourceKind?,symbolPath?|symbol?|value?}]}. It only returns XML; it does not connect to TIA Portal, import blocks, write files, or modify projects."
     },
@@ -196,8 +299,10 @@
       "layer": "L2",
       "domain": "PLC-Builders",
       "method": "BuildPlcGlobalDbXml",
-      "returnType": "ResponseXmlBuild",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "globalDbJson"
+      ],
       "description": "[L2][PLC-Builders][Offline] Build a TIA V21 PLC GlobalDB XML document from structured JSON. Input: {dbName,dbNumber,staticMembers:[{name,datatype,externalWritable?,commentZhCn?,startValue?}]}. It only returns XML; it does not connect to TIA Portal, import blocks, write files, or modify projects."
     },
     {
@@ -205,8 +310,10 @@
       "layer": "L2",
       "domain": "PLC-Builders",
       "method": "BuildPlcSymbolManifestFromXmlPath",
-      "returnType": "ResponseJsonReport",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "path"
+      ],
       "description": "[L2][PLC-Builders]Offline-only helper: extract a PLC symbol manifest from PLC tag table and GlobalDB XML files or directories. It does not connect to TIA Portal or modify projects."
     },
     {
@@ -214,8 +321,10 @@
       "layer": "L2",
       "domain": "PLC-Builders",
       "method": "BuildPlcTagTableXml",
-      "returnType": "ResponseXmlBuild",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "tagTableJson"
+      ],
       "description": "[L2][PLC-Builders][Offline] Build a TIA V21 PLC tag table XML document from structured JSON. Input: {tableName,tags:[{name,dataTypeName,logicalAddress}]}. It only returns XML; it does not connect to TIA Portal, import tag tables, write files, or modify projects."
     },
     {
@@ -223,44 +332,22 @@
       "layer": "L2",
       "domain": "PLC-Builders",
       "method": "BuildPlcUdtXml",
-      "returnType": "ResponseXmlBuild",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "udtJson"
+      ],
       "description": "[L2][PLC-Builders][Offline] Build a TIA V21 PLC UDT/PlcStruct XML document from structured JSON. Input: {members:[{name,datatype,externalWritable?,commentZhCn?}]}. It only returns XML; it does not connect to TIA Portal, import types, write files, or modify projects."
-    },
-    {
-      "name": "BuildReleaseDiagnosticReport",
-      "layer": "L2",
-      "domain": "Reports",
-      "method": "BuildReleaseDiagnosticReport",
-      "returnType": "ResponseJsonReport",
-      "parameters": [],
-      "description": "[L2][Reports]Build an offline diagnostic report from a previously generated OfflineReleaseValidationSuite JSON report. It does not connect to TIA Portal or modify projects."
-    },
-    {
-      "name": "BuildReleaseManifest",
-      "layer": "L2",
-      "domain": "Reports",
-      "method": "BuildReleaseManifest",
-      "returnType": "ResponseJsonReport",
-      "parameters": [],
-      "description": "[L2][Reports]Build an offline machine-readable release manifest from a previously generated OfflineReleaseValidationSuite JSON report. It does not connect to TIA Portal or modify projects."
-    },
-    {
-      "name": "BuildReleaseRunbook",
-      "layer": "L2",
-      "domain": "Reports",
-      "method": "BuildReleaseRunbook",
-      "returnType": "ResponseJsonReport",
-      "parameters": [],
-      "description": "[L2][Reports]Build an offline first-user runbook from a previously generated OfflineReleaseValidationSuite JSON report. It does not connect to TIA Portal or modify projects."
     },
     {
       "name": "BuildStructuredTextXml",
       "layer": "L2",
       "domain": "PLC-Builders",
       "method": "BuildStructuredTextXml",
-      "returnType": "ResponseXmlBuild",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "structuredTextJson",
+        "innerOnly"
+      ],
       "description": "[L2][PLC-Builders][Offline] Build a TIA V21 StructuredText/v4 XML fragment from operation JSON. Input: {operations:[{op:'if'|'else'|'endif'|'assignment'|'token'|'blank'|'newline', ...}]}. It only returns XML; it does not connect to TIA Portal, import blocks, write files, or modify projects."
     },
     {
@@ -268,8 +355,14 @@
       "layer": "L2",
       "domain": "HMI-Unified",
       "method": "BuildUnifiedHmiButtonActionScript",
-      "returnType": "ResponseMessage",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "actionKind",
+        "eventType",
+        "targetTag",
+        "targetScreen",
+        "targetPopup"
+      ],
       "description": "[L2][HMI-Unified]Build a safe Unified HMI button action script from a high-level action recipe without connecting to TIA."
     },
     {
@@ -277,8 +370,10 @@
       "layer": "L2",
       "domain": "HMI-Unified",
       "method": "BuildUnifiedHmiLayoutDesignJson",
-      "returnType": "ResponseJsonReport",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "layoutJson"
+      ],
       "description": "[L2][HMI-Unified][Offline] Build ApplyUnifiedHmiScreenDesignJson-compatible JSON from a grid layout. It does not connect to TIA Portal or modify projects."
     },
     {
@@ -286,8 +381,12 @@
       "layer": "L2",
       "domain": "HMI-Unified",
       "method": "BuildUnifiedHmiTemplateApplyDesignJson",
-      "returnType": "ResponseJsonReport",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "templateFile",
+        "fallbackWidth",
+        "fallbackHeight"
+      ],
       "description": "[L2][HMI-Unified]Offline-only helper: convert one Unified HMI template JSON file into the execution JSON accepted by ApplyUnifiedHmiScreenDesignJson, with layout QA attached. It does not connect to TIA Portal or modify projects."
     },
     {
@@ -295,8 +394,12 @@
       "layer": "L2",
       "domain": "HMI-Unified",
       "method": "BuildUnifiedHmiTemplateApplyDesignManifest",
-      "returnType": "ResponseJsonReport",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "templateDirectory",
+        "fallbackWidth",
+        "fallbackHeight"
+      ],
       "description": "[L2][HMI-Unified]Offline-only helper: build a directory-level manifest for Unified HMI templates. It summarizes layout QA and execution-design readiness for every unified_*.json template without returning full apply payloads. It does not connect to TIA Portal or modify projects."
     },
     {
@@ -304,53 +407,70 @@
       "layer": "L2",
       "domain": "HMI-Unified",
       "method": "BuildUnifiedHmiThemeDesignJson",
-      "returnType": "ResponseJsonReport",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "themeJson"
+      ],
       "description": "[L2][HMI-Unified][Offline] Build ApplyUnifiedHmiScreenDesignJson-compatible JSON from a theme/palette. It does not connect to TIA Portal or modify projects."
     },
     {
       "name": "CheckDownloadReadiness",
       "layer": "L1",
-      "domain": "Category:PLC-Online",
-      "method": "",
+      "domain": "PLC-Online",
+      "method": "CheckDownloadReadiness",
       "returnType": "",
-      "parameters": [],
-      "description": "[L1][Category:PLC-Online][PreCondition:Connect+OpenProject+CompileSoftware] Check whether a PLC is ready to receive a program download WITHOUT actually downloading. Verifies: DownloadProvider service is available, a network/IP configuration exists in the hardware config. Returns Ready=true only when all checks pass. Use this before DownloadToPlc to surface problems early (missing IP, no hardware config, etc.). Does NOT compile — run CompileSoftware first to ensure blocks are consistent."
+      "parameters": [
+        "softwarePath"
+      ],
+      "description": "[L1][PLC-Online][PreCondition:Connect+OpenProject+CompileSoftware] Check whether a PLC is ready to receive a program download WITHOUT actually downloading. Verifies: DownloadProvider service is available, a network/IP configuration exists in the hardware config. Returns Ready=true only when all checks pass. Use this before DownloadToPlc to surface problems early (missing IP, no hardware config, etc.). Does NOT compile — run CompileSoftware first to ensure blocks are consistent."
     },
     {
       "name": "CloseProject",
       "layer": "L1",
       "domain": "Project",
       "method": "CloseProject",
-      "returnType": "ResponseCloseProject",
-      "parameters": [],
-      "description": "[L1][Project] Close the currently open project or multi-user session. Requires: Connect + OpenProject. Any unsaved changes are lost — call SaveProject first. After closing, the connection remains active but no project is open."
+      "returnType": "",
+      "parameters": [
+        "saveBeforeClose"
+      ],
+      "description": "[L1][Project] Close the currently open project or multi-user session. Requires: Connect + OpenProject. By default the project/session is auto-saved before closing (no data loss). Set saveBeforeClose=false only if you intentionally want to discard unsaved changes. After closing, the connection remains active but no project is open."
     },
     {
       "name": "CompareSoftwareToOnline",
       "layer": "L2",
-      "domain": "Category:PLC-Online",
-      "method": "",
+      "domain": "PLC-Online",
+      "method": "CompareSoftwareToOnline",
       "returnType": "",
-      "parameters": [],
-      "description": "[L2][Category:PLC-Online][PreCondition:Connect+OpenProject+GoOnline] Compare the offline PLC software in the project against the program currently running on the physical CPU. Use after editing blocks to confirm what differs from the live CPU before downloading, or after a download to verify offline/online consistency. Returns a tree-walked list of differences (only entries where ComparisonResult is not 'Equal' are reported). Requires GoOnline to be called first; will return IsOnline=false with guidance otherwise."
+      "parameters": [
+        "softwarePath",
+        "maxDepth",
+        "maxEntries"
+      ],
+      "description": "[L2][PLC-Online][PreCondition:Connect+OpenProject+GoOnline] Compare the offline PLC software in the project against the program currently running on the physical CPU. Use after editing blocks to confirm what differs from the live CPU before downloading, or after a download to verify offline/online consistency. Returns a tree-walked list of differences (only entries where ComparisonResult is not 'Equal' are reported). Requires GoOnline to be called first; will return IsOnline=false with guidance otherwise."
     },
     {
       "name": "CompileAndDiagnosePlc",
       "layer": "L1",
       "domain": "PLC-Software",
       "method": "CompileAndDiagnosePlc",
-      "returnType": "ResponseCompileDiagnose",
-      "parameters": [],
-      "description": "[L1][PLC-Software] PREFERRED compile tool. Compiles PLC and returns structured errors/warnings by recursively walking CompilerResult.Messages (V20/V21 PublicAPI). Leaf diagnostics include Path + Description; optional Line/Column via GetAttribute when exposed. Requires: Connect + OpenProject."
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "password",
+        "timeoutSeconds"
+      ],
+      "description": "[L1][PLC-Software] PREFERRED compile tool. Compiles PLC and returns structured errors/warnings by recursively walking CompilerResult.Messages (V20/V21 PublicAPI). Leaf diagnostics include Path + Description; optional Line/Column via GetAttribute when exposed. Use AFTER every block edit to verify; the returned errors/warnings feed auto-fix loops. Compact form: GetCompileDiagnostics. Requires: Connect + OpenProject."
     },
     {
       "name": "CompileSoftware",
       "layer": "L1",
       "domain": "PLC-Software",
       "method": "CompileSoftware",
-      "returnType": "ResponseCompile",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "password"
+      ],
       "description": "[L1][PLC-Software] Compile all blocks in the PLC software. Requires: Connect + OpenProject. Returns basic success/failure. For structured error/warning details use CompileAndDiagnosePlc instead. Must compile before ExportBlock if any blocks are inconsistent. After adding new blocks via import, always compile to catch type/interface mismatches."
     },
     {
@@ -358,8 +478,10 @@
       "layer": "L2",
       "domain": "PLC-Builders",
       "method": "ComposePlcFbBlockXml",
-      "returnType": "ResponseXmlBuild",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "fbBlockJson"
+      ],
       "description": "[L2][PLC-Builders][Offline] Compose a TIA V21 SCL FB block XML from interface JSON and StructuredText content. Input: {blockName,blockNumber,inputs?,outputs?,inouts?,statics?,temps?,structuredTextInnerXml? or structuredText:{operations:[]}}. It only returns XML; it does not connect to TIA Portal, import blocks, write files, create instance DBs, or modify projects."
     },
     {
@@ -367,8 +489,10 @@
       "layer": "L2",
       "domain": "PLC-Builders",
       "method": "ComposePlcFcBlockXml",
-      "returnType": "ResponseXmlBuild",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "fcBlockJson"
+      ],
       "description": "[L2][PLC-Builders][Offline] Compose a TIA V21 SCL FC block XML from interface JSON and StructuredText content. Input: {blockName,blockNumber,inputs:[{name,datatype}],outputs:[{name,datatype}],structuredTextInnerXml? or structuredText:{operations:[]}}. It only returns XML; it does not connect to TIA Portal, import blocks, write files, or modify projects."
     },
     {
@@ -376,8 +500,10 @@
       "layer": "L2",
       "domain": "PLC-Builders",
       "method": "ComposePlcLadFcBlockXml",
-      "returnType": "ResponseXmlBuild",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "ladFcBlockJson"
+      ],
       "description": "[L2][PLC-Builders][Offline] NARROW SCOPE: every network must be an FC call; this cannot emit contacts/coils/SR/compare/Move/math. For general ladder, author S7DCL text (.s7dcl + .s7res) and import with ImportBlocksFromDocuments instead. Compose a TIA V21 LAD FC block XML containing one or more FlgNet/v5 FC-call networks. Each network is an FC call described as { callJson: { callName, parameters[] }, titleZhCn?, commentZhCn? }. Top-level: blockName, blockNumber, optional inputs/outputs members, optional commentZhCn / titleZhCn. Returns XML only; does not connect to TIA Portal or import. Pair with ImportBlock."
     },
     {
@@ -385,7 +511,7 @@
       "layer": "L1",
       "domain": "Portal",
       "method": "Connect",
-      "returnType": "ResponseConnect",
+      "returnType": "",
       "parameters": [],
       "description": "[L1][Portal] Connect to a running TIA Portal instance or start a new one. MUST be the first tool called in every session. On success, state becomes Connected=true. If TIA Portal is not installed or the user is not in the 'Siemens TIA Openness' Windows group, this will fail — run EnsureOpennessUserGroup first."
     },
@@ -394,8 +520,12 @@
       "layer": "L1",
       "domain": "Hardware",
       "method": "ConnectDeviceNodesToProfinetSubnet",
-      "returnType": "ResponseMessage",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "firstRootPath",
+        "secondRootPath",
+        "subnetName"
+      ],
       "description": "[L1][Hardware] PREFERRED for PROFINET network setup. Finds the first IE/PROFINET node under two devices, creates/reuses a subnet on the first, connects the second, and returns readback evidence. Requires: Connect + OpenProject + both devices added. Typical: firstRootPath='PLC_1', secondRootPath='HMI_KTP700_1/HMI_KTP700_1.IE_CP_1'. Verified for S7-1200 + KTP700 Basic PN."
     },
     {
@@ -404,7 +534,10 @@
       "domain": "PLC-Software",
       "method": "CreatePlcBlockGroup",
       "returnType": "",
-      "parameters": [],
+      "parameters": [
+        "softwarePath",
+        "groupPath"
+      ],
       "description": "[L2][PLC-Software] Create a (nested) program-block group/folder, creating any missing parent groups along the path. Idempotent — returns ok if the group already exists. groupPath uses '/' separators relative to 'Program blocks' root, e.g. '01_手动控制/手动意图'. Requires: Connect + OpenProject. Use this to set up the 手动/手自动接口/自动 layer folders, then MoveBlockToGroup to organize blocks into them."
     },
     {
@@ -412,26 +545,60 @@
       "layer": "L1",
       "domain": "Project",
       "method": "CreateProject",
-      "returnType": "ResponseMessage",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "directoryPath",
+        "projectName"
+      ],
       "description": "[L1][Project] Create a new empty TIA Portal project. Requires: Connect. After creation, call AddDevice to add PLCs/HMIs, then GetProjectTree to verify. The project is automatically opened after creation — no separate OpenProject call needed."
+    },
+    {
+      "name": "DeleteBlock",
+      "layer": "L2",
+      "domain": "PLC-Software",
+      "method": "DeleteBlock",
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "blockName"
+      ],
+      "description": "[L2][PLC-Software] Delete a PLC block by exact name (searched across all program-block groups). Idempotent for absent blocks: if the block is not found it reports not-found with success=true instead of erroring. Requires: Connect + OpenProject. After deleting, call CompileAndDiagnosePlc to confirm the project still compiles. Deletion is destructive and cannot be undone except by re-importing the block's exported source, so only delete blocks you own/created."
     },
     {
       "name": "DeletePlcExternalSource",
       "layer": "L2",
       "domain": "PLC-Software",
       "method": "DeletePlcExternalSource",
-      "returnType": "ResponseMessage",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "externalSourceName"
+      ],
       "description": "[L2][PLC-Software]Delete a PLC external source by name so ImportPlcExternalSource can replace it (idempotent). Name may include or omit .scl."
+    },
+    {
+      "name": "DescribeBlockLogic",
+      "layer": "L1",
+      "domain": "PLC-Software",
+      "method": "DescribeBlockLogic",
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "blockPath"
+      ],
+      "description": "[L1][PLC-Software] Read a block's LOGIC as READABLE TEXT — the fast, accurate way to analyze LADDER (LAD) without hand-parsing FlgNet XML. For each LAD network it reconstructs the power flow as a boolean-ish expression (series = ' · ', parallel = ' + '), shows coils ( )/(S)/(R), MOVE/compare/timer boxes with their operands, and — critically — FLAGS any contact whose operand is a LITERAL CONSTANT with '⟨常量⟩' (a normally-open contact wired to FALSE silently disables its whole rung; this is nearly impossible to spot by eye). SCL/STL networks are rendered inline as code. Use this to understand or review LAD logic before editing. Requires: Connect + OpenProject + the block consistent (compile first if IsConsistent=false; export does not work in online mode — GoOffline first). blockPath must be fully qualified 'Group/Subgroup/Name' from GetSoftwareTree."
     },
     {
       "name": "DescribeHmiScreen",
       "layer": "L2",
       "domain": "HMI",
       "method": "DescribeHmiScreen",
-      "returnType": "ResponseObjectDescribe",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "screenName",
+        "maxMembers"
+      ],
       "description": "[L2][HMI]Describe one HMI screen object (members/methods) by name under an HMI software."
     },
     {
@@ -439,8 +606,13 @@
       "layer": "L2",
       "domain": "HMI",
       "method": "DescribeHmiScreenItem",
-      "returnType": "ResponseObjectDescribe",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "screenName",
+        "itemName",
+        "maxMembers"
+      ],
       "description": "[L2][HMI]Describe one HMI screen item (widget) by name under an HMI screen."
     },
     {
@@ -448,8 +620,11 @@
       "layer": "L2",
       "domain": "HMI",
       "method": "DescribeHmiSoftware",
-      "returnType": "ResponseObjectDescribe",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "maxMembers"
+      ],
       "description": "[L2][HMI]Describe the HMI software object (members/methods) via reflection. Useful to discover Export/Import/Create APIs."
     },
     {
@@ -457,8 +632,13 @@
       "layer": "L2",
       "domain": "HMI",
       "method": "DescribeHmiTag",
-      "returnType": "ResponseObjectDescribe",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "tagTableName",
+        "tagName",
+        "maxMembers"
+      ],
       "description": "[L2][HMI]Describe one HMI tag object (members/methods) by name under an HMI tag table."
     },
     {
@@ -466,8 +646,12 @@
       "layer": "L2",
       "domain": "HMI",
       "method": "DescribeHmiTagTable",
-      "returnType": "ResponseObjectDescribe",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "tagTableName",
+        "maxMembers"
+      ],
       "description": "[L2][HMI]Describe one HMI tag table object (members/methods) by name under an HMI software."
     },
     {
@@ -475,8 +659,13 @@
       "layer": "L2",
       "domain": "Reflection",
       "method": "DescribeObject",
-      "returnType": "ResponseObjectDescribe",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "objectKind",
+        "objectPath",
+        "softwarePath",
+        "maxMembers"
+      ],
       "description": "[L2][Reflection]Describe an Openness object via reflection. Use this first when a natural-language TIA operation has no direct MCP tool. objectKind: Project|Portal|Device|DeviceItem|Software|Block|Type|HmiScreen|HmiTag|HmiScreenItem"
     },
     {
@@ -484,8 +673,14 @@
       "layer": "L2",
       "domain": "Reflection",
       "method": "DescribeObjectProperty",
-      "returnType": "ResponseObjectDescribe",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "objectKind",
+        "objectPath",
+        "propertyPath",
+        "softwarePath",
+        "maxMembers"
+      ],
       "description": "[L2][Reflection]Describe an object's nested property via reflection (members list). propertyPath supports dotted path."
     },
     {
@@ -493,8 +688,14 @@
       "layer": "L2",
       "domain": "Reflection",
       "method": "DescribeService",
-      "returnType": "ResponseObjectDescribe",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "objectKind",
+        "objectPath",
+        "serviceTypeSuffix",
+        "softwarePath",
+        "maxMembers"
+      ],
       "description": "[L2][Reflection]GetService bridge: describe a service object (by type name suffix) from a target object."
     },
     {
@@ -502,8 +703,14 @@
       "layer": "L2",
       "domain": "HMI-Unified",
       "method": "DescribeUnifiedHmiButtonEventScript",
-      "returnType": "ResponseObjectDescribe",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "hmiSoftwarePath",
+        "screenName",
+        "buttonName",
+        "eventType",
+        "maxMembers"
+      ],
       "description": "[L2][HMI-Unified]Describe a Unified HMI button event handler Script property and its current object members/attributes."
     },
     {
@@ -511,9 +718,11 @@
       "layer": "L1",
       "domain": "Portal",
       "method": "Disconnect",
-      "returnType": "ResponseDisconnect",
-      "parameters": [],
-      "description": "[L1][Portal] Disconnect from TIA Portal and release the Openness handle. Call after all project work is done. Any unsaved changes will be lost — call SaveProject first if needed."
+      "returnType": "",
+      "parameters": [
+        "saveBeforeClose"
+      ],
+      "description": "[L1][Portal] Disconnect from TIA Portal and release the Openness handle. Call after all project work is done. By default the open project/session is auto-saved before disconnecting (no data loss). Set saveBeforeClose=false only to discard unsaved changes."
     },
     {
       "name": "Doctor",
@@ -521,33 +730,59 @@
       "domain": "Diagnostics",
       "method": "Doctor",
       "returnType": "",
-      "parameters": [],
+      "parameters": [
+        "fix"
+      ],
       "description": "[L0][Diagnostics] One-call environment doctor for non-experts. Checks TIA install, Openness group membership, and connection/project state, and returns a plain-language diagnosis with the exact fix per problem. When fix=true (default) it ENSURES Openness group membership (adds the current user; may prompt a Windows UAC dialog). Read-only apart from that one fix. Call this first when setup is failing or you are unsure the environment is ready."
     },
     {
       "name": "DownloadToPlc",
       "layer": "L1",
-      "domain": "Category:PLC-Online",
-      "method": "",
+      "domain": "PLC-Online",
+      "method": "DownloadToPlc",
       "returnType": "",
-      "parameters": [],
-      "description": "[L1][Category:PLC-Online][ONLINE-WRITE][PreCondition:Connect+OpenProject+CompileSoftware+CheckDownloadReadiness] Download the compiled PLC program to the physical CPU over the network. The CPU will stop briefly during download and restart automatically (controlled by startAfterDownload). SAFETY: Verify no personnel are near the machine before downloading. This changes live PLC behavior. Workflow: Connect → OpenProject → CompileSoftware → CheckDownloadReadiness → DownloadToPlc → GetCpuOnlineState. On success State=Success or Warning. On Error check Errors[] for details. Default options (keepActualValues=true, consistentBlocksOnly=true) are safe for most scenarios. Set keepActualValues=false only when DB initial values must be reset — this is irreversible."
+      "parameters": [
+        "softwarePath",
+        "consistentBlocksOnly",
+        "keepActualValues",
+        "startAfterDownload",
+        "stopBeforeDownload",
+        "password",
+        "pgPcInterface"
+      ],
+      "description": "[L1][PLC-Online][ONLINE-WRITE][PreCondition:Connect+OpenProject+CompileSoftware+CheckDownloadReadiness] Download the compiled PLC program to the physical CPU over the network. The CPU will stop briefly during download and restart automatically (controlled by startAfterDownload). SAFETY: Verify no personnel are near the machine before downloading. This changes live PLC behavior. Workflow: Connect → OpenProject → CompileSoftware → CheckDownloadReadiness → DownloadToPlc → GetCpuOnlineState. On success State=Success or Warning. On Error check Errors[] for details. Default options (keepActualValues=true, consistentBlocksOnly=true) are safe for most scenarios. Set keepActualValues=false only when DB initial values must be reset — this is irreversible."
     },
     {
       "name": "DumpDeviceAttributes",
       "layer": "L2",
-      "domain": "Category:Hardware",
+      "domain": "Hardware",
       "method": "DumpDeviceAttributes",
       "returnType": "",
-      "parameters": [],
-      "description": "[L2][Category:Hardware][PreCondition:Connect+OpenProject] Read-only inventory of EVERY Openness attribute exposed on a device's items (CPU, modules, interfaces, ports): name, access mode (read-only vs read/write), current value, value type. Run this ONCE per CPU/firmware to learn what is actually exposed, then drive hardware reads/writes from that ground truth instead of guessing attribute names. Optional nameFilter narrows to attributes whose name contains a substring (e.g. 'protection', 'putget', 'ip'). NOTE: GetAttributeInfos() does not enumerate every gettable attribute on all CPUs, so absence here means 'not enumerated', not a guaranteed 'no interface'."
+      "parameters": [
+        "devicePath",
+        "nameFilter"
+      ],
+      "description": "[L2][Hardware][PreCondition:Connect+OpenProject] Read-only inventory of EVERY Openness attribute exposed on a device's items (CPU, modules, interfaces, ports): name, access mode (read-only vs read/write), current value, value type. Run this ONCE per CPU/firmware to learn what is actually exposed, then drive hardware reads/writes from that ground truth instead of guessing attribute names. Optional nameFilter narrows to attributes whose name contains a substring (e.g. 'protection', 'putget', 'ip'). NOTE: GetAttributeInfos() does not enumerate every gettable attribute on all CPUs, so absence here means 'not enumerated', not a guaranteed 'no interface'."
+    },
+    {
+      "name": "EnsureClassicHmiConnection",
+      "layer": "L2",
+      "domain": "HMI-Classic",
+      "method": "EnsureClassicHmiConnection",
+      "returnType": "",
+      "parameters": [
+        "hmiSoftwarePath",
+        "connectionName",
+        "plcName"
+      ],
+      "description": "[L2][HMI-Classic] Create or verify the PLC<->HMI communication connection for a Classic/Basic WinCC HMI (HMI_Connection_1 by default). Requires: Connect + OpenProject + both PLC and Classic HMI devices. Needed before importing symbolic PLC-bound HMI tags. Best-effort driver configuration; verify the connection partner in TIA if tags show unresolved binding."
     },
     {
       "name": "EnsureOpennessUserGroup",
       "layer": "L1",
       "domain": "Portal",
       "method": "EnsureOpennessUserGroup",
-      "returnType": "Task<ResponseMessage>",
+      "returnType": "",
       "parameters": [],
       "description": "[L1][Portal]Ensure current Windows user is in TIA Openness user group (may prompt UI). Returns success=true when membership is OK."
     },
@@ -556,8 +791,14 @@
       "layer": "L2",
       "domain": "HMI-Unified",
       "method": "EnsureStartStopUnifiedHmi",
-      "returnType": "ResponseMessage",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "hmiSoftwarePath",
+        "screenName",
+        "tagTableName",
+        "plcName",
+        "connectionName"
+      ],
       "description": "[L2][HMI-Unified] SHORTCUT for motor start/stop HMI. Ensures HMI_Connection_1 uses the correct PLC driver (1200/1500 vs 300/400 from CPU TypeIdentifier), 4 HMI tags (StartPB/StopPB/EStop/RunOut) with symbolic PLC binding, and a simple styled Main screen. Requires: Connect + OpenProject + PLC + Unified HMI. Call after EnsureUnifiedHmiScreen if you need a fixed screen size. Idempotent."
     },
     {
@@ -565,8 +806,12 @@
       "layer": "L2",
       "domain": "Hardware",
       "method": "EnsureSubnet",
-      "returnType": "ResponseMessage",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "anchorDeviceItemPath",
+        "subnetType",
+        "subnetName"
+      ],
       "description": "[L2][Hardware] Ensure an Industrial Ethernet/PROFINET subnet by anchoring on a real deviceItemPath from GetProjectTree/GetDeviceItemTree. Applies only through TIA Openness, then returns readback evidence (node path, subnet name, interface path). Does not guess paths."
     },
     {
@@ -574,8 +819,15 @@
       "layer": "L2",
       "domain": "HMI-Unified",
       "method": "EnsureUnifiedHmiButtonAction",
-      "returnType": "ResponseMessage",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "hmiSoftwarePath",
+        "screenName",
+        "buttonName",
+        "eventType",
+        "actionKind",
+        "targetTag"
+      ],
       "description": "[L2][HMI-Unified]Generate and apply a deterministic Unified HMI button action. Only set-bit/reset-bit/toggle-bit are applied; high-risk or TODO recipes are rejected."
     },
     {
@@ -583,8 +835,13 @@
       "layer": "L2",
       "domain": "HMI-Unified",
       "method": "EnsureUnifiedHmiButtonEventHandler",
-      "returnType": "ResponseMessage",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "hmiSoftwarePath",
+        "screenName",
+        "buttonName",
+        "eventType"
+      ],
       "description": "[L2][HMI-Unified]Ensure a Unified HMI button event handler exists and return its API shape. eventType must match HmiButtonEventType."
     },
     {
@@ -592,7 +849,7 @@
       "layer": "L2",
       "domain": "HMI-Unified",
       "method": "EnsureUnifiedHmiConnection",
-      "returnType": "ResponseObjectDescribe",
+      "returnType": "",
       "parameters": [
         "hmiSoftwarePath",
         "connectionName",
@@ -605,8 +862,14 @@
       "layer": "L2",
       "domain": "HMI-Unified",
       "method": "EnsureUnifiedHmiDynamization",
-      "returnType": "ResponseMessage",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "hmiSoftwarePath",
+        "screenName",
+        "itemName",
+        "propertyName",
+        "dynamizationType"
+      ],
       "description": "[L2][HMI-Unified]Ensure a Unified HMI item property dynamization exists using a concrete dynamization type and return its API shape."
     },
     {
@@ -614,8 +877,13 @@
       "layer": "L2",
       "domain": "HMI-Unified",
       "method": "EnsureUnifiedHmiScreen",
-      "returnType": "ResponseMessage",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "hmiSoftwarePath",
+        "screenName",
+        "width",
+        "height"
+      ],
       "description": "[L2][HMI-Unified] Create or verify a WinCC Unified HMI screen exists. Requires: Connect + OpenProject + Unified HMI. Idempotent. After creating a screen, add tags with EnsureUnifiedHmiTag, add controls with EnsureUnifiedHmiScreenItem, or apply a complete layout with ApplyUnifiedHmiScreenDesignJson."
     },
     {
@@ -623,8 +891,18 @@
       "layer": "L2",
       "domain": "HMI-Unified",
       "method": "EnsureUnifiedHmiScreenItem",
-      "returnType": "ResponseMessage",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "hmiSoftwarePath",
+        "screenName",
+        "itemName",
+        "itemType",
+        "left",
+        "top",
+        "width",
+        "height",
+        "text"
+      ],
       "description": "[L2][HMI-Unified] Create or verify a single Unified HMI control (button, lamp, IO field, etc.) on a screen. Requires: Connect + OpenProject + EnsureUnifiedHmiScreen. itemType: Button, Rectangle (lamp/indicator), IOField (value display/entry), or full CLR type name. For a complete screen layout use ApplyUnifiedHmiScreenDesignJson instead."
     },
     {
@@ -632,7 +910,7 @@
       "layer": "L2",
       "domain": "HMI-Unified",
       "method": "EnsureUnifiedHmiTag",
-      "returnType": "ResponseMessage",
+      "returnType": "",
       "parameters": [
         "hmiSoftwarePath",
         "tagTableName",
@@ -651,90 +929,107 @@
       "layer": "L2",
       "domain": "HMI-Unified",
       "method": "EnsureUnifiedHmiTagTable",
-      "returnType": "ResponseMessage",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "hmiSoftwarePath",
+        "tagTableName"
+      ],
       "description": "[L2][HMI-Unified] Create or verify a Unified HMI tag table exists. Requires: Connect + OpenProject + Unified HMI. Idempotent. Create tag tables before adding tags with EnsureUnifiedHmiTag. Default tag table name is '默认变量表'."
     },
     {
       "name": "ExportAlarmClasses",
       "layer": "L2",
-      "domain": "Category:PLC-Alarms",
-      "method": "",
+      "domain": "PLC-Alarms",
+      "method": "ExportAlarmClasses",
       "returnType": "",
-      "parameters": [],
-      "description": "[L2][Category:PLC-Alarms][PreCondition:Connect+OpenProject] Export PLC alarm classes to a file. Alarm classes define severity, acknowledgment behavior, and display colors for alarms. The exported file can be edited and re-imported to update alarm class configurations. Use before bulk alarm class updates to create a backup."
+      "parameters": [
+        "softwarePath",
+        "exportPath"
+      ],
+      "description": "[L2][PLC-Alarms][PreCondition:Connect+OpenProject] Export PLC alarm classes to a file. Alarm classes define severity, acknowledgment behavior, and display colors for alarms. The exported file can be edited and re-imported to update alarm class configurations. Use before bulk alarm class updates to create a backup."
     },
     {
       "name": "ExportAlarmInstanceTexts",
       "layer": "L2",
-      "domain": "Category:PLC-Alarms",
-      "method": "",
+      "domain": "PLC-Alarms",
+      "method": "ExportAlarmInstanceTexts",
       "returnType": "",
-      "parameters": [],
-      "description": "[L2][Category:PLC-Alarms][PreCondition:Connect+OpenProject] Export PLC alarm instance texts to an XLSX file. Instance texts are the alarm messages tied to specific FB/FC instances (e.g. Motor_01.AlarmText). Options control what additional columns are included in the export. Typical use: export → fill in alarm descriptions → ImportInstanceTexts (not yet exposed — edit via TIA Portal UI)."
+      "parameters": [
+        "softwarePath",
+        "exportPath",
+        "includeInfoText",
+        "includeAdditionalTexts",
+        "includeAlarmClass"
+      ],
+      "description": "[L2][PLC-Alarms][PreCondition:Connect+OpenProject] Export PLC alarm instance texts to an XLSX file. Instance texts are the alarm messages tied to specific FB/FC instances (e.g. Motor_01.AlarmText). Options control what additional columns are included in the export. Typical use: export → fill in alarm descriptions → ImportInstanceTexts (not yet exposed — edit via TIA Portal UI)."
     },
     {
       "name": "ExportAlarmTextLists",
       "layer": "L2",
-      "domain": "Category:PLC-Alarms",
-      "method": "",
+      "domain": "PLC-Alarms",
+      "method": "ExportAlarmTextLists",
       "returnType": "",
-      "parameters": [],
-      "description": "[L2][Category:PLC-Alarms][PreCondition:Connect+OpenProject] Export all PLC alarm text lists to an XLSX (Excel) file. Text lists contain the text strings shown for each alarm condition. Supports multi-language projects — all configured languages are exported. Typical use: export → translate in Excel → ImportAlarmTextLists."
-    },
-    {
-      "name": "ExportAsDocuments",
-      "layer": "L2",
-      "domain": "PLC-Software",
-      "method": "ExportAsDocuments",
-      "returnType": "ResponseExportAsDocuments",
-      "parameters": [],
-      "description": "[L2][PLC-Software] PREFERRED on V21+ for exporting one block. Exports a single program block to SIMATIC SD textual / SCL document format (.s7dcl + .s7res) — far more readable/diff-friendly than SimaticML XML (ExportBlock). Requires TIA Portal V20 or newer."
+      "parameters": [
+        "softwarePath",
+        "exportPath"
+      ],
+      "description": "[L2][PLC-Alarms][PreCondition:Connect+OpenProject] Export all PLC alarm text lists to an XLSX (Excel) file. Text lists contain the text strings shown for each alarm condition. Supports multi-language projects — all configured languages are exported. Typical use: export → translate in Excel → ImportAlarmTextLists."
     },
     {
       "name": "ExportBlock",
       "layer": "L2",
       "domain": "PLC-Software",
       "method": "ExportBlock",
-      "returnType": "ResponseExportBlock",
-      "parameters": [],
-      "description": "[L2][PLC-Software] Export one block to an XML file. Requires: Connect + OpenProject + block must be consistent (compile first if IsConsistent=false). blockPath must be fully qualified 'Group/Subgroup/Name' from GetSoftwareTree — bare names return InvalidParams with suggestions. Pick the right tool: batch → ExportBlocks; readable SCL/.s7dcl text → ExportAsDocuments."
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "blockPath",
+        "exportPath",
+        "preservePath"
+      ],
+      "description": "[L2][PLC-Software] Export one block to a SimaticML XML file (NOT .s7dcl text — that needs V20+, which is disabled in this V18 build). Requires: Connect + OpenProject + block must be consistent (compile first if IsConsistent=false). blockPath must be fully qualified 'Group/Subgroup/Name' from GetSoftwareTree — bare names return InvalidParams with suggestions. Pick the right tool: batch → ExportBlocks; readable LOGIC → DescribeBlockLogic; editable export to MODIFY the block → ExportBlockSourceUtf8."
     },
     {
       "name": "ExportBlocks",
       "layer": "L2",
       "domain": "PLC-Software",
       "method": "ExportBlocks",
-      "returnType": "Task<ResponseExportBlocks>",
+      "returnType": "",
       "parameters": [
-        {
-          "name": "server",
-          "type": "IMcpServer"
-        },
-        {
-          "name": "context",
-          "type": "RequestContext<CallToolRequestParams>"
-        }
+        "softwarePath",
+        "exportPath",
+        "regexName",
+        "preservePath"
       ],
-      "description": "[L2][PLC-Software] Export all (or regexName-filtered) blocks to a directory as SimaticML XML. Pick the right tool: readable SCL/.s7dcl text → ExportBlocksAsDocuments; a single block → ExportBlock."
+      "description": "[L2][PLC-Software] Export all (or regexName-filtered) blocks to a directory as SimaticML XML (NOT .s7dcl text — that needs V20+, disabled in this V18 build). Pick the right tool: a single block → ExportBlock; editable export to MODIFY a block → ExportBlockSourceUtf8; readable LOGIC of one block → DescribeBlockLogic."
     },
     {
       "name": "ExportBlocksAsDocuments",
       "layer": "L2",
       "domain": "PLC-Software",
       "method": "ExportBlocksAsDocuments",
-      "returnType": "Task<ResponseExportBlocksAsDocuments>",
+      "returnType": "",
       "parameters": [
-        {
-          "name": "server",
-          "type": "IMcpServer"
-        },
-        {
-          "name": "context",
-          "type": "RequestContext<CallToolRequestParams>"
-        }
+        "softwarePath",
+        "exportPath",
+        "regexName",
+        "preservePath"
       ],
       "description": "[L2][PLC-Software] PREFERRED on V21+ for batch export. Exports multiple program blocks to SIMATIC SD textual / SCL document format (.s7dcl + .s7res) — far more readable/diff-friendly than SimaticML XML. Requires TIA Portal V20 or newer."
+    },
+    {
+      "name": "ExportBlockSourceUtf8",
+      "layer": "L?",
+      "domain": "Misc",
+      "method": "ExportBlockSourceUtf8",
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "blockPath",
+        "exportPath",
+        "preservePath"
+      ],
+      "description": "[V18][PLC-Software] V18-SAFE editable export of ONE block. Exports the block via Openness, then re-writes the file as UTF-8 WITH BOM (encoding-safe — kills the classic Chinese-comment mojibake). Output is SimaticML XML (NOT .s7dcl text — that needs V20+). This is the V18 'export → edit → re-import' path: edit the file, then call RegenerateBlockFromSource to re-import. To add interface variables without rewriting logic, use ImportBlockInterface. Use this (not ExportBlock) when you intend to MODIFY the block's source. Requires: Connect + OpenProject + block consistent (compile first if IsConsistent=false; offline mode only — export fails while online). blockPath must be fully qualified 'Group/Subgroup/Name' from GetSoftwareTree."
     },
     {
       "name": "ExportDeviceAml",
@@ -742,7 +1037,10 @@
       "domain": "Hardware",
       "method": "ExportDeviceAml",
       "returnType": "",
-      "parameters": [],
+      "parameters": [
+        "devicePath",
+        "exportPath"
+      ],
       "description": "[L2][Hardware] Read-only: export a device's hardware configuration to an AutomationML (CAx) .aml file. The file contains the configured IP address, subnet/mask, PROFINET device name and topology — info GetDeviceItemNetworkInfo omits. devicePath is the station/device path from GetProjectTree (e.g. 'S7-1200 station_3'). exportPath may be a folder (file named <device>.aml) or a full .aml path. Does NOT modify the project or go online."
     },
     {
@@ -750,8 +1048,12 @@
       "layer": "L2",
       "domain": "HMI",
       "method": "ExportHmiConnection",
-      "returnType": "ResponseExportFile",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "connectionName",
+        "exportPath"
+      ],
       "description": "[L2][HMI]Export one HMI connection to a file (best-effort; Classic/Unified via reflection)"
     },
     {
@@ -759,8 +1061,13 @@
       "layer": "L2",
       "domain": "HMI",
       "method": "ExportHmiProgram",
-      "returnType": "ResponseBatchExport",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "exportDir",
+        "exportScreens",
+        "exportTagTables"
+      ],
       "description": "[L2][HMI]Batch export HMI screens/tagtables into a directory (best-effort)"
     },
     {
@@ -768,8 +1075,12 @@
       "layer": "L2",
       "domain": "HMI",
       "method": "ExportHmiScreen",
-      "returnType": "ResponseExportFile",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "screenName",
+        "exportPath"
+      ],
       "description": "[L2][HMI]Export one HMI screen to a file (best-effort; requires Openness export support)"
     },
     {
@@ -777,26 +1088,39 @@
       "layer": "L2",
       "domain": "HMI",
       "method": "ExportHmiTagTable",
-      "returnType": "ResponseExportFile",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "tagTableName",
+        "exportPath"
+      ],
       "description": "[L2][HMI]Export one HMI tag table to a file (best-effort; requires Openness export support)"
     },
     {
       "name": "ExportOpcUaInterface",
       "layer": "L2",
-      "domain": "Category:PLC-OpcUA",
-      "method": "",
+      "domain": "PLC-OpcUA",
+      "method": "ExportOpcUaInterface",
       "returnType": "",
-      "parameters": [],
-      "description": "[L2][Category:PLC-OpcUA][PreCondition:Connect+OpenProject] Export an OPC UA server interface or reference namespace to an XML file. The exported XML can be inspected, modified, and re-imported. interfaceType: 'ServerInterface' (default), 'SimaticInterface', 'ReferenceNamespace'."
+      "parameters": [
+        "softwarePath",
+        "interfaceName",
+        "exportPath",
+        "interfaceType"
+      ],
+      "description": "[L2][PLC-OpcUA][PreCondition:Connect+OpenProject] Export an OPC UA server interface or reference namespace to an XML file. The exported XML can be inspected, modified, and re-imported. interfaceType: 'ServerInterface' (default), 'SimaticInterface', 'ReferenceNamespace'."
     },
     {
       "name": "ExportPlcTagTable",
       "layer": "L2",
       "domain": "PLC-Software",
       "method": "ExportPlcTagTable",
-      "returnType": "ResponseExportFile",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "tagTableName",
+        "exportPath"
+      ],
       "description": "[L2][PLC-Software]Export one PLC tag table (PlcTagTable) to XML file"
     },
     {
@@ -804,8 +1128,12 @@
       "layer": "L2",
       "domain": "PLC-Software",
       "method": "ExportPlcWatchTable",
-      "returnType": "ResponseExportFile",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "watchTableName",
+        "exportPath"
+      ],
       "description": "[L2][PLC-Software]Export one PLC watch/monitor table (PlcWatchTable) to XML file. Read-only against the TIA project."
     },
     {
@@ -813,35 +1141,52 @@
       "layer": "L2",
       "domain": "PLC-Software",
       "method": "ExportPlcWatchTablesToDirectory",
-      "returnType": "ResponseImportBatch",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "dir",
+        "regexName"
+      ],
       "description": "[L2][PLC-Software]Export all PLC watch/monitor tables to XML files. Read-only against the TIA project."
     },
     {
       "name": "ExportTechnologyObject",
       "layer": "L2",
-      "domain": "Category:PLC-TechnologyObjects",
-      "method": "",
+      "domain": "Drive",
+      "method": "ExportTechnologyObject",
       "returnType": "",
-      "parameters": [],
-      "description": "[L2][Category:PLC-TechnologyObjects][PreCondition:Connect+OpenProject] Export a single Technology Object (axis, cam, measuring input, etc.) to an XML file. The XML can be inspected, modified offline, and re-imported with ImportTechnologyObject. Use GetTechnologyObjects first to confirm the exact TO name."
+      "parameters": [
+        "softwarePath",
+        "toName",
+        "exportPath"
+      ],
+      "description": "[L2][Drive][PreCondition:Connect+OpenProject] Export a single Technology Object (axis, cam, measuring input, etc.) to an XML file. The XML can be inspected, modified offline, and re-imported with ImportTechnologyObject. Use GetTechnologyObjects first to confirm the exact TO name."
     },
     {
       "name": "ExportTechnologyObjectsToDirectory",
       "layer": "L2",
-      "domain": "Category:PLC-TechnologyObjects",
-      "method": "",
+      "domain": "Drive",
+      "method": "ExportTechnologyObjectsToDirectory",
       "returnType": "",
-      "parameters": [],
-      "description": "[L2][Category:PLC-TechnologyObjects][PreCondition:Connect+OpenProject] Batch-export all (or regex-filtered) Technology Objects to XML files in a directory. Each TO is saved as '<TOName>.xml'. Returns lists of exported names and any failures. Use regexName to filter by TO name, e.g. 'Axis_.*' for all axes."
+      "parameters": [
+        "softwarePath",
+        "exportDir",
+        "regexName"
+      ],
+      "description": "[L2][Drive][PreCondition:Connect+OpenProject] Batch-export all (or regex-filtered) Technology Objects to XML files in a directory. Each TO is saved as '<TOName>.xml'. Returns lists of exported names and any failures. Use regexName to filter by TO name, e.g. 'Axis_.*' for all axes."
     },
     {
       "name": "ExportType",
       "layer": "L2",
       "domain": "PLC-Software",
       "method": "ExportType",
-      "returnType": "ResponseExportType",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "exportPath",
+        "typePath",
+        "preservePath"
+      ],
       "description": "[L2][PLC-Software]Export a type from the plc software"
     },
     {
@@ -849,62 +1194,48 @@
       "layer": "L2",
       "domain": "PLC-Software",
       "method": "ExportTypes",
-      "returnType": "Task<ResponseExportTypes>",
+      "returnType": "",
       "parameters": [
-        {
-          "name": "server",
-          "type": "IMcpServer"
-        },
-        {
-          "name": "context",
-          "type": "RequestContext<CallToolRequestParams>"
-        }
+        "softwarePath",
+        "exportPath",
+        "regexName",
+        "preservePath"
       ],
       "description": "[L2][PLC-Software]Export types from the plc software to path"
-    },
-    {
-      "name": "GenerateAcceptanceReport",
-      "layer": "L0",
-      "domain": "Reports",
-      "method": "GenerateAcceptanceReport",
-      "returnType": "Task<ResponseAcceptanceReport>",
-      "parameters": [],
-      "description": "[L0][Reports]Generate a read-only acceptance report for the current MCP/TIA environment. The default mode does not attach to TIA or write to the project; it writes Markdown/JSON report files to outputDirectory."
     },
     {
       "name": "GenerateBlocksFromExternalSource",
       "layer": "L2",
       "domain": "PLC-Software",
       "method": "GenerateBlocksFromExternalSource",
-      "returnType": "ResponseMessage",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "externalSourceName"
+      ],
       "description": "[L2][PLC-Software]Generate blocks from a PLC external source by name (best-effort)"
-    },
-    {
-      "name": "GenerateErrorReport",
-      "layer": "L0",
-      "domain": "Reports",
-      "method": "GenerateErrorReport",
-      "returnType": "ResponseErrorReport",
-      "parameters": [],
-      "description": "[L0][Reports]Generate a standardized Markdown/JSON error report. This is file/report generation only; it does not touch TIA Portal or modify projects."
     },
     {
       "name": "GetAuthoringGuide",
       "layer": "L0",
-      "domain": "Guide",
+      "domain": "Portal",
       "method": "GetAuthoringGuide",
       "returnType": "",
-      "parameters": [],
-      "description": "[L0][Guide] Verified syntax + workflow cheat sheet for authoring TIA content through this server. CALL THIS BEFORE writing any SCL/LAD/DB/HMI content — it prevents the common encoding, syntax and tool-routing mistakes. Topics: workflow, scl, lad, db, hmi, errors. Read-only, does not touch TIA Portal."
+      "parameters": [
+        "topic"
+      ],
+      "description": "[L0][Portal] Verified syntax + workflow cheat sheet for authoring TIA content through this server. CALL THIS BEFORE writing any SCL/LAD/DB/HMI content — it prevents the common encoding, syntax and tool-routing mistakes. Topics: workflow, scl, lad, db, online, hmi, errors. Read-only, does not touch TIA Portal."
     },
     {
       "name": "GetBlockInfo",
       "layer": "L2",
       "domain": "PLC-Software",
       "method": "GetBlockInfo",
-      "returnType": "ResponseBlockInfo",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "blockPath"
+      ],
       "description": "[L2][PLC-Software] Get detailed info for one block (attributes, language, number, modification time). Requires: Connect + OpenProject. blockPath must be fully qualified: 'Group/Subgroup/BlockName' — get it from GetSoftwareTree or GetBlocksWithHierarchy. Returns: IsConsistent (false = must compile before export)."
     },
     {
@@ -912,8 +1243,11 @@
       "layer": "L2",
       "domain": "PLC-Software",
       "method": "GetBlocks",
-      "returnType": "ResponseBlocks",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "regexName"
+      ],
       "description": "[L2][PLC-Software] Get a flat list of all blocks in PLC software. Requires: Connect + OpenProject. Use GetBlocksWithHierarchy instead when you need group/folder paths for ExportBlock. Returns: block name, number, type (OB/FC/FB/GlobalDB/InstanceDB), programming language."
     },
     {
@@ -921,17 +1255,50 @@
       "layer": "L2",
       "domain": "PLC-Software",
       "method": "GetBlocksWithHierarchy",
-      "returnType": "ResponseBlocksWithHierarchy",
-      "parameters": [],
-      "description": "[L2][PLC-Software]Get a list of all blocks with their group hierarchy from the plc software."
+      "returnType": "",
+      "parameters": [
+        "softwarePath"
+      ],
+      "description": "[L2][PLC-Software]Get a list of all blocks with their group hierarchy from the plc software. AI workflow: call this (or the compact GetProjectSkeleton) FIRST to learn structure & used numbers before creating/editing blocks; then SuggestBlockNumber before importing; then AnalyzeBlockImpact before changing a block."
+    },
+    {
+      "name": "GetCallChain",
+      "layer": "L2",
+      "domain": "PLC-Software",
+      "method": "GetCallChain",
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "blockName",
+        "direction",
+        "depth"
+      ],
+      "description": "[L2][PLC-Software] Build a CALL relationship view for a block. direction=callers (default) returns AnalyzeBlockImpact: the block's interface + which blocks CALL it (blast radius if you change it). direction=callees parses the block's exported SCL to find which blocks it CALLs, recursively up to depth (best-effort; needs block consistent). Requires: Connect + OpenProject."
+    },
+    {
+      "name": "GetCompileDiagnostics",
+      "layer": "L1",
+      "domain": "PLC-Software",
+      "method": "GetCompileDiagnostics",
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "password"
+      ],
+      "description": "[L1][PLC-Software] Compile the PLC and return a CATEGORIZED diagnostic summary (error/warning/info counts + leaf messages) so an AI can auto-fix. Compact form of CompileAndDiagnosePlc. Requires: Connect + OpenProject."
     },
     {
       "name": "GetCrossReferences",
       "layer": "L2",
       "domain": "PLC-Software",
       "method": "GetCrossReferences",
-      "returnType": "ResponseCrossReferences",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "objectPath",
+        "objectKind",
+        "filter"
+      ],
       "description": "[L2][PLC-Software]Get cross references for a Step7 block/type (best-effort). Requires applicable object and Openness support."
     },
     {
@@ -939,26 +1306,32 @@
       "layer": "L2",
       "domain": "Hardware",
       "method": "GetDeviceInfo",
-      "returnType": "ResponseDeviceInfo",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "devicePath"
+      ],
       "description": "[L2][Hardware]Get info from a device from the current project/session"
     },
     {
       "name": "GetDeviceIpAddress",
       "layer": "L1",
-      "domain": "Category:Hardware",
+      "domain": "Hardware",
       "method": "GetDeviceIpAddress",
       "returnType": "",
-      "parameters": [],
-      "description": "[L1][Category:Hardware][PreCondition:Connect+OpenProject] Read a device's configured IP address straight from the TIA project (Openness PROFINET node) — NOT by probing the CPU over S7 and NOT by exporting/parsing AML. Returns the primary IE IP plus all network nodes (address, subnet, type). This is the correct, fast way to discover a PLC's IP before GoOnline/ReadPlcLiveValuesS7."
+      "parameters": [
+        "devicePath"
+      ],
+      "description": "[L1][Hardware][PreCondition:Connect+OpenProject] Read a device's configured IP address straight from the TIA project (Openness PROFINET node) — NOT by probing the CPU over S7 and NOT by exporting/parsing AML. Returns the primary IE IP plus all network nodes (address, subnet, type). This is the correct, fast way to discover a PLC's IP before GoOnline/ReadPlcLiveValuesS7."
     },
     {
       "name": "GetDeviceItemInfo",
       "layer": "L2",
       "domain": "Hardware",
       "method": "GetDeviceItemInfo",
-      "returnType": "ResponseDeviceItemInfo",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "deviceItemPath"
+      ],
       "description": "[L2][Hardware]Get info from a device item from the current project/session"
     },
     {
@@ -966,8 +1339,10 @@
       "layer": "L2",
       "domain": "Hardware",
       "method": "GetDeviceItemNetworkInfo",
-      "returnType": "ResponseNetworkInfo",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "deviceItemPath"
+      ],
       "description": "[L2][Hardware]Get network-related attributes for a device item (best-effort heuristic filter)"
     },
     {
@@ -975,8 +1350,11 @@
       "layer": "L2",
       "domain": "Hardware",
       "method": "GetDeviceItemTree",
-      "returnType": "ResponseTree",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "deviceItemPath",
+        "maxDepth"
+      ],
       "description": "[L2][Hardware]Get a subtree view for a device item (hardware components + sub device items)"
     },
     {
@@ -984,7 +1362,7 @@
       "layer": "L1",
       "domain": "Hardware",
       "method": "GetDevices",
-      "returnType": "ResponseDevices",
+      "returnType": "",
       "parameters": [],
       "description": "[L1][Hardware] List all hardware devices (PLCs, HMI panels, drives) in the project with their attributes. Requires: Connect + OpenProject. Prefer GetProjectTree for a visual overview; use this when you need the exact device Name and attribute values for subsequent operations like AddDevice or SetDeviceItemAttribute."
     },
@@ -993,8 +1371,10 @@
       "layer": "L2",
       "domain": "HMI",
       "method": "GetHmiConnections",
-      "returnType": "ResponseStringList",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "softwarePath"
+      ],
       "description": "[L2][HMI]List HMI connection names (Classic/Unified, best-effort)"
     },
     {
@@ -1002,12 +1382,9 @@
       "layer": "L2",
       "domain": "HMI",
       "method": "GetHmiProgramInfo",
-      "returnType": "ResponseHmiProgramInfo",
+      "returnType": "",
       "parameters": [
-        {
-          "name": "GetProjectTree",
-          "type": "[Description(\"softwarePath: path in the project structure to the HMI software (see"
-        }
+        "softwarePath"
       ],
       "description": "[L2][HMI] Get HMI software type (Classic/Basic/Unified), version, and list of all screen names. Requires: Connect + OpenProject. softwarePath from GetProjectTree (e.g. 'HMI_RT_1'). Use to confirm HMI type before choosing Classic vs Unified tool variants."
     },
@@ -1016,89 +1393,117 @@
       "layer": "L2",
       "domain": "HMI",
       "method": "GetHmiScreens",
-      "returnType": "ResponseStringList",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "softwarePath"
+      ],
       "description": "[L2][HMI] List all screen names in an HMI (Classic or Unified). Requires: Connect + OpenProject. softwarePath from GetProjectTree. Use before EnsureUnifiedHmiScreen/ExportHmiScreen to confirm which screens exist."
-    },
-    {
-      "name": "GetHmiTagTables",
-      "layer": "L2",
-      "domain": "HMI",
-      "method": "GetHmiTagTables",
-      "returnType": "ResponseStringList",
-      "parameters": [],
-      "description": "[L2][HMI]List HMI tag table names (Classic/Unified, best-effort)"
     },
     {
       "name": "GetHmiTags",
       "layer": "L2",
       "domain": "HMI",
       "method": "GetHmiTags",
-      "returnType": "ResponseStringList",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "tagTableName"
+      ],
       "description": "[L2][HMI]List HMI tag names (best-effort). If tagTableName empty, returns tags found at root collection if available."
+    },
+    {
+      "name": "GetHmiTagTables",
+      "layer": "L2",
+      "domain": "HMI",
+      "method": "GetHmiTagTables",
+      "returnType": "",
+      "parameters": [
+        "softwarePath"
+      ],
+      "description": "[L2][HMI]List HMI tag table names (Classic/Unified, best-effort)"
     },
     {
       "name": "GetObjectProperty",
       "layer": "L2",
       "domain": "Reflection",
       "method": "GetObjectProperty",
-      "returnType": "ResponseObjectValue",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "objectKind",
+        "objectPath",
+        "propertyPath",
+        "softwarePath"
+      ],
       "description": "[L2][Reflection]Get an Openness object property by dotted path. Use after DescribeObject/DescribeObjectProperty to safely inspect current state before writing."
     },
     {
       "name": "GetOnlineState",
       "layer": "L1",
-      "domain": "Category:PLC-Online",
-      "method": "",
+      "domain": "PLC-Online",
+      "method": "GetOnlineState",
       "returnType": "",
-      "parameters": [],
-      "description": "[L1][Category:PLC-Online][PreCondition:Connect+OpenProject] Read the current online connection state of a PLC (Offline/Connecting/Online/Incompatible/NotReachable/Protected/Disconnecting). Does NOT change state — purely a read operation. Use before GoOnline to check current state, or after DownloadToPlc to verify the CPU is reachable. State=Online means the PC is communicating with the physical CPU. State=Incompatible means online but firmware/config mismatch — download required. State=NotReachable means network or IP configuration issue. NOTE: This reports Openness connection state, NOT the CPU operating mode (RUN/STOP). The TIA Portal public API does not expose CPU operating mode — check the CPU front panel LEDs or HMI for RUN/STOP status."
+      "parameters": [
+        "softwarePath"
+      ],
+      "description": "[L1][PLC-Online][PreCondition:Connect+OpenProject] Read the current online connection state of a PLC (Offline/Connecting/Online/Incompatible/NotReachable/Protected/Disconnecting). Does NOT change state — purely a read operation. Use before GoOnline to check current state, or after DownloadToPlc to verify the CPU is reachable. State=Online means the PC is communicating with the physical CPU. State=Incompatible means online but firmware/config mismatch — download required. State=NotReachable means network or IP configuration issue. NOTE: This reports Openness connection state, NOT the CPU operating mode (RUN/STOP). The TIA Portal public API does not expose CPU operating mode — check the CPU front panel LEDs or HMI for RUN/STOP status."
     },
     {
       "name": "GetOpcUaConfig",
       "layer": "L2",
-      "domain": "Category:PLC-OpcUA",
-      "method": "",
+      "domain": "PLC-OpcUA",
+      "method": "GetOpcUaConfig",
       "returnType": "",
-      "parameters": [],
-      "description": "[L2][Category:PLC-OpcUA][PreCondition:Connect+OpenProject] Read the full OPC UA server configuration for a PLC: server interfaces, SIMATIC interfaces, and reference namespaces — each with their Name, Enabled state, and key properties. Use this to audit what OPC UA interfaces exist before enabling or exporting them. Enabled=true means the interface is active and will be downloaded to the CPU."
+      "parameters": [
+        "softwarePath"
+      ],
+      "description": "[L2][PLC-OpcUA][PreCondition:Connect+OpenProject] Read the full OPC UA server configuration for a PLC: server interfaces, SIMATIC interfaces, and reference namespaces — each with their Name, Enabled state, and key properties. Use this to audit what OPC UA interfaces exist before enabling or exporting them. Enabled=true means the interface is active and will be downloaded to the CPU."
     },
     {
       "name": "GetPlcExternalSources",
       "layer": "L2",
       "domain": "PLC-Software",
       "method": "GetPlcExternalSources",
-      "returnType": "ResponseStringList",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "softwarePath"
+      ],
       "description": "[L2][PLC-Software]List PLC external source names (best-effort)"
     },
     {
       "name": "GetPlcForceTables",
       "layer": "L2",
-      "domain": "Category:PLC-Online",
-      "method": "",
+      "domain": "PLC-Online",
+      "method": "GetPlcForceTables",
       "returnType": "",
-      "parameters": [],
-      "description": "[L2][Category:PLC-Online][PreCondition:Connect+OpenProject] List all force table names in the PLC software. Force tables configure which variables are continuously forced to specific values while the CPU is online. Use SetForceTableEntry to configure entries, then go online for the forces to take effect."
+      "parameters": [
+        "softwarePath"
+      ],
+      "description": "[L2][PLC-Online][PreCondition:Connect+OpenProject] List all force table names in the PLC software. Force tables configure which variables are continuously forced to specific values while the CPU is online. Use SetForceTableEntry to configure entries, then go online for the forces to take effect."
     },
     {
       "name": "GetPlcRunStateS7",
       "layer": "L2",
-      "domain": "Online-Monitoring",
+      "domain": "PLC-Online",
       "method": "GetPlcRunStateS7",
       "returnType": "",
-      "parameters": [],
-      "description": "[L2][Online-Monitoring] Read-only: read the CPU operating mode (RUN / STOP / UNKNOWN) over the S7 protocol (port 102) — something TIA Openness cannot do. Also returns the CPU clock and a best-effort raw diagnostic-buffer dump (event IDs in hex + raw bytes; full event text needs TIA's text database, and SZL may be unavailable on some S7-1200 CPUs — reported cleanly). Never writes/forces/changes mode."
+      "parameters": [
+        "ip",
+        "rack",
+        "slot",
+        "maxDiagEntries",
+        "expectModuleContains"
+      ],
+      "description": "[L2][PLC-Online] Read-only: read the CPU operating mode (RUN / STOP / UNKNOWN) over the S7 protocol (port 102) — something TIA Openness cannot do. Also returns the CPU clock and a best-effort raw diagnostic-buffer dump (event IDs in hex + raw bytes; full event text needs TIA's text database, and SZL may be unavailable on some S7-1200 CPUs — reported cleanly). Never writes/forces/changes mode."
     },
     {
       "name": "GetPlcTagTables",
       "layer": "L2",
       "domain": "PLC-Software",
       "method": "GetPlcTagTables",
-      "returnType": "ResponseStringList",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "softwarePath"
+      ],
       "description": "[L2][PLC-Software] List all PLC tag table names. Requires: Connect + OpenProject. softwarePath from GetProjectTree (e.g. 'PLC_1'). Use before ExportPlcTagTable to get exact table names, or before ImportPlcTagTable to check for conflicts."
     },
     {
@@ -1106,53 +1511,70 @@
       "layer": "L2",
       "domain": "PLC-Software",
       "method": "GetPlcWatchTables",
-      "returnType": "ResponseStringList",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "softwarePath"
+      ],
       "description": "[L2][PLC-Software]List PLC watch/monitor table names (PlcWatchTable). Read-only."
     },
     {
       "name": "GetProject",
       "layer": "L1",
       "domain": "Project",
-      "method": "GetProjects",
-      "returnType": "ResponseGetProjects",
+      "method": "GetProject",
+      "returnType": "",
       "parameters": [],
       "description": "[L1][Project] List all open local projects and multi-user sessions with their attributes. Requires: Connect. Use this to confirm which project is active, or to find the project name for AttachToOpenProject."
     },
     {
+      "name": "GetProjectSkeleton",
+      "layer": "L1",
+      "domain": "PLC-Software",
+      "method": "GetProjectSkeleton",
+      "returnType": "",
+      "parameters": [
+        "softwarePath"
+      ],
+      "description": "[L1][PLC-Software] AI-friendly PROJECT SKELETON. Returns used DB/FB/FC/OB numbers, block counts by type, top-level block names and group names — so you can auto-pick free numbers and understand structure BEFORE creating/editing. AI workflow: call this (or GetBlocksWithHierarchy) FIRST, then SuggestBlockNumber before importing, then AnalyzeBlockImpact before changing a block. Requires: Connect + OpenProject."
+    },
+    {
       "name": "GetProjectTopology",
       "layer": "L1",
-      "domain": "Category:Hardware",
+      "domain": "Hardware",
       "method": "GetProjectTopology",
       "returnType": "",
       "parameters": [],
-      "description": "[L1][Category:Hardware][PreCondition:Connect+OpenProject] One-shot, read-only project topology from Openness: every device with its network nodes (IP, subnet, node type). Call this early to understand the project's devices and subnets at a glance, instead of probing S7 or parsing AML."
+      "description": "[L1][Hardware][PreCondition:Connect+OpenProject] One-shot, read-only project topology from Openness: every device with its network nodes (IP, subnet, node type). Call this early to understand the project's devices and subnets at a glance, instead of probing S7 or parsing AML."
     },
     {
       "name": "GetProjectTree",
       "layer": "L1",
       "domain": "Project",
       "method": "GetProjectTree",
-      "returnType": "ResponseProjectTree",
+      "returnType": "",
       "parameters": [],
       "description": "[L1][Project] Get the full project device/software tree as ASCII art. Requires: Connect + OpenProject. ALWAYS call this first after opening a project to discover the exact softwarePath (e.g. 'PLC_1') and device paths needed by all other PLC/HMI/hardware tools. Returns device names, software nodes, and HMI nodes."
     },
     {
       "name": "GetPutGetAccess",
       "layer": "L2",
-      "domain": "Category:Hardware",
+      "domain": "Hardware",
       "method": "GetPutGetAccess",
       "returnType": "",
-      "parameters": [],
-      "description": "[L2][Category:Hardware][PreCondition:Connect+OpenProject] Read whether a CPU permits remote PUT/GET access — the precondition for ReadPlcLiveValuesS7 on DB areas. If enabled=false, S7 absolute reads of DBs will fail; enable with SetPutGetAccess (then hardware DownloadToPlc)."
+      "parameters": [
+        "devicePath"
+      ],
+      "description": "[L2][Hardware][PreCondition:Connect+OpenProject] Read whether a CPU permits remote PUT/GET access — the precondition for ReadPlcLiveValuesS7 on DB areas. If enabled=false, S7 absolute reads of DBs will fail; enable with SetPutGetAccess (then hardware DownloadToPlc)."
     },
     {
       "name": "GetSoftwareInfo",
       "layer": "L1",
       "domain": "PLC-Software",
       "method": "GetSoftwareInfo",
-      "returnType": "ResponseSoftwareInfo",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "softwarePath"
+      ],
       "description": "[L1][PLC-Software] Get PLC software properties (language, version, block counts). Requires: Connect + OpenProject. softwarePath comes from GetProjectTree (e.g. 'PLC_1'). Use GetSoftwareTree for the full block hierarchy."
     },
     {
@@ -1160,8 +1582,10 @@
       "layer": "L1",
       "domain": "PLC-Software",
       "method": "GetSoftwareTree",
-      "returnType": "ResponseSoftwareTree",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "softwarePath"
+      ],
       "description": "[L1][PLC-Software] Get the full PLC block/type/external-source hierarchy as ASCII tree. Requires: Connect + OpenProject. softwarePath from GetProjectTree (e.g. 'PLC_1'). ALWAYS call before ExportBlock/ImportBlock to get exact group paths (e.g. 'Program blocks/FBs/FB_Motor'). Returns OB/FB/FC/GlobalDB/UDT/ExternalSource blocks with group hierarchy."
     },
     {
@@ -1169,26 +1593,31 @@
       "layer": "L0",
       "domain": "Portal",
       "method": "GetState",
-      "returnType": "ResponseState",
+      "returnType": "",
       "parameters": [],
       "description": "[L0][Portal] Get current connection state: IsConnected, open Project name, and open Session name. Use this to check preconditions before other tools — if IsConnected=false, call Connect first; if Project is empty, call OpenProject or CreateProject."
     },
     {
       "name": "GetTechnologyObjects",
       "layer": "L2",
-      "domain": "Category:PLC-TechnologyObjects",
-      "method": "",
+      "domain": "Drive",
+      "method": "GetTechnologyObjects",
       "returnType": "",
-      "parameters": [],
-      "description": "[L2][Category:PLC-TechnologyObjects][PreCondition:Connect+OpenProject] List all Technology Objects (TOs) in the PLC software: axes, cams, measuring inputs, etc. Returns each TO's Name, type (OfSystemLibElement), and firmware version (OfSystemLibVersion). Use this to discover TO names before ExportTechnologyObject or GetAxisParameters. TOs are stored as TechnologicalInstanceDB instances in the TechnologicalObjectGroup."
+      "parameters": [
+        "softwarePath"
+      ],
+      "description": "[L2][Drive][PreCondition:Connect+OpenProject] List all Technology Objects (TOs) in the PLC software: axes, cams, measuring inputs, etc. Returns each TO's Name, type (OfSystemLibElement), and firmware version (OfSystemLibVersion). Use this to discover TO names before ExportTechnologyObject or GetAxisParameters. TOs are stored as TechnologicalInstanceDB instances in the TechnologicalObjectGroup."
     },
     {
       "name": "GetTypeInfo",
       "layer": "L2",
       "domain": "PLC-Software",
       "method": "GetTypeInfo",
-      "returnType": "ResponseTypeInfo",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "typePath"
+      ],
       "description": "[L2][PLC-Software]Get a type info from the plc software"
     },
     {
@@ -1196,71 +1625,112 @@
       "layer": "L2",
       "domain": "PLC-Software",
       "method": "GetTypes",
-      "returnType": "ResponseTypes",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "regexName"
+      ],
       "description": "[L2][PLC-Software]Get a list of types from the plc software"
     },
     {
       "name": "GoOffline",
       "layer": "L1",
-      "domain": "Category:PLC-Online",
-      "method": "",
+      "domain": "PLC-Online",
+      "method": "GoOffline",
       "returnType": "",
-      "parameters": [],
-      "description": "[L1][Category:PLC-Online][PreCondition:Connect+OpenProject] Disconnect the online session between TIA Portal and the physical PLC. Safe to call even if not currently online. Always go offline when monitoring or download is complete."
+      "parameters": [
+        "softwarePath"
+      ],
+      "description": "[L1][PLC-Online][PreCondition:Connect+OpenProject] Disconnect the online session between TIA Portal and the physical PLC. Safe to call even if not currently online. Always go offline when monitoring or download is complete."
     },
     {
       "name": "GoOfflineAll",
       "layer": "L1",
-      "domain": "Category:PLC-Online",
+      "domain": "PLC-Online",
       "method": "GoOfflineAll",
       "returnType": "",
       "parameters": [],
-      "description": "[L1][Category:PLC-Online][PreCondition:Connect+OpenProject] Take EVERY PLC in the open project offline in one call and report each PLC's before/after online state. Use this whenever CompileSoftware/Export*/Import* is blocked by 'operation not permitted in online mode': a UI-initiated online session or a second online PLC is NOT released by GoOffline on a single softwarePath. Fully autonomous — never ask the user to toggle online/offline in the TIA UI, and never OCR the toolbar."
+      "description": "[L1][PLC-Online][PreCondition:Connect+OpenProject] Take EVERY PLC in the open project offline in one call and report each PLC's before/after online state. Use this whenever CompileSoftware/Export*/Import* is blocked by 'operation not permitted in online mode': a UI-initiated online session or a second online PLC is NOT released by GoOffline on a single softwarePath. Fully autonomous — never ask the user to toggle online/offline in the TIA UI, and never OCR the toolbar."
     },
     {
       "name": "GoOnline",
       "layer": "L1",
-      "domain": "Category:PLC-Online",
-      "method": "",
+      "domain": "PLC-Online",
+      "method": "GoOnline",
       "returnType": "",
-      "parameters": [],
-      "description": "[L1][Category:PLC-Online][ONLINE-CONNECT][PreCondition:Connect+OpenProject] Establish an online connection from TIA Portal to the physical PLC. Required before DownloadToPlc to confirm reachability, or for future online monitoring tools. Returns State=Online on success. If ipAddress is omitted, uses the IP address configured in the project's hardware configuration. If ipAddress is provided, overrides the configured IP for this session (useful for commissioning with a different IP). Common failures: NotReachable (wrong IP / no cable), Protected (CPU requires authentication — supply password), Incompatible (firmware mismatch)."
+      "parameters": [
+        "softwarePath",
+        "ipAddress",
+        "password"
+      ],
+      "description": "[L1][PLC-Online][ONLINE-CONNECT][PreCondition:Connect+OpenProject] Establish an online connection from TIA Portal to the physical PLC. Required before DownloadToPlc to confirm reachability, or for future online monitoring tools. Returns State=Online on success. If ipAddress is omitted, uses the IP address configured in the project's hardware configuration. If ipAddress is provided, overrides the configured IP for this session (useful for commissioning with a different IP). Common failures: NotReachable (wrong IP / no cable), Protected (CPU requires authentication — supply password), Incompatible (firmware mismatch)."
     },
     {
       "name": "ImportAlarmClasses",
       "layer": "L2",
-      "domain": "Category:PLC-Alarms",
-      "method": "",
+      "domain": "PLC-Alarms",
+      "method": "ImportAlarmClasses",
       "returnType": "",
-      "parameters": [],
-      "description": "[L2][Category:PLC-Alarms][PreCondition:Connect+OpenProject] Import PLC alarm classes from a previously exported file. Overwrites existing alarm class definitions. Run CompileSoftware after import."
+      "parameters": [
+        "softwarePath",
+        "importPath"
+      ],
+      "description": "[L2][PLC-Alarms][PreCondition:Connect+OpenProject] Import PLC alarm classes from a previously exported file. Overwrites existing alarm class definitions. Run CompileSoftware after import."
     },
     {
       "name": "ImportAlarmTextLists",
       "layer": "L2",
-      "domain": "Category:PLC-Alarms",
-      "method": "",
+      "domain": "PLC-Alarms",
+      "method": "ImportAlarmTextLists",
       "returnType": "",
-      "parameters": [],
-      "description": "[L2][Category:PLC-Alarms][PreCondition:Connect+OpenProject] Import PLC alarm text lists from an XLSX file. The file must match the format exported by ExportAlarmTextLists. Run CompileSoftware after import to validate alarm configuration."
+      "parameters": [
+        "softwarePath",
+        "importPath"
+      ],
+      "description": "[L2][PLC-Alarms][PreCondition:Connect+OpenProject] Import PLC alarm text lists from an XLSX file. The file must match the format exported by ExportAlarmTextLists. Run CompileSoftware after import to validate alarm configuration."
     },
     {
       "name": "ImportBlock",
       "layer": "L1",
       "domain": "PLC-Software",
       "method": "ImportBlock",
-      "returnType": "ResponseImportBlock",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "groupPath",
+        "importPath",
+        "preferredNumber",
+        "autoAssignNumber"
+      ],
       "description": "[L1][PLC-Software] Import a single SimaticML XML block file into PLC software. Requires: Connect + OpenProject. importPath must be an absolute path to a .xml file. After import it reads back to confirm the block is present (Meta.verified); call CompileAndDiagnosePlc for full consistency. Pick the right tool: SCL/.s7dcl text → ImportFromDocuments; multiple XML files → ImportBlocksFromDirectory; a full exported program (UDTs+tags+blocks) → ImportPlcProgramFromDirectory; JSON-built blocks → PlcBuildAndImport."
+    },
+    {
+      "name": "ImportBlockInterface",
+      "layer": "L2",
+      "domain": "PLC-Software",
+      "method": "ImportBlockInterface",
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "blockPath",
+        "interfaceJson",
+        "exportDir"
+      ],
+      "description": "[L2][PLC-Software] Add interface variables (Input/Output/InOut/Static/Temp/Constant) to an existing block from a JSON spec, WITHOUT touching its logic. Exports the block SCL (V18-safe UTF-8+BOM), injects the VAR_* sections, regenerates via RegenerateBlockFromSource. JSON: {\"Input\":[{\"name\":\"Start\",\"type\":\"Bool\"}],\"Output\":[...],\"InOut\":[...],\"Static\":[...],\"Temp\":[...],\"Constant\":[...]}. Pair with ExportBlockSourceUtf8/RegenerateBlockFromSource. Requires: Connect + OpenProject + block consistent."
     },
     {
       "name": "ImportBlocksFromDirectory",
       "layer": "L2",
       "domain": "PLC-Software",
       "method": "ImportBlocksFromDirectory",
-      "returnType": "ResponseImportBatch",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "groupPath",
+        "dir",
+        "regexName",
+        "overwrite"
+      ],
       "description": "[L2][PLC-Software] Batch import PLC block .xml (SimaticML) files from a directory into a block group. Pick the right tool: SCL/.s7dcl text → ImportBlocksFromDocuments; a full mixed program with UDTs+tag tables+blocks auto-ordered → ImportPlcProgramFromDirectory; a single XML file → ImportBlock."
     },
     {
@@ -1268,16 +1738,13 @@
       "layer": "L2",
       "domain": "PLC-Software",
       "method": "ImportBlocksFromDocuments",
-      "returnType": "Task<ResponseImportBlocksFromDocuments>",
+      "returnType": "",
       "parameters": [
-        {
-          "name": "server",
-          "type": "IMcpServer"
-        },
-        {
-          "name": "context",
-          "type": "RequestContext<CallToolRequestParams>"
-        }
+        "softwarePath",
+        "groupPath",
+        "importPath",
+        "regexName",
+        "importOption"
       ],
       "description": "[L2][PLC-Software] PREFERRED on V21+ for batch import. Imports multiple program blocks from SIMATIC SD textual / SCL documents (.s7dcl + .s7res) into PLC software. Requires TIA Portal V20 or newer."
     },
@@ -1286,8 +1753,14 @@
       "layer": "L2",
       "domain": "PLC-Software",
       "method": "ImportFromDocuments",
-      "returnType": "ResponseImportFromDocuments",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "groupPath",
+        "importPath",
+        "fileNameWithoutExtension",
+        "importOption"
+      ],
       "description": "[L2][PLC-Software] PREFERRED on V21+ for importing one block. Imports a single program block from SIMATIC SD textual / SCL documents (.s7dcl + .s7res) into PLC software. Requires TIA Portal V20 or newer. After import it reads back to confirm the block is present (Meta.verified)."
     },
     {
@@ -1295,8 +1768,11 @@
       "layer": "L2",
       "domain": "HMI",
       "method": "ImportHmiConnection",
-      "returnType": "ResponseMessage",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "importPath"
+      ],
       "description": "[L2][HMI]Import one HMI connection XML file into an HMI program (best-effort; Classic/Unified via reflection)"
     },
     {
@@ -1304,8 +1780,12 @@
       "layer": "L2",
       "domain": "HMI",
       "method": "ImportHmiScreen",
-      "returnType": "ResponseMessage",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "folderPath",
+        "importPath"
+      ],
       "description": "[L2][HMI]Import one HMI screen XML file into an HMI program (best-effort; Classic/Unified via reflection)"
     },
     {
@@ -1313,8 +1793,14 @@
       "layer": "L2",
       "domain": "HMI",
       "method": "ImportHmiScreensFromDirectory",
-      "returnType": "ResponseImportBatch",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "folderPath",
+        "dir",
+        "regexName",
+        "overwrite"
+      ],
       "description": "[L2][HMI]Batch import HMI screen .xml files from a directory (best-effort)"
     },
     {
@@ -1322,8 +1808,12 @@
       "layer": "L2",
       "domain": "HMI",
       "method": "ImportHmiTagTable",
-      "returnType": "ResponseMessage",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "folderPath",
+        "importPath"
+      ],
       "description": "[L2][HMI]Import one HMI tag table XML file into an HMI program (best-effort; Classic/Unified via reflection)"
     },
     {
@@ -1331,8 +1821,14 @@
       "layer": "L2",
       "domain": "HMI",
       "method": "ImportHmiTagTablesFromDirectory",
-      "returnType": "ResponseImportBatch",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "folderPath",
+        "dir",
+        "regexName",
+        "overwrite"
+      ],
       "description": "[L2][HMI]Batch import HMI tag table .xml files from a directory (best-effort)"
     },
     {
@@ -1340,26 +1836,42 @@
       "layer": "L2",
       "domain": "HMI-Library",
       "method": "ImportMasterCopyFromGlobalLibrary",
-      "returnType": "ResponseGlobalLibraryImport",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "libraryPath",
+        "masterCopyName",
+        "hmiSoftwarePath",
+        "screenName",
+        "importedItemName",
+        "left",
+        "top"
+      ],
       "description": "[L2][HMI-Library] Import one MasterCopy from a TIA global library into a real Unified HMI screen and return ScreenItems readback evidence. This modifies the project, must be tried in a temporary project first, and reports failure unless the imported item is visible after readback."
     },
     {
       "name": "ImportOpcUaInterface",
       "layer": "L2",
-      "domain": "Category:PLC-OpcUA",
-      "method": "",
+      "domain": "PLC-OpcUA",
+      "method": "ImportOpcUaInterface",
       "returnType": "",
-      "parameters": [],
-      "description": "[L2][Category:PLC-OpcUA][PreCondition:Connect+OpenProject] Import an OPC UA server interface or reference namespace from an XML file. If an interface with the same name (derived from the file name) already exists, it is updated in place. Otherwise a new interface is created. Download to PLC after import to apply changes to the CPU. interfaceType: 'ServerInterface' (default), 'ReferenceNamespace'."
+      "parameters": [
+        "softwarePath",
+        "importPath",
+        "interfaceType"
+      ],
+      "description": "[L2][PLC-OpcUA][PreCondition:Connect+OpenProject] Import an OPC UA server interface or reference namespace from an XML file. If an interface with the same name (derived from the file name) already exists, it is updated in place. Otherwise a new interface is created. Download to PLC after import to apply changes to the CPU. interfaceType: 'ServerInterface' (default), 'ReferenceNamespace'."
     },
     {
       "name": "ImportPlcExternalSource",
       "layer": "L2",
       "domain": "PLC-Software",
       "method": "ImportPlcExternalSource",
-      "returnType": "ResponseMessage",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "groupPath",
+        "filePath"
+      ],
       "description": "[L2][PLC-Software]Import one PLC external source file into a group (best-effort)"
     },
     {
@@ -1367,8 +1879,19 @@
       "layer": "L2",
       "domain": "PLC-Software",
       "method": "ImportPlcProgramFromDirectory",
-      "returnType": "ResponsePlcProgramImport",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "sourceDir",
+        "typeGroupPath",
+        "tagFolderPath",
+        "technologyFolderPath",
+        "blockGroupPath",
+        "regexName",
+        "compileAfter",
+        "stopOnImportFailure",
+        "dryRun"
+      ],
       "description": "[L2][PLC-Software] HIGH-LEVEL batch import tool. Recursively scans a directory for PLC XML files, auto-classifies them as UDT/TagTable/Block, imports in correct dependency order (UDTs first, then tag tables, then blocks), and optionally compiles. Requires: Connect + OpenProject. Best for importing a full exported PLC program or a set of generated XML blocks."
     },
     {
@@ -1376,8 +1899,12 @@
       "layer": "L1",
       "domain": "PLC-Software",
       "method": "ImportPlcTagTable",
-      "returnType": "ResponseMessage",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "folderPath",
+        "importPath"
+      ],
       "description": "[L1][PLC-Software]Import one PLC tag table XML file into PLC software (best-effort)"
     },
     {
@@ -1385,8 +1912,14 @@
       "layer": "L2",
       "domain": "PLC-Software",
       "method": "ImportPlcTagTablesFromDirectory",
-      "returnType": "ResponseImportBatch",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "folderPath",
+        "dir",
+        "regexName",
+        "overwrite"
+      ],
       "description": "[L2][PLC-Software]Batch import PLC tag table .xml files from a directory (best-effort)"
     },
     {
@@ -1394,8 +1927,12 @@
       "layer": "L2",
       "domain": "PLC-Software",
       "method": "ImportTechnologyObject",
-      "returnType": "ResponseMessage",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "folderPath",
+        "importPath"
+      ],
       "description": "[L2][PLC-Software]Import one PLC Technology Object XML file into PLC software (best-effort)"
     },
     {
@@ -1403,8 +1940,14 @@
       "layer": "L2",
       "domain": "PLC-Software",
       "method": "ImportTechnologyObjectsFromDirectory",
-      "returnType": "ResponseImportBatch",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "folderPath",
+        "dir",
+        "regexName",
+        "overwrite"
+      ],
       "description": "[L2][PLC-Software]Batch import PLC technology object .xml files from a directory (best-effort)"
     },
     {
@@ -1412,8 +1955,12 @@
       "layer": "L1",
       "domain": "PLC-Software",
       "method": "ImportType",
-      "returnType": "ResponseImportType",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "groupPath",
+        "importPath"
+      ],
       "description": "[L1][PLC-Software]Import a type from file into the plc software"
     },
     {
@@ -1421,8 +1968,15 @@
       "layer": "L2",
       "domain": "Reflection",
       "method": "InvokeObject",
-      "returnType": "ResponseObjectValue",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "objectKind",
+        "objectPath",
+        "methodName",
+        "args",
+        "softwarePath",
+        "allowWrite"
+      ],
       "description": "[L2][Reflection]Invoke an Openness method via reflection. Default is read-oriented; set allowWrite=true only after DescribeObject confirms the target method/signature. This is the generic bridge for public API operations not yet wrapped by MCP."
     },
     {
@@ -1430,17 +1984,53 @@
       "layer": "L2",
       "domain": "Reflection",
       "method": "InvokeService",
-      "returnType": "ResponseObjectValue",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "objectKind",
+        "objectPath",
+        "serviceTypeSuffix",
+        "methodName",
+        "args",
+        "softwarePath",
+        "allowWrite"
+      ],
       "description": "[L2][Reflection]GetService bridge: invoke a method on a service object (by type name suffix) from a target object."
+    },
+    {
+      "name": "LintPlcSclSource",
+      "layer": "L1",
+      "domain": "PLC-Software",
+      "method": "LintPlcSclSource",
+      "returnType": "",
+      "parameters": [
+        "sclContent"
+      ],
+      "description": "[L1][PLC-Software][Offline] Static pre-check of SCL source text — no TIA Portal connection required. Catches 4 common compile-breakers before 'Generate blocks from source': duplicate formal parameters in a call (SCL001), invalid \"DB\".DB(...) access (SCL002), FB multi-instance declared in an OB (SCL003), and HW_*/PORT/CONN_* types declared in VAR_TEMP (SCL004). Findings carry 1-based source line numbers in Meta.lint. Non-blocking: it only reports, it never modifies anything."
+    },
+    {
+      "name": "ListDriveModel",
+      "layer": "L3",
+      "domain": "Drive",
+      "method": "ListDriveModel",
+      "returnType": "",
+      "parameters": [
+        "deviceItemPath"
+      ],
+      "description": "[L3][Drive] Enumerate the SINAMICS drive component tree of a device item added via Startdrive using the PUBLIC Openness HW API (no Startdrive Openness license required). Returns each child module (motor / measuring system / encoder / axis application) with its TypeName, OrderNumber, TypeIdentifier, PositionNumber and the full settable attribute list (e.g. Name, Comment). Use the output to learn exact module paths and writable attributes before calling SetDriveParameter. Requires an open TIA project."
     },
     {
       "name": "ListObjectChildren",
       "layer": "L2",
       "domain": "Reflection",
       "method": "ListObjectChildren",
-      "returnType": "ResponseObjectChildren",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "objectKind",
+        "objectPath",
+        "collectionProperty",
+        "softwarePath",
+        "limit"
+      ],
       "description": "[L2][Reflection]List child items from an enumerable Openness property, e.g. Devices, DeviceItems, Connections, Screens, Blocks. Use to discover paths instead of guessing."
     },
     {
@@ -1448,7 +2038,7 @@
       "layer": "L1",
       "domain": "Portal",
       "method": "ListPortalProcessProjects",
-      "returnType": "ResponseStringList",
+      "returnType": "",
       "parameters": [],
       "description": "[L1][Portal]List running TIA Portal processes and the projects/sessions visible in each process."
     },
@@ -1457,18 +2047,43 @@
       "layer": "L2",
       "domain": "HMI-Unified",
       "method": "ListUnifiedHmiApiTypes",
-      "returnType": "ResponseStringList",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "nameContains",
+        "limit"
+      ],
       "description": "[L2][HMI-Unified]List loaded WinCC Unified HMI API types/enums by name filter, useful for discovering event and dynamization types."
     },
     {
       "name": "MonitorWatchTableLiveS7",
       "layer": "L2",
-      "domain": "Online-Monitoring",
+      "domain": "PLC-Online",
       "method": "MonitorWatchTableLiveS7",
       "returnType": "",
-      "parameters": [],
-      "description": "[L2][Online-Monitoring] Read-only: live-monitor an existing TIA watch table. Reads the table's entry addresses (Openness, read-only) and live-reads them over the S7 protocol (port 102). Returns name/address/value rows. Never edits the watch table, writes, or forces. Absolute-address entries (e.g. %DB1.DBW0, %MW4) are read; symbolic/optimized entries are listed as unresolved (use OPC UA for those). Identity guard via expectModuleContains. Use GetPlcWatchTables to list table names."
+      "parameters": [
+        "softwarePath",
+        "watchTableName",
+        "ip",
+        "rack",
+        "slot",
+        "expectModuleContains"
+      ],
+      "description": "[L2][PLC-Online] Read-only: live-monitor an existing TIA watch table. Reads the table's entry addresses (Openness, read-only) and live-reads them over the S7 protocol (port 102). Returns name/address/value rows. Never edits the watch table, writes, or forces. Absolute-address entries (e.g. %DB1.DBW0, %MW4) are read; symbolic/optimized entries are listed as unresolved (use OPC UA for those). Identity guard via expectModuleContains. Use GetPlcWatchTables to list table names."
+    },
+    {
+      "name": "MoveBlocksToGroup",
+      "layer": "L2",
+      "domain": "PLC-Software",
+      "method": "MoveBlocksToGroup",
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "targetGroupPath",
+        "nameRegex",
+        "blockType",
+        "autoCreateGroup"
+      ],
+      "description": "[L2][PLC-Software] Bulk-organize PLC blocks into a program-block group. Moves EVERY block matching the optional nameRegex / blockType filter (blockType e.g. 'FB','FC','DB','OB') into targetGroupPath. Openness cannot reparent a block, so each is exported, deleted, and re-imported into the target group (SIMATIC SD .s7dcl preferred, SimaticML XML fallback). Per-item failures are reported, not fatal. autoCreateGroup creates the target path if missing. Requires: Connect + OpenProject + blocks consistent. After moving, call CompileAndDiagnosePlc to confirm 0 errors."
     },
     {
       "name": "MoveBlockToGroup",
@@ -1476,7 +2091,12 @@
       "domain": "PLC-Software",
       "method": "MoveBlockToGroup",
       "returnType": "",
-      "parameters": [],
+      "parameters": [
+        "softwarePath",
+        "blockName",
+        "targetGroupPath",
+        "autoCreateGroup"
+      ],
       "description": "[L2][PLC-Software] Move/organize an existing block into a program-block group (found anywhere by exact name). Openness cannot reparent a block, so this exports the block, deletes it, and re-imports it into the target group (SIMATIC SD .s7dcl preferred, SimaticML XML fallback for STL/mixed-language). The block number and references are preserved. autoCreateGroup creates the target group path if missing. Requires: Connect + OpenProject + block consistent (compile first). After moving, call CompileAndDiagnosePlc to confirm 0 errors. Note: avoid moving OBs with event bindings via this round-trip."
     },
     {
@@ -1484,8 +2104,10 @@
       "layer": "L1",
       "domain": "Project",
       "method": "OpenProject",
-      "returnType": "ResponseOpenProject",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "path"
+      ],
       "description": "[L1][Project] Open a local TIA Portal project (.apXX) or multi-user session (.alsXX) file, where XX is the TIA version number (e.g. .ap21, .als21). Requires: Connect. Closes any currently open project first. After success, call GetProjectTree to explore its structure."
     },
     {
@@ -1493,8 +2115,11 @@
       "layer": "L2",
       "domain": "HMI-Library",
       "method": "PlanGlobalLibraryTemplateReuse",
-      "returnType": "ResponseJsonReport",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "libraryPath",
+        "templateIntentJson"
+      ],
       "description": "[L2][HMI-Library] Plan the commercial fallback when direct MasterCopy import is not publicly verifiable: learn reference/global-library template evidence and rebuild screens with native Unified HMI MCP theme/layout/action tools. Offline planning only; it does not import library content or modify projects."
     },
     {
@@ -1502,39 +2127,54 @@
       "layer": "L2",
       "domain": "Hardware",
       "method": "PlanHardwareNetworkConfiguration",
-      "returnType": "ResponseJsonReport",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "planJson"
+      ],
       "description": "[L2][Hardware][Offline] Validate a hardware network operation plan without connecting to TIA Portal or modifying a project. Use this before EnsureSubnet/AttachDeviceNodeToSubnet/SetCpuCommonSettings; rejects guessed paths, unsafe subnet types, invalid IP/mask/gateway, and CPU settings without exactAttributes."
     },
     {
       "name": "PlanOnlineReadOnlyDataProvider",
       "layer": "L2",
-      "domain": "Online-Monitoring",
+      "domain": "PLC-Online",
       "method": "PlanOnlineReadOnlyDataProvider",
-      "returnType": "ResponseJsonReport",
-      "parameters": [],
-      "description": "[L2][Online-Monitoring] Plan the commercial current-value path through an external read-only data provider such as opcua or s7-readonly. This is a preflight only: it does not connect, write PLC values, modify watch tables, go online/offline through TIA, or use force operations."
+      "returnType": "",
+      "parameters": [
+        "provider",
+        "endpoint",
+        "tagPathsJson",
+        "optionsJson"
+      ],
+      "description": "[L2][PLC-Online] Plan the commercial current-value path through an external read-only data provider such as opcua or s7-readonly. This is a preflight only: it does not connect, write PLC values, modify watch tables, go online/offline through TIA, or use force operations."
     },
     {
       "name": "PlanOnlineReadOnlyMonitoring",
       "layer": "L2",
-      "domain": "Online-Monitoring",
+      "domain": "PLC-Online",
       "method": "PlanOnlineReadOnlyMonitoring",
-      "returnType": "ResponseJsonReport",
-      "parameters": [],
-      "description": "[L2][Online-Monitoring] Validate an online-monitoring request shape without connecting to TIA Portal. Read-only preflight only: no go-online/offline, no watch-table modification, no value write, and no force operation."
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "tagPathsJson",
+        "mode"
+      ],
+      "description": "[L2][PLC-Online] Validate an online-monitoring request shape without connecting to TIA Portal. Read-only preflight only: no go-online/offline, no watch-table modification, no value write, and no force operation."
     },
     {
       "name": "PlcBuildAndImport",
       "layer": "L1",
       "domain": "PLC-Software",
       "method": "PlcBuildAndImport",
-      "returnType": "ResponsePlcProgramImport",
+      "returnType": "",
       "parameters": [
-        {
-          "name": "dryRun",
-          "type": "[Description(\"softwarePath: PLC software path, e.g. 'PLC_1'. Required only when"
-        }
+        "softwarePath",
+        "kind",
+        "json",
+        "typeGroupPath",
+        "tagFolderPath",
+        "blockGroupPath",
+        "compileAfter",
+        "dryRun"
       ],
       "description": "[L1][PLC-Software] MAIN tool for creating new PLC blocks from natural language. Build one PLC artifact (UDT/tag table/GlobalDB/FC/FB) from structured JSON, then optionally import and compile. Use dryRun=true first to validate. Workflow: describe block in JSON → dryRun → review → dryRun=false to import. Replaces the multi-step Build*Xml + ImportBlock sequence."
     },
@@ -1543,8 +2183,11 @@
       "layer": "L2",
       "domain": "HMI-Library",
       "method": "ProbeGlobalLibrary",
-      "returnType": "ResponseGlobalLibraryProbe",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "libraryPath",
+        "maxItems"
+      ],
       "description": "[L2][HMI-Library]Open a TIA global library (.al21) read-only/best-effort and list accessible master copies/types/folders through public/reflection APIs. It does not import library content."
     },
     {
@@ -1552,8 +2195,12 @@
       "layer": "L2",
       "domain": "Hardware",
       "method": "ProbeHardwareHmiConnectionOwnerCandidates",
-      "returnType": "ResponseStringList",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "plcRootPath",
+        "hmiRootPath",
+        "deepScan"
+      ],
       "description": "[L2][Hardware]Enumerate candidate owner objects for hardware HMI connection creation without calling GetService on each high-level object."
     },
     {
@@ -1561,71 +2208,105 @@
       "layer": "L2",
       "domain": "Hardware",
       "method": "ProbeHardwareHmiConnectionWhitelistedServices",
-      "returnType": "ResponseStringList",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "plcRootPath",
+        "hmiRootPath",
+        "deepScan"
+      ],
       "description": "[L2][Hardware]Read-only scan of whitelisted services on safe hardware HMI connection owner candidates. Does not create connections and skips high-level project/composition objects to avoid hangs."
     },
     {
       "name": "ProbePlcMonitorOnlineCapabilities",
       "layer": "L2",
-      "domain": "Online-Monitoring",
+      "domain": "PLC-Online",
       "method": "ProbePlcMonitorOnlineCapabilities",
-      "returnType": "ResponseJsonReport",
-      "parameters": [],
-      "description": "[L2][Online-Monitoring]Read-only probe for PLC online/offline/watch/monitor API surfaces. It does not go online/offline, change watch tables, write values, or touch restricted safety APIs."
+      "returnType": "",
+      "parameters": [
+        "softwarePath"
+      ],
+      "description": "[L2][PLC-Online]Read-only probe for PLC online/offline/watch/monitor API surfaces. It does not go online/offline, change watch tables, write values, or touch restricted safety APIs."
     },
     {
       "name": "ProbeS7CpuIdentity",
       "layer": "L2",
-      "domain": "Online-Monitoring",
+      "domain": "PLC-Online",
       "method": "ProbeS7CpuIdentity",
       "returnType": "",
-      "parameters": [],
-      "description": "[L2][Online-Monitoring] Read-only: connect to a physical CPU over the S7 protocol (ISO-on-TCP, port 102) and read its identification (module type, serial, names). Does NOT write, force, or change CPU mode. Use this first to confirm the IP belongs to the intended PLC before reading values. S7-1200/1500 use rack 0, slot 1."
+      "parameters": [
+        "ip",
+        "rack",
+        "slot"
+      ],
+      "description": "[L2][PLC-Online] Read-only: connect to a physical CPU over the S7 protocol (ISO-on-TCP, port 102) and read its identification (module type, serial, names). Does NOT write, force, or change CPU mode. Use this first to confirm the IP belongs to the intended PLC before reading values. S7-1200/1500 use rack 0, slot 1."
     },
     {
       "name": "ReadPlcLiveValuesOpcUa",
       "layer": "L2",
-      "domain": "Online-Monitoring",
+      "domain": "PLC-Online",
       "method": "ReadPlcLiveValuesOpcUa",
       "returnType": "",
-      "parameters": [],
-      "description": "[L2][Online-Monitoring] Read-only live values from a CPU's OPC UA server (default opc.tcp port 4840), independent of TIA Openness. Anonymous, no-security session; reads the Value attribute of each node. NEVER writes or calls methods. Node IDs use OPC UA syntax, e.g. 'ns=3;s=\"DB10\".\"X\"' or 'i=2258'. Precondition: the CPU's OPC UA server must be enabled and the variables exposed (Runtime license on S7-1200/1500). If the server is off, connection is refused (reported cleanly)."
+      "parameters": [
+        "endpointUrl",
+        "nodeIdsJson",
+        "timeoutMs"
+      ],
+      "description": "[L2][PLC-Online] Read-only live values from a CPU's OPC UA server (default opc.tcp port 4840), independent of TIA Openness. Anonymous, no-security session; reads the Value attribute of each node. NEVER writes or calls methods. Node IDs use OPC UA syntax, e.g. 'ns=3;s=\"DB10\".\"X\"' or 'i=2258'. Precondition: the CPU's OPC UA server must be enabled and the variables exposed (Runtime license on S7-1200/1500). If the server is off, connection is refused (reported cleanly)."
     },
     {
       "name": "ReadPlcLiveValuesS7",
       "layer": "L2",
-      "domain": "Online-Monitoring",
+      "domain": "PLC-Online",
       "method": "ReadPlcLiveValuesS7",
       "returnType": "",
-      "parameters": [],
-      "description": "[L2][Online-Monitoring] Read-only FAST live values from a physical CPU over the S7 protocol (port 102), independent of TIA Openness. Give absolute S7 addresses (DB10.DBD0:REAL, DB1.DBX2.3, M0.0, MW12, DB5.DBD8:DINT). Returns current values in one round-trip (typically tens of ms). NEVER writes/forces. Preconditions for S7-1200/1500: enable 'Permit PUT/GET access' on the CPU and read NON-optimized DBs (M/I/Q are unrestricted). Use expectModuleContains to hard-guard the target identity."
+      "parameters": [
+        "ip",
+        "itemsJson",
+        "rack",
+        "slot",
+        "expectModuleContains",
+        "devicePath"
+      ],
+      "description": "[L2][PLC-Online] Read-only FAST live values from a physical CPU over the S7 protocol (port 102), independent of TIA Openness. Give absolute S7 addresses (DB10.DBD0:REAL, DB1.DBX2.3, M0.0, MW12, DB5.DBD8:DINT). Returns current values in one round-trip (typically tens of ms). NEVER writes/forces. Preconditions for S7-1200/1500: enable 'Permit PUT/GET access' on the CPU and read NON-optimized DBs (M/I/Q are unrestricted). Use expectModuleContains to hard-guard the target identity."
     },
     {
       "name": "ReadPlcWatchTableCurrentValuesReadOnly",
       "layer": "L2",
-      "domain": "Online-Monitoring",
+      "domain": "PLC-Online",
       "method": "ReadPlcWatchTableCurrentValuesReadOnly",
-      "returnType": "ResponseJsonReport",
-      "parameters": [],
-      "description": "[L2][Online-Monitoring] Read current/monitor value properties from an existing PLC watch table only. It does not create/modify watch tables, write PLC values, go offline, or use force operations."
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "watchTableName",
+        "maxEntries"
+      ],
+      "description": "[L2][PLC-Online] Read current/monitor value properties from an existing PLC watch table only. It does not create/modify watch tables, write PLC values, go offline, or use force operations."
     },
     {
-      "name": "RebuildReleaseHandoffArtifacts",
-      "layer": "L2",
-      "domain": "Reports",
-      "method": "RebuildReleaseHandoffArtifacts",
-      "returnType": "ResponseJsonReport",
-      "parameters": [],
-      "description": "[L2][Reports]Rebuild diagnostics, runbook, and manifest files from an existing OfflineReleaseValidationSuite JSON report. Offline-only and does not connect to TIA Portal."
+      "name": "RegenerateBlockFromSource",
+      "layer": "L?",
+      "domain": "Misc",
+      "method": "RegenerateBlockFromSource",
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "groupPath",
+        "sourceFilePath"
+      ],
+      "description": "[V18][PLC-Software] Re-import an (already edited) block source file — the V18 'edit → re-import' step that pairs with ExportBlockSourceUtf8. Normalizes the file to UTF-8 WITH BOM first (Chinese comments never mojibake), then feeds it through ImportBlock. Accepts both SimaticML .xml and SCL/.s7dcl text. After re-import, run CompileAndDiagnosePlc (or GetCompileDiagnostics) to verify. To add interface variables, use ImportBlockInterface instead of hand-editing. Requires: Connect + OpenProject. groupPath is where the block should live, e.g. 'Program blocks' or its current group."
     },
     {
       "name": "RepairAndReimportBlock",
       "layer": "L2",
       "domain": "PLC-Software",
       "method": "RepairAndReimportBlock",
-      "returnType": "ResponseRepairAndCompile",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "importPath",
+        "groupPath",
+        "compileAfter"
+      ],
       "description": "[L2][PLC-Software]Try import a block XML; if compile fails, return diagnostics and best-effort suggestions (no destructive actions)."
     },
     {
@@ -1633,89 +2314,98 @@
       "layer": "L0",
       "domain": "Diagnostics",
       "method": "RunCapabilitySelfTest",
-      "returnType": "Task<ResponseCapabilitySelfTest>",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "connectIfNeeded",
+        "includeProjectTree",
+        "inspectPortalProcesses",
+        "expectedPlcSoftwarePath",
+        "expectedHmiSoftwarePath"
+      ],
       "description": "[L0][Diagnostics]Run a read-only MCP/TIA readiness self-test. It checks Openness group membership, connection state, visible portal processes, optional automation context, and optional project tree readback without writing to the project."
     },
     {
       "name": "RunClassicHmiOfflineValidationSuite",
       "layer": "L2",
-      "domain": "HMI-Classic",
+      "domain": "HMI",
       "method": "RunClassicHmiOfflineValidationSuite",
-      "returnType": "ResponseJsonReport",
-      "parameters": [],
-      "description": "[L2][HMI-Classic]Offline-only helper: run the Classic/Basic HMI validation suite covering PLC symbol extraction, HMI package generation, HMI tag references, and PLC-HMI sync positive/negative gates. It writes reports only to the requested report directory."
+      "returnType": "",
+      "parameters": [
+        "reportDirectory"
+      ],
+      "description": "[L2][HMI]Offline-only helper: run the Classic/Basic HMI validation suite covering PLC symbol extraction, HMI package generation, HMI tag references, and PLC-HMI sync positive/negative gates. It writes reports only to the requested report directory."
     },
     {
       "name": "RunClassicHmiTemporaryImportPreflight",
       "layer": "L2",
-      "domain": "HMI-Classic",
+      "domain": "HMI",
       "method": "RunClassicHmiTemporaryImportPreflight",
-      "returnType": "ResponseJsonReport",
-      "parameters": [],
-      "description": "[L2][HMI-Classic]Offline-only helper: run the Classic/Basic HMI temporary-import preflight. It checks TIA V21 environment, Openness group, package files, PLC-HMI sync, and emits an import/readback plan without connecting to TIA Portal or creating projects."
+      "returnType": "",
+      "parameters": [
+        "workspaceRoot",
+        "reportDirectory"
+      ],
+      "description": "[L2][HMI]Offline-only helper: run the Classic/Basic HMI temporary-import preflight. It checks TIA V21 environment, Openness group, package files, PLC-HMI sync, and emits an import/readback plan without connecting to TIA Portal or creating projects."
     },
     {
       "name": "RunHmiActionScriptRecipeSafetySelfTest",
       "layer": "L2",
       "domain": "Diagnostics",
       "method": "RunHmiActionScriptRecipeSafetySelfTest",
-      "returnType": "ResponseJsonReport",
+      "returnType": "",
       "parameters": [],
       "description": "[L2][Diagnostics]Offline-only helper: prove deterministic HMI button action scripts are allowed only for safe set/reset/toggle bit recipes, while high-risk writes and unverified navigation/popup recipes are blocked."
     },
     {
       "name": "RunHmiTemplatePlcSyncPrecheckSuite",
       "layer": "L2",
-      "domain": "Validation",
+      "domain": "Reports",
       "method": "RunHmiTemplatePlcSyncPrecheckSuite",
-      "returnType": "ResponseJsonReport",
-      "parameters": [],
-      "description": "[L2][Validation]Offline-only helper: verify Unified HMI template RequiredTags against real PLC tag/DB-member XML symbols before any HMI binding. It does not connect to TIA Portal or modify projects."
-    },
-    {
-      "name": "RunOfflineReleaseValidationSuite",
-      "layer": "L2",
-      "domain": "Validation",
-      "method": "RunOfflineReleaseValidationSuite",
-      "returnType": "ResponseJsonReport",
-      "parameters": [],
-      "description": "[L2][Validation]Offline-only helper: run the release smoke suite covering PLC Builder, Classic HMI, PLC symbol extraction, Unified HMI template layout, HMI action recipes, and online-monitoring safety guardrails. It does not connect to TIA Portal or modify projects."
+      "returnType": "",
+      "parameters": [
+        "templateDirectory",
+        "plcXmlPath",
+        "reportDirectory",
+        "mappingFilePath"
+      ],
+      "description": "[L2][Reports]Offline-only helper: verify Unified HMI template RequiredTags against real PLC tag/DB-member XML symbols before any HMI binding. It does not connect to TIA Portal or modify projects."
     },
     {
       "name": "RunOnlineMonitoringSafetySelfTest",
       "layer": "L0",
       "domain": "Diagnostics",
       "method": "RunOnlineMonitoringSafetySelfTest",
-      "returnType": "ResponseSafetySelfTest",
+      "returnType": "",
       "parameters": [],
       "description": "[L0][Diagnostics]Run a static, read-only safety self-test for online monitoring guardrails. It does not connect to TIA Portal, open projects, modify watch tables, write PLC values, or expose forced-value operations."
     },
     {
-      "name": "RunV2PlanCompletionAudit",
-      "layer": "L2",
-      "domain": "Validation",
-      "method": "RunV2PlanCompletionAudit",
-      "returnType": "ResponseJsonReport",
-      "parameters": [],
-      "description": "[L2][Validation]Offline-only strict audit for docs/TIA_MCP_常见操作全覆盖方案_V2_二次优化计划.md. It reports verified hard-gate percentage and blocks 100% claims when real TIA/online evidence is missing."
-    },
-    {
       "name": "SamplePlcLiveValuesS7",
       "layer": "L2",
-      "domain": "Online-Monitoring",
+      "domain": "PLC-Online",
       "method": "SamplePlcLiveValuesS7",
       "returnType": "",
-      "parameters": [],
-      "description": "[L2][Online-Monitoring] Read-only TREND sampling over the S7 protocol (port 102): on one open connection, read a set of absolute S7 addresses every intervalMs for up to durationMs (hard-capped at 120 s / 5000 samples), returning a time series per address plus min/max/avg of the numeric ones. Ideal for capturing a PID step response or watching a signal move over time. NEVER writes/forces. The call BLOCKS for ~durationMs while it samples. Same address syntax and identity guard as ReadPlcLiveValuesS7."
+      "parameters": [
+        "ip",
+        "itemsJson",
+        "intervalMs",
+        "durationMs",
+        "maxSamples",
+        "rack",
+        "slot",
+        "expectModuleContains"
+      ],
+      "description": "[L2][PLC-Online] Read-only TREND sampling over the S7 protocol (port 102): on one open connection, read a set of absolute S7 addresses every intervalMs for up to durationMs (hard-capped at 120 s / 5000 samples), returning a time series per address plus min/max/avg of the numeric ones. Ideal for capturing a PID step response or watching a signal move over time. NEVER writes/forces. The call BLOCKS for ~durationMs while it samples. Same address syntax and identity guard as ReadPlcLiveValuesS7."
     },
     {
       "name": "SaveAsProject",
       "layer": "L2",
       "domain": "Project",
       "method": "SaveAsProject",
-      "returnType": "ResponseSaveAsProject",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "newProjectPath"
+      ],
       "description": "[L2][Project]Save current TIA-Portal project/session with a new name"
     },
     {
@@ -1723,7 +2413,7 @@
       "layer": "L1",
       "domain": "Project",
       "method": "SaveProject",
-      "returnType": "ResponseSaveProject",
+      "returnType": "",
       "parameters": [],
       "description": "[L1][Project] Save the currently open project or session to disk. Requires: Connect + OpenProject. Call after any significant change (device add, block import, HMI edit). Compile first if there are pending changes to ensure consistency."
     },
@@ -1733,7 +2423,10 @@
       "domain": "Project",
       "method": "ScaffoldProject",
       "returnType": "",
-      "parameters": [],
+      "parameters": [
+        "spec",
+        "dryRun"
+      ],
       "description": "[L1][Project] One-shot project generator: from a single JSON spec it creates the project, adds PLC (and optional Unified HMI) hardware, builds UDTs/global DBs/PLC tag tables, imports SCL external sources and LAD S7DCL documents, compiles, sets up the HMI connection/screens/tags, and saves — collapsing the ~20-step runbook into one call. Auto-connects if needed. Critical-step failures (connect/createProject/PLC device) abort; per-element failures are collected and reported. Spec keys: projectName(required); directoryPath?(default %TEMP%); plcName?(PLC_1); plcFamily?(S7-1500); plcMlfb?; hmiName?(omit to skip all HMI); hmiFamily?(WinCCUnifiedPC); hmiSoftwarePath?(HMI_RT_1); connectionName?(HMI_Connection_1); udt?/globalDb?/tagTable? = arrays of the same json objects PlcBuildAndImport accepts; sclSourceFiles? = array of .scl file paths; ladDocs? = array of {importPath,name}; hmiScreens? = array of {screenName,width,height,designJson(object)}; hmiTags? = array of {tagTableName?,tagName,hmiDataType?,plcTag?,address?}; compile?(true); save?(true). Returns a per-step report with compile error/warning counts. dryRun DEFAULTS TO TRUE (safety): the default call only validates the spec offline (PLC block JSON shapes, SCL/LAD file paths, designJson) WITHOUT connecting to TIA or creating anything; after a clean dry run, call again with dryRun=false to actually create the project."
     },
     {
@@ -1741,8 +2434,11 @@
       "layer": "L1",
       "domain": "Hardware",
       "method": "SearchHardwareCatalog",
-      "returnType": "ResponseHardwareCatalogSearch",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "keyword",
+        "limit"
+      ],
       "description": "[L1][Hardware]Search the installed TIA Portal hardware catalog for Siemens or third-party catalog entries by keyword, MLFB/order number, device family, or description. Use this before adding hardware when the exact TypeIdentifier is unknown, especially HMI panels such as KTP700 Basic."
     },
     {
@@ -1750,8 +2446,11 @@
       "layer": "L2",
       "domain": "Hardware",
       "method": "SearchInstalledGsdDevices",
-      "returnType": "ResponseGsdDeviceSearch",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "keyword",
+        "limit"
+      ],
       "description": "[L2][Hardware]Search installed TIA V21 hardware catalog and local GSDML files for third-party PROFINET/GSD devices such as AFM60A, ATV320, or DL100. Use this before inserting a non-Siemens device."
     },
     {
@@ -1759,17 +2458,38 @@
       "layer": "L2",
       "domain": "PLC-Software",
       "method": "SeedProjectFromReference",
-      "returnType": "ResponseSeed",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "plcSoftwarePath",
+        "hmiSoftwarePath",
+        "referenceDir",
+        "placeholders"
+      ],
       "description": "[L2][PLC-Software]Seed PLC blocks/types and HMI screens/tagtables from a reference directory (manifest.json + {{PLACEHOLDER}} replace)"
+    },
+    {
+      "name": "SetBlockNumber",
+      "layer": "L2",
+      "domain": "PLC-Software",
+      "method": "SetBlockNumber",
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "blockName",
+        "number"
+      ],
+      "description": "[L2][PLC-Software] Set the 'Number' (编号) attribute of a PLC block by exact name. The number must stay unique within the PLC software (pre-checked; a duplicate is rejected with a clear error). Returns the previous number. Requires: Connect + OpenProject. After changing, call CompileAndDiagnosePlc. WARNING: changing a block number can break cross-references if other code calls the block by (type, old number) — verify references afterwards."
     },
     {
       "name": "SetCpuCommonSettings",
       "layer": "L2",
       "domain": "Hardware",
       "method": "SetCpuCommonSettings",
-      "returnType": "ResponseMessage",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "cpuPath",
+        "settingsJson"
+      ],
       "description": "[L2][Hardware] Set CPU common settings using exactAttributes JSON only after reading exact attribute names from GetDeviceItemInfo/GetDeviceItemNetworkInfo. The tool writes only those exact attributes, rejects missing/non-writable attributes, and returns readback evidence."
     },
     {
@@ -1777,108 +2497,203 @@
       "layer": "L2",
       "domain": "Hardware",
       "method": "SetDeviceItemAttribute",
-      "returnType": "ResponseMessage",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "deviceItemPath",
+        "attributeName",
+        "value"
+      ],
       "description": "[L2][Hardware]Set one exact DeviceItem attribute by name with type coercion and detailed error return. Use GetDeviceItemInfo/GetDeviceItemNetworkInfo first."
+    },
+    {
+      "name": "SetDriveParameter",
+      "layer": "L3",
+      "domain": "Drive",
+      "method": "SetDriveParameter",
+      "returnType": "",
+      "parameters": [
+        "deviceItemPath",
+        "driveObject",
+        "parameter",
+        "property",
+        "value"
+      ],
+      "description": "[L3][Drive] Set a writable module attribute (e.g. Name, Comment) on a SINAMICS drive component resolved via the PUBLIC Openness HW API. deviceItemPath must be a module path returned by ListDriveModel/GetDeviceItemTree, e.g. 'SINAMICS S_1/驱动闭环控制/电机_1'. parameter = the attribute name from ListDriveModel writableAttributes. NOTE: Startdrive P-parameters (P0840 etc.) and telegrams are NOT reachable on this HW layer - they require the Startdrive Openness public API. Requires an open TIA project."
+    },
+    {
+      "name": "SetDriveTelegram",
+      "layer": "L3",
+      "domain": "Drive",
+      "method": "SetDriveTelegram",
+      "returnType": "",
+      "parameters": [
+        "deviceItemPath",
+        "driveObject",
+        "telegram",
+        "property",
+        "value"
+      ],
+      "description": "[L3][Drive] Telegram (报文) configuration is NOT supported by the public Openness HW API on this machine - it requires the Startdrive Openness public API (Siemens.Engineering.Sinamics.dll) which is not installed. This tool always returns a clear unsupported error. Use ListDriveModel + SetDriveParameter for module attributes, or install Startdrive Openness for telegram/P-parameter support."
     },
     {
       "name": "SetOpcUaInterfaceEnabled",
       "layer": "L2",
-      "domain": "Category:PLC-OpcUA",
-      "method": "",
+      "domain": "PLC-OpcUA",
+      "method": "SetOpcUaInterfaceEnabled",
       "returnType": "",
-      "parameters": [],
-      "description": "[L2][Category:PLC-OpcUA][PreCondition:Connect+OpenProject] Enable or disable an OPC UA server interface, SIMATIC interface, or reference namespace. Setting Enabled=true activates the interface — download to PLC is required for the change to take effect on the CPU. interfaceType options: 'ServerInterface' (default), 'SimaticInterface', 'ReferenceNamespace'. Workflow: GetOpcUaConfig → SetOpcUaInterfaceEnabled → DownloadToPlc."
+      "parameters": [
+        "softwarePath",
+        "interfaceName",
+        "enabled",
+        "interfaceType"
+      ],
+      "description": "[L2][PLC-OpcUA][PreCondition:Connect+OpenProject] Enable or disable an OPC UA server interface, SIMATIC interface, or reference namespace. Setting Enabled=true activates the interface — download to PLC is required for the change to take effect on the CPU. interfaceType options: 'ServerInterface' (default), 'SimaticInterface', 'ReferenceNamespace'. Workflow: GetOpcUaConfig → SetOpcUaInterfaceEnabled → DownloadToPlc."
     },
     {
       "name": "SetPutGetAccess",
       "layer": "L2",
-      "domain": "Category:Hardware",
+      "domain": "Hardware",
       "method": "SetPutGetAccess",
       "returnType": "",
-      "parameters": [],
-      "description": "[L2][Category:Hardware][CONFIG-WRITE][PreCondition:Connect+OpenProject] Enable or disable remote PUT/GET access on a CPU (the precondition for S7 DB reads). This is a hardware-configuration change — you must run DownloadToPlc afterwards for it to take effect on the live CPU. Returns before/after readback evidence."
+      "parameters": [
+        "devicePath",
+        "enable"
+      ],
+      "description": "[L2][Hardware][CONFIG-WRITE][PreCondition:Connect+OpenProject] Enable or disable remote PUT/GET access on a CPU (the precondition for S7 DB reads). This is a hardware-configuration change — you must run DownloadToPlc afterwards for it to take effect on the live CPU. Returns before/after readback evidence."
     },
     {
       "name": "SetUnifiedHmiButtonEventScriptCode",
       "layer": "L2",
       "domain": "HMI-Unified",
       "method": "SetUnifiedHmiButtonEventScriptCode",
-      "returnType": "ResponseMessage",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "hmiSoftwarePath",
+        "screenName",
+        "buttonName",
+        "eventType",
+        "scriptCode",
+        "globalDefinitionAreaScriptCode",
+        "async"
+      ],
       "description": "[L2][HMI-Unified]Set ScriptCode on a Unified HMI button event ScriptDynamization and run SyntaxCheck."
     },
     {
       "name": "SetWatchTableModifyValue",
       "layer": "L2",
-      "domain": "Category:PLC-Online",
-      "method": "",
+      "domain": "PLC-Online",
+      "method": "SetWatchTableModifyValue",
       "returnType": "",
-      "parameters": [],
-      "description": "[L2][Category:PLC-Online][ONLINE-WRITE][PreCondition:Connect+OpenProject+GoOnline] Configure a watch table entry to write a value to a PLC variable once (or on a trigger). This is an OFFLINE CONFIGURATION step — the value is written to the PLC only when TIA Portal is online and the trigger fires. Trigger options: Permanent (every cycle), PermanentAtStart (every cycle, at scan start), OnceOnlyAtStart (single write at scan start), PermanentAtEnd, OnceOnlyAtEnd, OnceOnlyAtStop. Use GoOnline before calling this for the write to reach the PLC. Does NOT use Force — variable reverts to PLC logic after the modify. To hold a value persistently, use SetForceTableEntry instead. Example: SetWatchTableModifyValue('PLC_1', 'Debug_WT', 'DB1.DBX0.0', 'TRUE', 'OnceOnlyAtStart')"
+      "parameters": [
+        "softwarePath",
+        "tableName",
+        "address",
+        "modifyValue",
+        "trigger"
+      ],
+      "description": "[L2][PLC-Online][ONLINE-WRITE][PreCondition:Connect+OpenProject+GoOnline] Configure a watch table entry to write a value to a PLC variable once (or on a trigger). This is an OFFLINE CONFIGURATION step — the value is written to the PLC only when TIA Portal is online and the trigger fires. Trigger options: Permanent (every cycle), PermanentAtStart (every cycle, at scan start), OnceOnlyAtStart (single write at scan start), PermanentAtEnd, OnceOnlyAtEnd, OnceOnlyAtStop. Use GoOnline before calling this for the write to reach the PLC. Does NOT use Force — variable reverts to PLC logic after the modify. To hold a value persistently, use SetForceTableEntry instead. Example: SetWatchTableModifyValue('PLC_1', 'Debug_WT', 'DB1.DBX0.0', 'TRUE', 'OnceOnlyAtStart')"
+    },
+    {
+      "name": "SuggestBlockNumber",
+      "layer": "L2",
+      "domain": "PLC-Software",
+      "method": "SuggestBlockNumber",
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "blockType",
+        "preferredNumber"
+      ],
+      "description": "[L2][PLC-Software] Returns the next FREE number for a block type (FB/FC/DB/OB) so you avoid collisions when creating/importing. If you pass preferredNumber and it is free, that number is returned; otherwise the next free one is suggested. Pair with ImportBlock / RegenerateBlockFromSource / ImportPlcProgramFromDirectory. Requires: Connect + OpenProject."
     },
     {
       "name": "TraceTagCause",
       "layer": "L2",
-      "domain": "Online-Monitoring",
+      "domain": "PLC-Online",
       "method": "TraceTagCause",
       "returnType": "",
-      "parameters": [],
-      "description": "[L2][Online-Monitoring] Answer 'why is tag X this value / what sets it' by static analysis of the OFFLINE project. Read-only: exports code blocks to SimaticML and finds every network that WRITES the tag (LAD coils S/R/=, or StructuredText ':=' assignments) plus the gating condition operands in those networks. Cross-reference service is not needed. Then live-read the returned gatingConditions with ReadPlcLiveValuesS7 to see which condition is currently driving the value. Tip: pass blockScope to limit which blocks are scanned (faster). NOTE: block export needs the project OFFLINE in TIA — Openness cannot export blocks while it is connected online to the PLC."
+      "parameters": [
+        "softwarePath",
+        "tag",
+        "blockScope"
+      ],
+      "description": "[L2][PLC-Online] Answer 'why is tag X this value / what sets it' by static analysis of the OFFLINE project. Read-only: exports code blocks to SimaticML and finds every network that WRITES the tag (LAD coils S/R/=, or StructuredText ':=' assignments) plus the gating condition operands in those networks. Cross-reference service is not needed. Then live-read the returned gatingConditions with ReadPlcLiveValuesS7 to see which condition is currently driving the value. Tip: pass blockScope to limit which blocks are scanned (faster). NOTE: block export needs the project OFFLINE in TIA — Openness cannot export blocks while it is connected online to the PLC."
     },
     {
       "name": "TraceTagCauseLive",
       "layer": "L2",
-      "domain": "Online-Monitoring",
+      "domain": "PLC-Online",
       "method": "TraceTagCauseLive",
       "returnType": "",
-      "parameters": [],
-      "description": "[L2][Online-Monitoring] Live causal trace: runs the offline TraceTagCause to find what writes a tag and its gating conditions, then resolves each gating operand to an absolute address via the PLC tag table and LIVE-READS the resolvable ones over S7 (port 102) — so you see which interlock/condition is currently TRUE and driving the value. Read-only. Operands that are DB members / optimized / symbolic have no absolute PLC-tag address and are returned unresolved (read those via OPC UA). Requires the CPU ip; for the offline-only trace use TraceTagCause. NOTE: the offline block export needs the project OFFLINE in TIA (Openness cannot export in online mode); the S7 live-read is a separate direct connection, unaffected by going offline."
+      "parameters": [
+        "softwarePath",
+        "tag",
+        "ip",
+        "rack",
+        "slot",
+        "blockScope",
+        "expectModuleContains"
+      ],
+      "description": "[L2][PLC-Online] Live causal trace: runs the offline TraceTagCause to find what writes a tag and its gating conditions, then resolves each gating operand to an absolute address via the PLC tag table and LIVE-READS the resolvable ones over S7 (port 102) — so you see which interlock/condition is currently TRUE and driving the value. Read-only. Operands that are DB members / optimized / symbolic have no absolute PLC-tag address and are returned unresolved (read those via OPC UA). Requires the CPU ip; for the offline-only trace use TraceTagCause. NOTE: the offline block export needs the project OFFLINE in TIA (Openness cannot export in online mode); the S7 live-read is a separate direct connection, unaffected by going offline."
     },
     {
       "name": "ValidateAutomationContext",
       "layer": "L1",
       "domain": "Diagnostics",
       "method": "ValidateAutomationContext",
-      "returnType": "ResponseMessage",
-      "parameters": [],
+      "returnType": "",
+      "parameters": [
+        "expectedPlcSoftwarePath",
+        "expectedHmiSoftwarePath"
+      ],
       "description": "[L1][Diagnostics]Preflight current project for automation: devices, software, expected PLC/HMI paths, and project tree."
     },
     {
       "name": "ValidateClassicHmiMinimalPackageFiles",
       "layer": "L2",
-      "domain": "HMI-Classic",
+      "domain": "HMI",
       "method": "ValidateClassicHmiMinimalPackageFiles",
-      "returnType": "ResponseJsonReport",
-      "parameters": [],
-      "description": "[L2][HMI-Classic]Offline-only helper: validate an already written Classic/Basic HMI minimal package folder or manifest. It reads manifest/XML, checks parseability and HMI tag references, and does not connect to TIA Portal or modify projects."
+      "returnType": "",
+      "parameters": [
+        "path"
+      ],
+      "description": "[L2][HMI]Offline-only helper: validate an already written Classic/Basic HMI minimal package folder or manifest. It reads manifest/XML, checks parseability and HMI tag references, and does not connect to TIA Portal or modify projects."
     },
     {
       "name": "ValidateClassicHmiMinimalPackagePlcSync",
       "layer": "L2",
-      "domain": "HMI-Classic",
+      "domain": "HMI",
       "method": "ValidateClassicHmiMinimalPackagePlcSync",
-      "returnType": "ResponseJsonReport",
-      "parameters": [],
-      "description": "[L2][HMI-Classic]Offline-only helper: validate that Classic/Basic HMI tag-table ControllerTag/PlcTag bindings exist in a caller-provided exact PLC symbol list. It does not connect to TIA Portal or modify projects."
+      "returnType": "",
+      "parameters": [
+        "path",
+        "plcSymbolsJson"
+      ],
+      "description": "[L2][HMI]Offline-only helper: validate that Classic/Basic HMI tag-table ControllerTag/PlcTag bindings exist in a caller-provided exact PLC symbol list. It does not connect to TIA Portal or modify projects."
     },
     {
       "name": "WriteClassicHmiMinimalPackageFiles",
       "layer": "L2",
-      "domain": "HMI-Classic",
+      "domain": "HMI",
       "method": "WriteClassicHmiMinimalPackageFiles",
-      "returnType": "ResponseJsonReport",
-      "parameters": [],
-      "description": "[L2][HMI-Classic]Offline-only helper: build a minimal Classic/Basic HMI package and write tag-table XML, screen XML, and manifest JSON to an output directory. It does not connect to TIA Portal, import files, or modify projects."
+      "returnType": "",
+      "parameters": [
+        "packageJson",
+        "outputDirectory"
+      ],
+      "description": "[L2][HMI]Offline-only helper: build a minimal Classic/Basic HMI package and write tag-table XML, screen XML, and manifest JSON to an output directory. It does not connect to TIA Portal, import files, or modify projects."
     },
     {
       "name": "WritePlcSclSourceFile",
       "layer": "L1",
       "domain": "PLC-Software",
       "method": "WritePlcSclSourceFile",
-      "returnType": "ResponseMessage",
-      "parameters": [],
-      "description": "[L1][PLC-Software][Offline] Write SCL source text to a local .scl external-source file (UTF-8 WITH BOM, so Chinese comments are not imported as mojibake/乱码). This tool does NOT connect to TIA Portal and does NOT import anything — it only writes the file to disk and returns the path plus manual-import instructions. Use it as the robust fallback when XML block import is rejected (e.g. a TIA V20 portal rejecting V21 SimaticML tokens: 'Cannot create SW.Blocks.CompileUnit... token not supported'): the user imports the .scl manually in TIA via project tree → 'External source files' → 'Add new external file', then right-clicks the source → 'Generate blocks from source'. The sclContent must be a complete source, e.g. FUNCTION_BLOCK \"Name\" ... END_FUNCTION_BLOCK."
+      "returnType": "",
+      "parameters": [
+        "sclContent",
+        "outputPath"
+      ],
+      "description": "[L1][PLC-Software][Offline] Write SCL source text to a local .scl external-source file (UTF-8 WITH BOM, so Chinese comments are not imported as mojibake/乱码). This tool does NOT connect to TIA Portal and does NOT import anything — it only writes the file to disk and returns the path plus manual-import instructions. Use it as the robust fallback when XML block import is rejected (e.g. a TIA V20 portal rejecting V21 SimaticML tokens: 'Cannot create SW.Blocks.CompileUnit... token not supported'): the user imports the .scl manually in TIA via project tree → 'External source files' → 'Add new external file', then right-clicks the source → 'Generate blocks from source'. The sclContent must be a complete source, e.g. FUNCTION_BLOCK \"Name\" ... END_FUNCTION_BLOCK. SECURITY: path traversal (..) is blocked; outputPath must be a valid file path."
     }
   ]
 }
