@@ -79,9 +79,15 @@ def check(tl, pm, root="."):
     if layers and layers != actual:
         fails.append("P3 mcpToolLayers=%s 与 tools-list 实际分层 %s 不一致" % (layers, actual))
 
-    # P4
+    # P4 —— 只查"本该在检出里"的路径。构建产物（路径里含 bin/ 或 obj/ 段的）在干净检出里
+    # 本来就不存在，要求它存在会把所有 CI 都判红 —— 这正是本闸门第一次上 CI 时暴露的问题。
     for key, rel in (pm.get("entrypoints") or {}).items():
-        if rel and not os.path.exists(os.path.join(root, rel.replace("/", os.sep))):
+        if not rel:
+            continue
+        parts = rel.replace("\\", "/").split("/")
+        if "bin" in parts or "obj" in parts:
+            continue
+        if not os.path.exists(os.path.join(root, rel.replace("/", os.sep))):
             fails.append("P4 entrypoints.%s 指向不存在的路径：%s" % (key, rel))
     return fails
 
