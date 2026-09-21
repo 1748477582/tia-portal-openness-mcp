@@ -1,8 +1,8 @@
 {
   "package": "TIA_MCP_Delivery_v2.3.0",
-  "generatedAt": "2026-09-21T16:55:42.094546+08:00",
+  "generatedAt": "2026-09-21T17:34:58.549963+08:00",
   "source": "live MCP tools/list of TiaMcpServer.exe (dev build)",
-  "toolCount": 217,
+  "toolCount": 218,
   "note": "Full roster. Regenerate with scripts/Generate-ToolsList.py after any tool add/remove. Runtime tools/list remains authoritative when the server is running.",
   "tools": [
     {
@@ -2295,6 +2295,15 @@
         "slot"
       ],
       "description": "[L2][PLC-Online] Read-only: connect to a physical CPU over the S7 protocol (ISO-on-TCP, port 102) and read its identification (module type, serial, names). Does NOT write, force, or change CPU mode. Use this first to confirm the IP belongs to the intended PLC before reading values. S7-1200/1500 use rack 0, slot 1."
+    },
+    {
+      "name": "ProbeSimulationCapability",
+      "layer": "L1",
+      "domain": "Diagnostics",
+      "method": "ProbeSimulationCapability",
+      "returnType": "",
+      "parameters": [],
+      "description": "[L1][Diagnostics] READ-ONLY probe of the simulation stack on this machine. It separates the two products everyone confuses: classic S7-PLCSIM (version-locked to TIA — this is what the 'Online > Simulation > Start simulation' button needs) and S7-PLCSIM Advanced (independent instances plus virtual-adapter download — that button never uses it, no matter which version is installed). Reports the installed classic PLCSIM versions, per TIA version whether 'Start simulation' can work, whether Advanced is installed AND drivable (API assemblies + runtime manager present), what to do next, and an explicit 'unknown' list when the evidence is incomplete. It NEVER downloads, installs, repairs or guesses licensing — installing anything is the user's decision."
     },
     {
       "name": "ReadPlcLiveValuesOpcUa",

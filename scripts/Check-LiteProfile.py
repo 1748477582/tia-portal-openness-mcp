@@ -38,7 +38,7 @@ EXE = pathlib.Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else ROOT / "runt
 # 所以不列进来（否则闸门会因"工具根本不存在"报红 —— 那是另一件事，属补齐清单 B 类）。
 REQUIRED = [
     # 定位 / 诊断
-    "Bootstrap", "Doctor", "GetAuthoringGuide", "GetState",
+    "Bootstrap", "Doctor", "GetAuthoringGuide", "GetState", "ProbeSimulationCapability",
     # 会话 + 工程
     "Connect", "ConnectIsolated", "Disconnect", "OpenProject", "CreateProject", "AttachToOpenProject",
     "CloseProject", "SaveProject", "GetProject", "GetProjectTree", "GetSoftwareTree",
