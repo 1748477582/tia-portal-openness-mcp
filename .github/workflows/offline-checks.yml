@@ -1,0 +1,45 @@
+# 离线门禁：不需要 TIA Portal，也不需要构建产物。
+#
+# 只放"在干净检出上就能跑"的检查。两类需要环境、因此暂不在这里跑的检查：
+#   * dotnet 测试：本仓的 TiaMcpServer.Tests 是 xunit + 对主工程的 ProjectReference，
+#     需要 Siemens Openness 程序集，托管 runner 上编不动。要进 CI 得先做成
+#     "零依赖控制台 Exe"（上游做法）—— 见 A2。
+#   * Validate-Bundle.ps1：它会检查 bin\Release\net48\TiaMcpServer.exe 是否存在，
+#     而干净检出没有 bin\。要进 CI 得先在 CI 里构建，或让它接受 runtime\ 里的引擎。
+#
+# 每个 job 都跑一次自检（--selftest）：凡是"检查自己坏了却全绿"的地方，
+# 都要能证明它抓得住问题。
+name: offline-checks
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  dead-tool-references:
+    name: dead tool references
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: descriptions may only name registered tools
+        run: python scripts/Check-DeadToolReferences.py
+      - name: sentinel — the gate must be able to fail
+        run: python scripts/Check-DeadToolReferences.py --selftest
+
+  manifest-consistency:
+    name: manifest consistency
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: tools-list.json and package-manifest.json must agree
+        run: python scripts/Check-ManifestConsistency.py
+      - name: fault-injection self-check
+        run: python scripts/Check-ManifestConsistency.py --selftest
