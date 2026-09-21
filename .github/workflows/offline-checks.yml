@@ -43,3 +43,16 @@ jobs:
         run: python scripts/Check-ManifestConsistency.py
       - name: fault-injection self-check
         run: python scripts/Check-ManifestConsistency.py --selftest
+
+  offline-tests:
+    name: offline tests (no TIA required)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      # 用 dotnet run，**不要**改成 dotnet test：控制台 Exe 上它只会还原、一个用例都不跑、
+      # 然后退 0 —— 一个和「全部通过」长得一模一样的假绿灯。套件内部先跑断言器自检。
+      - name: zero-dependency suite (EngineRouter / LadTextRenderer)
+        run: dotnet run --project tools/tiaportal-mcp/tests/TiaMcpServer.OfflineChecks/TiaMcpServer.OfflineChecks.csproj -c Release

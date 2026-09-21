@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    最小离线自检套件 —— 控制台 Exe，不是 VSTest 工程。
+
+    为什么这么做：这里链接的是引擎的**源文件**，而引擎主体依赖 Siemens.Engineering.dll
+    （要本机装了 TIA Portal 才编得动），托管 runner 上编不动整个工程。所以只把**零依赖**
+    的那几个文件链进来，用 `dotnet run` 驱动 —— 这样 CI 里也能跑。
+
+    ⚠️ 千万别用 `dotnet test` 跑它：控制台 Exe 上它只会还原、一个用例都不跑、然后退 0 ——
+    一个和「全部通过」长得一模一样的假绿灯。CI 里写死的是 `dotnet run`。
+
+    链接进来源的每个文件都必须**不引用 Siemens.Engineering**（见各自的 Siemens-free 注释）。
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>TiaMcpServer.OfflineChecks</AssemblyName>
+    <RootNamespace>TiaMcpServer.OfflineChecks</RootNamespace>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- 版本自路由：Siemens-free（注释即写明"safe to JIT before any Openness assembly resolves"）。
+         盯的是 Windows 参数重引号 —— 它只在路径带空格/引号/尾随反斜杠时出错，静默且难查。 -->
+    <Compile Include="..\..\src\TiaMcpServer\Siemens\EngineRouter.cs" Link="EngineRouter.cs" />
+    <!-- SimaticML(FlgNet/StructuredText) 文本回读：Siemens-free（只依赖 System.Xml.Linq）。
+         盯的是「回读出来的逻辑和工程里真实逻辑不一致」——错了不报错、不崩，只会让人看到不存在的逻辑。 -->
+    <Compile Include="..\..\src\TiaMcpServer\ModelContextProtocol\LadTextRenderer.cs" Link="LadTextRenderer.cs" />
+  </ItemGroup>
+</Project>
