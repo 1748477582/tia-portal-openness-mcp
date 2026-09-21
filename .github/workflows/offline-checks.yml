@@ -17,6 +17,12 @@ on:
   pull_request:
   workflow_dispatch:
 
+# 本仓的闸门脚本会输出中文。Windows runner 上 Python 的 stdout 默认是 cp1252，
+# 打印中文会 UnicodeEncodeError 把闸门自己弄崩（表现为"检查失败"，其实一行都没检查）。
+# 脚本内部各自 reconfigure 了 stdout；这里再兜一层，覆盖以后新增的脚本。
+env:
+  PYTHONUTF8: '1'
+
 jobs:
   dead-tool-references:
     name: dead tool references

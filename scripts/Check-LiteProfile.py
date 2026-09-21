@@ -19,6 +19,15 @@ import pathlib
 import subprocess
 import sys
 
+# Windows 上的 Python 默认按 cp1252 输出（GitHub Actions 的 windows runner 就是），
+# 打印中文会直接 UnicodeEncodeError 崩掉 —— 闸门"跑不起来"和"发现问题"长得一样，
+# 所以显式切到 UTF-8，让它在任何宿主上都能输出。
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
+
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 EXE = pathlib.Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else ROOT / "runtime" / "v21" / "TiaMcpServer.exe"
 
