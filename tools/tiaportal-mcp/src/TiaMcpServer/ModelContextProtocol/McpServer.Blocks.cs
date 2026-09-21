@@ -25,7 +25,7 @@ namespace TiaMcpServer.ModelContextProtocol
     {
         #region blocks
 
-        [McpServerTool(Name = "GetBlockInfo"), Description("[L2][PLC-Software] Get detailed info for one block (attributes, language, number, modification time). Requires: Connect + OpenProject. blockPath must be fully qualified: 'Group/Subgroup/BlockName' — get it from GetSoftwareTree or GetBlocksWithHierarchy. Returns: IsConsistent (false = must compile before export).")]
+        [McpServerTool(Name = "GetBlockInfo"), Description("[L1][PLC-Software] Get detailed info for one block (attributes, language, number, modification time). Requires: Connect + OpenProject. blockPath must be fully qualified: 'Group/Subgroup/BlockName' — get it from GetSoftwareTree or GetBlocksWithHierarchy. Returns: IsConsistent (false = must compile before export).")]
         public static ResponseBlockInfo GetBlockInfo(
             [Description("softwarePath: defines the path in the project structure to the plc software")] string softwarePath,
             [Description("blockPath: defines the path in the project structure to the block")] string blockPath)
@@ -54,7 +54,7 @@ throw McpError.WithRecovery(ex, $"Unexpected error retrieving block info from '{
             }
         }
 
-        [McpServerTool(Name = "GetBlocks"), Description("[L2][PLC-Software] Get a flat list of all blocks in PLC software. Requires: Connect + OpenProject. Use GetBlocksWithHierarchy instead when you need group/folder paths for ExportBlock. Returns: block name, number, type (OB/FC/FB/GlobalDB/InstanceDB), programming language.")]
+        [McpServerTool(Name = "GetBlocks"), Description("[L1][PLC-Software] Get a flat list of all blocks in PLC software. Requires: Connect + OpenProject. Use GetBlocksWithHierarchy instead when you need group/folder paths for ExportBlock. Returns: block name, number, type (OB/FC/FB/GlobalDB/InstanceDB), programming language.")]
         public static ResponseBlocks GetBlocks(
             [Description("softwarePath: defines the path in the project structure to the plc software")] string softwarePath,
             [Description("regexName: defines the name or regular expression to find the block. Use empty string (default) to find all")] string regexName = "")
@@ -949,7 +949,7 @@ throw McpError.WithRecovery(ex, $"Unexpected error analyzing block impact for '{
             }
         }
 
-        [McpServerTool(Name = "ExportBlockSourceUtf8"), Description("[V18][PLC-Software] V18-SAFE editable export of ONE block. Exports the block via Openness, then re-writes the file as UTF-8 WITH BOM (encoding-safe — kills the classic Chinese-comment mojibake). Output is SimaticML XML (NOT .s7dcl text — that needs V20+). This is the V18 'export → edit → re-import' path: edit the file, then call RegenerateBlockFromSource to re-import. To add interface variables without rewriting logic, use ImportBlockInterface. Use this (not ExportBlock) when you intend to MODIFY the block's source. Requires: Connect + OpenProject + block consistent (compile first if IsConsistent=false; offline mode only — export fails while online). blockPath must be fully qualified 'Group/Subgroup/Name' from GetSoftwareTree.")]
+        [McpServerTool(Name = "ExportBlockSourceUtf8"), Description("[L2][PLC-Software] V18-SAFE editable export of ONE block. Exports the block via Openness, then re-writes the file as UTF-8 WITH BOM (encoding-safe — kills the classic Chinese-comment mojibake). Output is SimaticML XML (NOT .s7dcl text — that needs V20+). This is the V18 'export → edit → re-import' path: edit the file, then call RegenerateBlockFromSource to re-import. To add interface variables without rewriting logic, use ImportBlockInterface. Use this (not ExportBlock) when you intend to MODIFY the block's source. Requires: Connect + OpenProject + block consistent (compile first if IsConsistent=false; offline mode only — export fails while online). blockPath must be fully qualified 'Group/Subgroup/Name' from GetSoftwareTree.")]
         public static ResponseExportBlock ExportBlockSourceUtf8(
             [Description("softwarePath: path to the PLC software")] string softwarePath,
             [Description("blockPath: fully qualified 'Group/Subgroup/Name' from GetSoftwareTree")] string blockPath,
@@ -978,7 +978,7 @@ throw McpError.WithRecovery(ex, $"Unexpected error exporting block source from '
             }
         }
 
-        [McpServerTool(Name = "RegenerateBlockFromSource"), Description("[V18][PLC-Software] Re-import an (already edited) block source file — the V18 'edit → re-import' step that pairs with ExportBlockSourceUtf8. Normalizes the file to UTF-8 WITH BOM first (Chinese comments never mojibake), then feeds it through ImportBlock. Accepts both SimaticML .xml and SCL/.s7dcl text. After re-import, run CompileAndDiagnosePlc (or GetCompileDiagnostics) to verify. To add interface variables, use ImportBlockInterface instead of hand-editing. Requires: Connect + OpenProject. groupPath is where the block should live, e.g. 'Program blocks' or its current group.")]
+        [McpServerTool(Name = "RegenerateBlockFromSource"), Description("[L2][PLC-Software] Re-import an (already edited) block source file — the V18 'edit → re-import' step that pairs with ExportBlockSourceUtf8. Normalizes the file to UTF-8 WITH BOM first (Chinese comments never mojibake), then feeds it through ImportBlock. Accepts both SimaticML .xml and SCL/.s7dcl text. After re-import, run CompileAndDiagnosePlc (or GetCompileDiagnostics) to verify. To add interface variables, use ImportBlockInterface instead of hand-editing. Requires: Connect + OpenProject. groupPath is where the block should live, e.g. 'Program blocks' or its current group.")]
         public static ResponseMessage RegenerateBlockFromSource(
             [Description("softwarePath: path to the PLC software")] string softwarePath,
             [Description("groupPath: group/folder where the block should live, e.g. 'Program blocks'")] string groupPath,

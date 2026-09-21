@@ -548,7 +548,7 @@ namespace TiaMcpServer.ModelContextProtocol
             return int.TryParse(raw?.ToString(), out var parsed) ? parsed : 0;
         }
 
-        [McpServerTool(Name = "GetCrossReferences"), Description("[L2][PLC-Software]Get cross references for a Step7 block/type (best-effort). Requires applicable object and Openness support.")]
+        [McpServerTool(Name = "GetCrossReferences"), Description("[L1][PLC-Software]Get cross references for a Step7 block/type (best-effort). Requires applicable object and Openness support.")]
         public static ResponseCrossReferences GetCrossReferences(
             [Description("softwarePath: path in the project structure to the PLC software")] string softwarePath,
             [Description("objectPath: blockPath or typePath inside the PLC software")] string objectPath,
@@ -601,7 +601,7 @@ namespace TiaMcpServer.ModelContextProtocol
             }
         }
 
-        [McpServerTool(Name = "GetPlcTagTables"), Description("[L2][PLC-Software] List all PLC tag table names. Requires: Connect + OpenProject. softwarePath from GetProjectTree (e.g. 'PLC_1'). Use before ExportPlcTagTable to get exact table names, or before ImportPlcTagTable to check for conflicts.")]
+        [McpServerTool(Name = "GetPlcTagTables"), Description("[L1][PLC-Software] List all PLC tag table names. Requires: Connect + OpenProject. softwarePath from GetProjectTree (e.g. 'PLC_1'). Use before ExportPlcTagTable to get exact table names, or before ImportPlcTagTable to check for conflicts.")]
         public static ResponseStringList GetPlcTagTables(
             [Description("softwarePath: path in the project structure to the PLC software")] string softwarePath)
         {
@@ -1112,7 +1112,7 @@ namespace TiaMcpServer.ModelContextProtocol
             }
         }
 
-        [McpServerTool(Name = "GenerateBlocksFromExternalSource"), Description("[L2][PLC-Software]Generate blocks from a PLC external source by name (best-effort)")]
+        [McpServerTool(Name = "GenerateBlocksFromExternalSource"), Description("[L1][PLC-Software]Generate blocks from a PLC external source by name (best-effort)")]
         public static ResponseMessage GenerateBlocksFromExternalSource(
             [Description("softwarePath: path in the project structure to the PLC software")] string softwarePath,
             [Description("externalSourceName: name from GetPlcExternalSources")] string externalSourceName)

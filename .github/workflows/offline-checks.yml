@@ -56,3 +56,39 @@ jobs:
       # 然后退 0 —— 一个和「全部通过」长得一模一样的假绿灯。套件内部先跑断言器自检。
       - name: zero-dependency suite (EngineRouter / LadTextRenderer)
         run: dotnet run --project tools/tiaportal-mcp/tests/TiaMcpServer.OfflineChecks/TiaMcpServer.OfflineChecks.csproj -c Release
+
+  version-consistency:
+    name: version consistency
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      # 本仓**没有** CHANGELOG.md（有意不维护），所以只比对 csproj 与 package-manifest。
+      - name: csproj AssemblyVersion vs package-manifest
+        run: python scripts/Check-VersionConsistency.py
+      - name: fault-injection self-check
+        run: python scripts/Check-VersionConsistency.py --selftest
+
+  # 发布闸（**手动触发**，非每次 push）：
+  # Check-LiteProfile 需要一个**能跑起来的引擎 exe** 才能探测档位，而干净 runner 上没有构建产物；
+  # 仓里自带的 runtime\v21\TiaMcpServer.exe 在无 TIA 的环境里启动就会因程序集解析失败（找不到
+  # Siemens.Engineering.Base）—— 实测如此。所以这里先在 runner 上构建引擎再跑；
+  # 若某天确认引擎无法在无 TIA 的 runner 上构建，就把它挪到本地/发布流程里跑。
+  lite-profile:
+    name: lite profile is usable (release gate)
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: build engine (V20 target)
+        run: dotnet build tools/tiaportal-mcp/src/TiaMcpServer/TiaMcpServer.V20.csproj -c Release -p:BaseIntermediateOutputPath=obj-ci-v20/ -p:BaseOutputPath=bin-ci-v20/
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: lite must cover the golden path and stay under the host cap
+        run: python scripts/Check-LiteProfile.py tools/tiaportal-mcp/src/TiaMcpServer/bin-ci-v20/Release/net48/TiaMcpServer.exe
