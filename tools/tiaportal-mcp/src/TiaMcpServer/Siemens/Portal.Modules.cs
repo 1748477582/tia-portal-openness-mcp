@@ -397,7 +397,23 @@ namespace TiaMcpServer.Siemens
                 return result;
             }
 
-            var after = ReadOccupiedSlots(verifyHost).FirstOrDefault(x => x.PositionNumber == acceptedSlot);
+            var occupiedAfter = ReadOccupiedSlots(verifyHost);
+            var after = occupiedAfter.FirstOrDefault(x => x.PositionNumber == acceptedSlot);
+
+            // 兜底：只按槽位号找，会漏。**真机实测**（S7-1200 + SB 1221，2026-09-22）：插完立刻读回，
+            // 新模块的 PositionNumber 并不等于落位号（组态还没刷新），于是明明插进去了却被判成
+            // VerifyFailed —— 保守但**不准**，会让人以为没插上、进而重复插入。
+            // 模块名是我们自己起并去重过的，确定唯一，用名字命中同样能证明"插进去了"。
+            if (after == null && !string.IsNullOrWhiteSpace(itemName))
+            {
+                after = occupiedAfter.FirstOrDefault(x =>
+                    string.Equals(x.Name, itemName, StringComparison.OrdinalIgnoreCase));
+                if (after != null && after.PositionNumber > 0)
+                {
+                    acceptedSlot = after.PositionNumber;   // 以读回的真实槽位号为准
+                }
+            }
+
             if (after == null)
             {
                 result.Reason = "VerifyFailed";
