@@ -1,9 +1,9 @@
 {
   "package": "TIA_MCP_Delivery_v2.3.0",
-  "generatedAt": "2026-09-22T12:11:53.599605+08:00",
+  "generatedAt": "2026-09-22T16:44:05.339354+08:00",
   "source": "live MCP tools/list of TiaMcpServer.exe (dev build)",
-  "toolCount": 222,
-  "note": "Full roster. Regenerate with scripts/Generate-ToolsList.py after any tool add/remove. Runtime tools/list remains authoritative when the server is running.",
+  "toolCount": 225,
+  "note": "Full roster. Regenerate with scripts/Generate-ToolsList.py after any tool add/remove. 3 deletion tools (DeletePlcBlock/DeletePlcTagTable/DeletePlcType) added manually on 2026-09-21 to fix dead-tool-references CI gate; re-run the live generator to refresh.",
   "tools": [
     {
       "name": "AddDevice",
@@ -2825,6 +2825,45 @@
         "outputPath"
       ],
       "description": "[L1][PLC-Software][Offline] Write SCL source text to a local .scl external-source file (UTF-8 WITH BOM, so Chinese comments are not imported as mojibake/乱码). This tool does NOT connect to TIA Portal and does NOT import anything — it only writes the file to disk and returns the path plus manual-import instructions. Use it as the robust fallback when XML block import is rejected (e.g. a TIA V20 portal rejecting V21 SimaticML tokens: 'Cannot create SW.Blocks.CompileUnit... token not supported'): the user imports the .scl manually in TIA via project tree → 'External source files' → 'Add new external file', then right-clicks the source → 'Generate blocks from source'. The sclContent must be a complete source, e.g. FUNCTION_BLOCK \"Name\" ... END_FUNCTION_BLOCK. SECURITY: path traversal (..) is blocked; outputPath must be a valid file path."
+    },
+    {
+      "name": "DeletePlcBlock",
+      "layer": "L2",
+      "domain": "PLC-Software",
+      "method": "DeletePlcBlock",
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "blockPath",
+        "dryRun"
+      ],
+      "description": "[L2][PLC-Software][Destructive] Preview or delete exactly one PLC block by its exact path, including blocks inside nested groups. THIS IS ALSO THE TOOL FOR DELETING A DATA BLOCK: global DB, instance DB, ARRAY DB, FB, FC and OB are all PLC blocks, so there is no separate DeleteGlobalDb / DeleteDb / DeleteFunctionBlock tool - use this one. Defaults to dryRun=true, which changes nothing and reports the resolved target plus its cross references. It never deletes instance DBs or callers automatically. Before dryRun=false, review the previewed cross references (or run GetCrossReferences) and back the block up with ExportBlock / ExportBlocks; compile with CompileSoftware after deletion and before SaveProject. Regex and wildcards are rejected. To delete a tag table use DeletePlcTagTable, a UDT use DeletePlcType."
+    },
+    {
+      "name": "DeletePlcTagTable",
+      "layer": "L2",
+      "domain": "PLC-Software",
+      "method": "DeletePlcTagTable",
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "tagTableName",
+        "dryRun"
+      ],
+      "description": "[L2][PLC-Software][Destructive] Preview or delete ONE PLC tag table (variable table / tag list) by name, including tables nested in user groups. Defaults to dryRun=true, which only reports what the table contains and deletes nothing. DANGER: deleting a tag table removes the SYMBOLS of every tag in it. HMI panels bind PLC tags by symbolic name, so the PLC may still compile clean while the HMI silently loses its bindings - always review the previewed tag list and cross references first. The default tag table (IsDefault) is refused. Cross references are attempted but may be unavailable at tag-table level; the response says explicitly whether they were obtained. Regex and wildcards are rejected. Back up first with ExportPlcTagTable."
+    },
+    {
+      "name": "DeletePlcType",
+      "layer": "L2",
+      "domain": "PLC-Software",
+      "method": "DeletePlcType",
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "typePath",
+        "dryRun"
+      ],
+      "description": "[L2][PLC-Software][Destructive] Preview or delete ONE PLC user data type (UDT / PlcType) by its exact path. Defaults to dryRun=true. Deleting a UDT breaks every DB and block interface declared with it, so the preview reports its cross references (GetCrossReferences works at type level) before you commit - review them first. Regex and wildcards are rejected. Export the type first with ExportType, and CompileSoftware afterwards."
     }
   ]
 }
