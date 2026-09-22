@@ -83,7 +83,7 @@ jobs:
   # Siemens.Engineering.Base）—— 实测如此。所以这里先在 runner 上构建引擎再跑；
   # 若某天确认引擎无法在无 TIA 的 runner 上构建，就把它挪到本地/发布流程里跑。
   lite-profile:
-    name: lite profile is usable (release gate)
+    name: release gate (lite profile + response parking)
     if: github.event_name == 'workflow_dispatch'
     runs-on: windows-latest
     steps:
@@ -98,3 +98,7 @@ jobs:
           python-version: '3.12'
       - name: lite must cover the golden path and stay under the host cap
         run: python scripts/Check-LiteProfile.py tools/tiaportal-mcp/src/TiaMcpServer/bin-ci-v20/Release/net48/TiaMcpServer.exe
+      # 离线套件只盯得住 ExportStore 的**逻辑**；"接线有没有真的被调用"只有端到端才知道。
+      # 编译通过 + 工具注册上了 + 逻辑单测全绿，曾经给人一种"验过了"的假象。
+      - name: large-response parking must really engage end to end
+        run: python scripts/Smoke-ResponseParking.py tools/tiaportal-mcp/src/TiaMcpServer/bin-ci-v20/Release/net48/TiaMcpServer.exe
