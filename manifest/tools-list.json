@@ -1,8 +1,8 @@
 {
   "package": "TIA_MCP_Delivery_v2.3.0",
-  "generatedAt": "2026-09-22T08:27:54.903544+08:00",
+  "generatedAt": "2026-09-22T09:56:11.958547+08:00",
   "source": "live MCP tools/list of TiaMcpServer.exe (dev build)",
-  "toolCount": 218,
+  "toolCount": 220,
   "note": "Full roster. Regenerate with scripts/Generate-ToolsList.py after any tool add/remove. Runtime tools/list remains authoritative when the server is running.",
   "tools": [
     {
@@ -1366,6 +1366,17 @@
       "description": "[L2][Hardware]Get info from a device item from the current project/session"
     },
     {
+      "name": "GetDeviceItemIoAddresses",
+      "layer": "L2",
+      "domain": "Hardware",
+      "method": "GetDeviceItemIoAddresses",
+      "returnType": "",
+      "parameters": [
+        "deviceItemPath"
+      ],
+      "description": "[L2][Hardware] READ-ONLY. List the I/O addresses of one device item (signal module, signal board, built-in CPU I/O). Returns each address as ioType + startAddress + length in ENGINE RAW VALUES (startAddress is the byte offset: %I2.0 is startAddress 2). Use this to confirm an address before and after changing it. Device item path looks like 'PLC_1/DI 8x24VDC_1' — get it from GetDeviceItemTree."
+    },
+    {
       "name": "GetDeviceItemNetworkInfo",
       "layer": "L2",
       "domain": "Hardware",
@@ -2583,6 +2594,20 @@
         "value"
       ],
       "description": "[L2][Hardware]Set one exact DeviceItem attribute by name with type coercion and detailed error return. Use GetDeviceItemInfo/GetDeviceItemNetworkInfo first."
+    },
+    {
+      "name": "SetDeviceItemIoAddress",
+      "layer": "L2",
+      "domain": "Hardware",
+      "method": "SetDeviceItemIoAddress",
+      "returnType": "",
+      "parameters": [
+        "deviceItemPath",
+        "ioType",
+        "startAddress",
+        "dryRun"
+      ],
+      "description": "[L2][Hardware][Destructive] Preview or change the I/O START ADDRESS of one device item (e.g. move a DI module to start at %I2.0 by passing startAddress=2). Defaults to dryRun=true. startAddress is the ENGINE RAW byte offset, not '2.0'. It writes hardware configuration, so a wrong value does NOT fail compilation — the program silently reads a different module. Read back with GetDeviceItemIoAddresses, then CompileSoftware and SaveProject. Overlapping address ranges are rejected by TIA and reported back with the reason."
     },
     {
       "name": "SetDriveParameter",
