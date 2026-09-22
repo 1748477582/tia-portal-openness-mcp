@@ -1,8 +1,8 @@
 {
   "package": "TIA_MCP_Delivery_v2.3.0",
-  "generatedAt": "2026-09-22T09:56:11.958547+08:00",
+  "generatedAt": "2026-09-22T11:04:53.910954+08:00",
   "source": "live MCP tools/list of TiaMcpServer.exe (dev build)",
-  "toolCount": 220,
+  "toolCount": 222,
   "note": "Full roster. Regenerate with scripts/Generate-ToolsList.py after any tool add/remove. Runtime tools/list remains authoritative when the server is running.",
   "tools": [
     {
@@ -1400,6 +1400,17 @@
       "description": "[L2][Hardware]Get a subtree view for a device item (hardware components + sub device items)"
     },
     {
+      "name": "GetDevicePlugLocations",
+      "layer": "L2",
+      "domain": "Hardware",
+      "method": "GetDevicePlugLocations",
+      "returnType": "",
+      "parameters": [
+        "deviceItemPath"
+      ],
+      "description": "[L2][Hardware] READ-ONLY. List the plug slots of one device item: which slot numbers are FREE (as reported by TIA at runtime) and which are already OCCUPIED (by name / order number / built-in). Call this BEFORE plugging a signal board (SB), signal module (SM) or communication module (CM) so the slot / position number comes from TIA instead of a guess — slot numbers differ per CPU family and are never hardcoded by this server. A signal board plugs into the CPU device item itself, so pass the CPU path (e.g. 'PLC_1'). Get paths from GetDeviceItemTree."
+    },
+    {
       "name": "GetDevices",
       "layer": "L1",
       "domain": "Hardware",
@@ -2244,6 +2255,22 @@
         "dryRun"
       ],
       "description": "[L1][PLC-Software] MAIN tool for creating new PLC blocks from natural language. Build one PLC artifact (UDT/tag table/GlobalDB/FC/FB) from structured JSON, then optionally import and compile. Use dryRun=true first to validate. Workflow: describe block in JSON → dryRun → review → dryRun=false to import. Replaces the multi-step Build*Xml + ImportBlock sequence."
+    },
+    {
+      "name": "PlugDeviceItem",
+      "layer": "L2",
+      "domain": "Hardware",
+      "method": "PlugDeviceItem",
+      "returnType": "",
+      "parameters": [
+        "deviceItemPath",
+        "orderNumber",
+        "version",
+        "positionNumber",
+        "name",
+        "dryRun"
+      ],
+      "description": "[L2][Hardware][Destructive] Insert a SUBMODULE into an existing device: signal board (SB, e.g. SB 1221 6ES7221-3BD30-0XB0), signal module (SM), or communication module (CM). This is the 'InsertDeviceItem' / 'AddSignalBoard' operation — AddDevice only creates whole stations and cannot plug boards into a CPU. Defaults to dryRun=true, which runs a REAL TIA feasibility check (CanPlugNew) without writing. Pass positionNumber=-1 to let the server pick a free slot reported by TIA; slot numbers are never hardcoded — use GetDevicePlugLocations to see them. After a successful plug the module is read back and verified (IsPlugged / name / slot). This tool does NOT set addresses: to make the inputs start at %I2.0, call SetDeviceItemIoAddress afterwards with startAddress=2, then CompileSoftware and SaveProject. Failures are reported by category: SlotOccupied, SlotNotAvailable, OrderNumberNotFound, NotSupportedByDevice, PlugFailed, VerifyFailed."
     },
     {
       "name": "ProbeGlobalLibrary",

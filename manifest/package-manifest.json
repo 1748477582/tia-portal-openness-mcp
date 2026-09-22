@@ -4,7 +4,7 @@
   "packageName": "TIA_MCP_Delivery_v2.3.0_20260704",
   "packageType": "tia-portal-mcp-complete-offline-delivery-bundle",
   "generatedAt": "2026-05-31T20:30:00+08:00",
-  "refreshedAt": "2026-09-22T09:56:11.958547+08:00",
+  "refreshedAt": "2026-09-22T11:04:53.910954+08:00",
   "target": {
     "tiaPortalMajorVersion": [
       20,
@@ -84,11 +84,11 @@
     }
   },
   "capabilities": {
-    "mcpToolCount": 220,
+    "mcpToolCount": 222,
     "mcpToolLayers": {
       "L0": 6,
       "L1": 53,
-      "L2": 161
+      "L2": 163
     },
     "newToolsThisRelease": [
       "DescribeBlockLogic (v2.3.0)",
