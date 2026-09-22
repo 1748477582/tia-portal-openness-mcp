@@ -36,5 +36,9 @@
          **看起来很确定的错误结论**（把"没查到"当"没有"、把 Advanced 当经典 PLCSIM）——
          正好本仓为此踩过两次坑，所以判定逻辑抽成零依赖文件，用真机数据当 fixture 盯住它。 -->
     <Compile Include="..\..\src\TiaMcpServer\ModelContextProtocol\SimulationProbe.cs" Link="SimulationProbe.cs" />
+    <!-- 参数诊断的判定逻辑：零依赖（不引 MCP 类型、不做 I/O）。它坏了不会崩 —— 只会让
+         "参数写错"退回成一句零信息失败，或者反过来把本来能跑的调用拦下来；两种都是
+         "看起来正常"的坏，只有会失败的用例盯得住。 -->
+    <Compile Include="..\..\src\TiaMcpServer\ModelContextProtocol\ArgDiagnostics.cs" Link="ArgDiagnostics.cs" />
   </ItemGroup>
 </Project>

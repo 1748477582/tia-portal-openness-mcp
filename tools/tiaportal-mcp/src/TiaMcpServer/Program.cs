@@ -657,13 +657,13 @@ namespace TiaMcpServer
                         })
                         .WithStdioServerTransport();
                     // TIA_MCP_PROFILE=lite → only [L0]/[L1] essentials (weak models / capped hosts).
-                    // 两个档都过 WrapWithResponseGuard：超阈值的响应被寄存成「句柄 + 头部切片」，
-                    // 而不是被宿主一刀截断、剩下的内容再也拿不回来。
+                    // 两个档都过 WrapTools 的两层：**参数诊断**在最外（参数写错就拦住、一点副作用都不发生），
+                    // **大响应寄存**在里层（超阈值响应被寄存成「句柄 + 头部切片」，而不是被一刀截断丢掉后文）。
                     if (ModelContextProtocol.McpServer.IsLiteProfile())
-                        mcp.WithTools(ModelContextProtocol.McpServer.WrapWithResponseGuard(
+                        mcp.WithTools(ModelContextProtocol.McpServer.WrapTools(
                             ModelContextProtocol.McpServer.GetLiteTools()));
                     else
-                        mcp.WithTools(ModelContextProtocol.McpServer.WrapWithResponseGuard(
+                        mcp.WithTools(ModelContextProtocol.McpServer.WrapTools(
                             ModelContextProtocol.McpServer.GetAllTools()));
                     mcp.WithPromptsFromAssembly();
                 }
@@ -754,10 +754,10 @@ namespace TiaMcpServer
                     })
                     .WithStreamServerTransport(httpToMcp, mcpToHttp);
                 if (ModelContextProtocol.McpServer.IsLiteProfile())
-                    mcpHttp.WithTools(ModelContextProtocol.McpServer.WrapWithResponseGuard(
+                    mcpHttp.WithTools(ModelContextProtocol.McpServer.WrapTools(
                         ModelContextProtocol.McpServer.GetLiteTools()));
                 else
-                    mcpHttp.WithTools(ModelContextProtocol.McpServer.WrapWithResponseGuard(
+                    mcpHttp.WithTools(ModelContextProtocol.McpServer.WrapTools(
                         ModelContextProtocol.McpServer.GetAllTools()));
                 mcpHttp.WithPromptsFromAssembly();
 

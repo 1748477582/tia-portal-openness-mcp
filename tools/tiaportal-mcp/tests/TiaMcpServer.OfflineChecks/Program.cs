@@ -84,6 +84,9 @@ namespace TiaMcpServer.OfflineChecks
             Console.WriteLine("\nSimulationProbe:");
             SimulationProbeTests.Run();
 
+            Console.WriteLine("\nArgDiagnostics:");
+            ArgDiagnosticsTests.Run();
+
             Console.WriteLine($"\n{T.Passed} passed, {T.Failed} failed");
             return T.Failed == 0 ? 0 : 1;
         }

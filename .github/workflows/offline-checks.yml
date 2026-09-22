@@ -102,3 +102,7 @@ jobs:
       # 编译通过 + 工具注册上了 + 逻辑单测全绿，曾经给人一种"验过了"的假象。
       - name: large-response parking must really engage end to end
         run: python scripts/Smoke-ResponseParking.py tools/tiaportal-mcp/src/TiaMcpServer/bin-ci-v20/Release/net48/TiaMcpServer.exe
+      # 同理：ArgDiagnostics 的判定有 24 条离线用例，但"这层有没有真的被调用"只有端到端才知道。
+      # 两个方向都要验：错的必须被拦且说清原因，对的绝不能被拦。
+      - name: argument diagnostics must really engage end to end
+        run: python scripts/Smoke-ArgDiagnostics.py tools/tiaportal-mcp/src/TiaMcpServer/bin-ci-v20/Release/net48/TiaMcpServer.exe
