@@ -400,17 +400,19 @@ namespace TiaMcpServer.Siemens
             var occupiedAfter = ReadOccupiedSlots(verifyHost);
             var after = occupiedAfter.FirstOrDefault(x => x.PositionNumber == acceptedSlot);
 
-            // 兜底：只按槽位号找，会漏。**真机实测**（S7-1200 + SB 1221，2026-09-22）：插完立刻读回，
-            // 新模块的 PositionNumber 并不等于落位号（组态还没刷新），于是明明插进去了却被判成
-            // VerifyFailed —— 保守但**不准**，会让人以为没插上、进而重复插入。
-            // 模块名是我们自己起并去重过的，确定唯一，用名字命中同样能证明"插进去了"。
+            // 兜底：**按路径重新定位**。真机实测（S7-1200 + SB 1221，2026-09-22）：PlugNew 之后
+            // 立刻读，走的这两条路结果不一样 ——
+            //   · 遍历 host.DeviceItems（组合集合）：**看不到**刚插进去的模块（没刷新）
+            //   · 按路径 '宿主/模块名' 查：**查得到**（GetDeviceItemIoAddresses 走的就是它）
+            // 只信组合集合的话，一次成功的插入会被判成 VerifyFailed —— 保守但不准，
+            // 且会诱导调用方重复插入。所以这里用被证实可靠的那条路复核。
             if (after == null && !string.IsNullOrWhiteSpace(itemName))
             {
-                after = occupiedAfter.FirstOrDefault(x =>
-                    string.Equals(x.Name, itemName, StringComparison.OrdinalIgnoreCase));
-                if (after != null && after.PositionNumber > 0)
+                var byPath = GetDeviceItem(deviceItemPath.TrimEnd('/') + "/" + itemName);
+                if (byPath != null)
                 {
-                    acceptedSlot = after.PositionNumber;   // 以读回的真实槽位号为准
+                    after = DescribeItem(byPath);
+                    if (after.PositionNumber > 0) acceptedSlot = after.PositionNumber;
                 }
             }
 
@@ -437,6 +439,11 @@ namespace TiaMcpServer.Siemens
             {
                 try { return d.PositionNumber == acceptedSlot; } catch { return false; }
             });
+            // 同一个"组合集合没刷新"的问题：里面找不到就按路径取（上面已证实按路径可靠）。
+            if (verifyItem == null && !string.IsNullOrWhiteSpace(itemName))
+            {
+                verifyItem = GetDeviceItem(deviceItemPath.TrimEnd('/') + "/" + itemName);
+            }
             if (verifyItem != null)
             {
                 result.Addresses = ReadAddresses(verifyItem);
