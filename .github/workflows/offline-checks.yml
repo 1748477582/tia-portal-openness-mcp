@@ -6,6 +6,9 @@
 #     "零依赖控制台 Exe"（上游做法）—— 见 A2。
 #   * Validate-Bundle.ps1：它会检查 bin\Release\net48\TiaMcpServer.exe 是否存在，
 #     而干净检出没有 bin\。要进 CI 得先在 CI 里构建，或让它接受 runtime\ 里的引擎。
+#   * scripts/Smoke-ConnectIsolated.py：它会**真的拉起一个 TIA Portal 进程**，只能在装了 TIA
+#     的机器上由人手动跑（验的是 ConnectIsolated 的"隔离"这条安全属性，不是构建正确性）。
+#     别把它放进 CI，也别无人值守地跑它 —— 用法与安全纪律见脚本头部。
 #
 # 每个 job 都跑一次自检（--selftest）：凡是"检查自己坏了却全绿"的地方，
 # 都要能证明它抓得住问题。
