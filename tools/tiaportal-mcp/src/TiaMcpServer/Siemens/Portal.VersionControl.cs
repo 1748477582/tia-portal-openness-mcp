@@ -27,6 +27,12 @@ namespace TiaMcpServer.Siemens
     /// `ConnectObject` / `FileNameWithoutExtension`；V20 全部具备）。所以整个文件用 `#if !TIA_V18` 守卫，
     /// 与仓内 23 个 Unified 工具同一约定。
     ///
+    /// ✅ **V20 运行期已实测（2026-09-23）**：隔离实例 + 新建空工程上，`GetVersionControlWorkspaces`
+    /// 直接**成功返回**（"0 个 workspace"，而不是"无 VersionControlInterface"）；随后
+    /// 建 workspace → 列出（`mappedObjects=0 | language=zh-CN`）→ 状态 → dryRun 同步/映射 全链通过。
+    /// 故上游那句"VCI requires TIA Portal V21 or later" **不成立**（它只是 target V21，没在 V20 验过），
+    /// 勿据此把本族收窄回 V21。
+    ///
     /// ⚠️ 本仓适配：上游那份**不包** `_sta.Run`（其线程模型不同），本仓所有 Openness 访问必须在
     /// PortalSta 线程内完成、且**不得把 RCW 传出**。所以这里每个对外方法整体包 `_sta.Run`，只返回普通数据。
     /// </summary>
