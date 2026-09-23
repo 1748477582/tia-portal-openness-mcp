@@ -2673,7 +2673,7 @@ namespace TiaMcpServer
                 }
 
                 // 词表已外置到 SemanticLexicon（中性默认 + 环境变量可扩展行业术语）。
-                // 不再把某个行业的词（Gantry/Crane/大车/小车/行走）写死在打分里 —— 那种语境属于使用者，
+                // 不再把某个特定行业的词表写死在打分里 —— 那种语境属于使用者，
                 // 由用户分析阶段按需通过 TIA_MCP_SEMANTIC_MOTION_EXTRA / _PID_EXTRA 注入。
                 if (SemanticLexicon.MatchesMotion(desired) && SemanticLexicon.MatchesMotion(normalizedSymbol))
                 {
@@ -2873,6 +2873,37 @@ namespace TiaMcpServer
             return root;
         }
 
+        private static Dictionary<string, string>? _hmiTemplateAliases;
+
+        /// <summary>
+        /// 确定性别名表（"模板名|HMI标签" → PLC 符号）从**配置**加载，代码里不放任何工程专有映射。
+        /// 环境变量 <c>TIA_MCP_HMI_TEMPLATE_ALIASES</c> 指向一个 JSON 文件；缺省即空表。
+        /// 配置读坏时也返回空表 —— 宁可回落到打分，也不要因为一个坏配置把整个报告打断。
+        /// </summary>
+        private static Dictionary<string, string> LoadHmiTemplateAliases()
+        {
+            if (_hmiTemplateAliases != null) return _hmiTemplateAliases;
+            var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            try
+            {
+                var path = Environment.GetEnvironmentVariable("TIA_MCP_HMI_TEMPLATE_ALIASES");
+                if (!string.IsNullOrWhiteSpace(path) && File.Exists(path))
+                {
+                    if (JsonNode.Parse(File.ReadAllText(path)) is JsonObject node)
+                    {
+                        foreach (var kv in node)
+                        {
+                            var v = kv.Value?.ToString();
+                            if (!string.IsNullOrWhiteSpace(v)) map[kv.Key] = v!;
+                        }
+                    }
+                }
+            }
+            catch { }
+            _hmiTemplateAliases = map;
+            return map;
+        }
+
         private static bool TryResolveDeterministicHmiTemplateMapping(
             string templateName,
             string hmiTag,
@@ -2887,19 +2918,12 @@ namespace TiaMcpServer
             ruleName = "";
             evidence = "";
 
-            var aliases = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-            {
-                ["drive-axis-control|Cmd_Axis_Reset"] = "HMI_Data.大车复位",
-                ["drive-axis-control|Cmd_Axis_JogFwd"] = "HMI_Data.大车向前",
-                ["drive-axis-control|Cmd_Axis_JogRev"] = "HMI_Data.大车向后",
-                ["equipment-overview|Sys_Auto"] = "Global_Data.CMS.Auto",
-                ["equipment-overview|Sys_Fault"] = "A5_DB2_Faults_DB.Sys_Fault_Flag",
-                ["equipment-overview|Cmd_Stop"] = "21_DB_interface.Auto.Stop",
-                ["equipment-overview|Cmd_Reset"] = "21_DB_interface.Auto.Reset",
-                ["hmi-data-export-probe|HMI_RunEnable"] = "HMI_Data.总运行使能",
-                ["hmi-data-export-probe|HMI_GantryForward"] = "HMI_Data.大车向前",
-                ["hmi-data-export-probe|HMI_GantrySpeedSet"] = "HMI_Data.大车频率给定"
-            };
+            // 🔑 别名表**不写死在代码里**：它天然属于具体工程（DB 名、符号命名、界面语言各不相同），
+            // 写进通用工具等于把某一个工程固化成默认行为。改由使用者在配置里提供 ——
+            // 环境变量 TIA_MCP_HMI_TEMPLATE_ALIASES 指向一个 JSON 文件：
+            //     { "模板名|HMI标签": "PLC符号", ... }
+            // 未配置 ⇒ 空表 ⇒ 本规则不生效、回落到正常打分（不报错、不阻断）。
+            var aliases = LoadHmiTemplateAliases();
 
             var key = (templateName ?? "") + "|" + (hmiTag ?? "");
             if (!aliases.TryGetValue(key, out var targetSymbol))
