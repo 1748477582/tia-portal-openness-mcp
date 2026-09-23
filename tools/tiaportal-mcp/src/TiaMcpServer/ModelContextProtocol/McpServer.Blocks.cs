@@ -577,6 +577,20 @@ throw McpError.WithRecovery(ex, $"Unexpected error importing blocks from '{dir}'
             [Description("softwarePath: PLC software path, e.g. 'PLC_1'")] string softwarePath,
             [Description("password: optional safety password")] string password = "",
             [Description("timeoutSeconds: compile timeout guard in seconds (default 600; 0 or negative = use appsettings.json tia.compileTimeoutSeconds, default 600). On timeout an error is returned — the compiler keeps running in background, so wait before retrying")] int timeoutSeconds = 600)
+            => CompileAndDiagnoseCore(softwarePath, password, timeoutSeconds);
+
+        [McpServerTool(Name = "CompileAndDiagnoseHmi"), Description("[L1][HMI] Compile an HMI and return structured errors/warnings, the HMI counterpart of CompileAndDiagnosePlc. Use it after generating screens/tags so you can read the diagnostics and fix them yourself instead of asking the engineer to compile in the TIA UI. WinCC Unified: HmiSoftware is not compilable on its own, so the owning device is compiled (same as the TIA UI does) and hardware diagnostics may appear alongside screen ones. Classic (Comfort/KTP): the HMI software itself is compiled. Requires: Connect + OpenProject. softwarePath from GetProjectTree, e.g. 'HMI_RT_1'.")]
+        public static ResponseCompileDiagnose CompileAndDiagnoseHmi(
+            [Description("softwarePath: HMI software path, e.g. 'HMI_RT_1'")] string softwarePath,
+            [Description("timeoutSeconds: compile timeout guard in seconds (default 600; 0 or negative = use appsettings.json tia.compileTimeoutSeconds, default 600). On timeout an error is returned — the compiler keeps running in background, so wait before retrying")] int timeoutSeconds = 600)
+            => CompileAndDiagnoseCore(softwarePath, "", timeoutSeconds);
+
+        /// <summary>
+        /// Shared body of the compile-and-diagnose tools: compile one software and return the
+        /// CompilerResult flattened into structured errors/warnings. The PLC and HMI tools differ
+        /// only in the software they are pointed at, so they must not diverge here.
+        /// </summary>
+        private static ResponseCompileDiagnose CompileAndDiagnoseCore(string softwarePath, string password, int timeoutSeconds)
         {
             try
             {
@@ -606,11 +620,11 @@ throw McpError.WithRecovery(ex, $"Unexpected error importing blocks from '{dir}'
             }
             catch (PortalException pex)
             {
-throw McpError.WithRecovery(pex, $"Failed compiling software '{softwarePath}' [{pex.Code}]: {pex.Message}");
+                throw McpError.WithRecovery(pex, $"Failed compiling software '{softwarePath}' [{pex.Code}]: {pex.Message}");
             }
             catch (Exception ex) when (ex is not McpException)
             {
-throw McpError.WithRecovery(ex, $"Unexpected error compiling software '{softwarePath}': {ex.Message}{McpHints.Recovery(ex)}");
+                throw McpError.WithRecovery(ex, $"Unexpected error compiling software '{softwarePath}': {ex.Message}{McpHints.Recovery(ex)}");
             }
         }
 

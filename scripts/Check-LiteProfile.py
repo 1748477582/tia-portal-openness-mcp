@@ -49,7 +49,7 @@ REQUIRED = [
     "ImportFromDocuments", "ExportBlocksAsDocuments", "ImportBlocksFromDocuments",
     "GenerateBlocksFromExternalSource",
     # 校验
-    "CompileSoftware", "CompileAndDiagnosePlc",
+    "CompileSoftware", "CompileAndDiagnosePlc", "CompileAndDiagnoseHmi",
     # 大响应寄存 —— 超阈值响应拿回全文的**唯一**途径，掉出 lite 就等于那条路断了
     "GetExport", "ListExports", "SaveExport",
 ]
