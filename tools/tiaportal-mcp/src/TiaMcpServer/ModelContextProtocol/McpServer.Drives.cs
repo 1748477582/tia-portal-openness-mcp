@@ -742,13 +742,14 @@ namespace TiaMcpServer.ModelContextProtocol
 
         // ---- writes ----
 
-        [McpServerTool(Name = "SetDriveParameter"), Description("[L2][Drive] Set a writable module attribute (e.g. Name, Comment) on a SINAMICS drive component resolved via the PUBLIC Openness HW API. deviceItemPath must be a module path returned by ListDriveModel/GetDeviceItemTree, e.g. 'SINAMICS S_1/驱动闭环控制/电机_1'. parameter = the attribute name from ListDriveModel writableAttributes. NOTE: Startdrive P-parameters (P0840 etc.) and telegrams are NOT reachable on this HW layer - they require the Startdrive Openness public API. Requires an open TIA project.")]
+        [McpServerTool(Name = "SetDriveParameter"), Description("[L2][Drive] Set a writable module attribute (e.g. Name, Comment) on a SINAMICS drive component resolved via the PUBLIC Openness HW API. deviceItemPath must be a module path returned by ListDriveModel/GetDeviceItemTree, e.g. 'SINAMICS S_1/驱动闭环控制/电机_1'. parameter = the attribute name from ListDriveModel writableAttributes. NOTE: Startdrive P-parameters (P0840 etc.) and telegrams are NOT reachable on this HW layer - they require the Startdrive Openness public API. Requires an open TIA project. DEFAULTS TO dryRun=true: the default call only reports the intended change; pass dryRun=false to write.")]
         public static ResponseJsonReport SetDriveParameter(
             [System.ComponentModel.Description("deviceItemPath: module path resolved from ListDriveModel/GetDeviceItemTree, e.g. 'SINAMICS S_1/驱动闭环控制/电机_1'")] string deviceItemPath,
             [System.ComponentModel.Description("driveObject: ignored on the HW layer; kept for signature compatibility. Use deviceItemPath to address the module directly.")] string driveObject,
             [System.ComponentModel.Description("parameter: the writable attribute name from ListDriveModel (e.g. 'Comment', 'Name').")] string parameter,
             [System.ComponentModel.Description("property: ignored on the HW layer; kept for signature compatibility.")] string property = "Value",
-            [System.ComponentModel.Description("value: the new attribute value as string (converted to the attribute's native type automatically).")] string value = "")
+            [System.ComponentModel.Description("value: the new attribute value as string (converted to the attribute's native type automatically).")] string value = "",
+            [System.ComponentModel.Description("dryRun: DEFAULT true - reports the intended change and writes nothing. Pass false to actually set the attribute.")] bool dryRun = true)
         {
             DriveLog("=== SetDriveParameter(HW) START ===");
             RequireConnected();
@@ -756,6 +757,19 @@ namespace TiaMcpServer.ModelContextProtocol
             try
             {
                 if (string.IsNullOrEmpty(parameter)) throw new McpException("parameter (attribute name) is required, e.g. 'Comment'.");
+                if (dryRun)
+                {
+                    data["deviceItemPath"] = deviceItemPath;
+                    data["attribute"] = parameter;
+                    data["wouldSet"] = value;
+                    return new ResponseJsonReport
+                    {
+                        Ok = true,
+                        Data = data,
+                        Message = $"DRY RUN - nothing was written. Would set {deviceItemPath}.{parameter} = '{value}'. Call again with dryRun=false to do it.",
+                        Meta = new JsonObject { ["timestamp"] = DateTime.Now, ["success"] = true, ["dryRun"] = true }
+                    };
+                }
                 var result = Portal.SetDeviceItemAttribute(deviceItemPath, parameter, value);
                 var meta = result.Meta ?? new JsonObject();
                 data["deviceItemPath"] = deviceItemPath;
@@ -806,12 +820,13 @@ namespace TiaMcpServer.ModelContextProtocol
             };
         }
 
-        [McpServerTool(Name = "AddDriveComponent"), Description("[L2][Drive] Add a drive hardware component under a SINAMICS device item via the public Openness DeviceItem.PlugNew. Requires an exact, catalog-resolvable typeIdentifier - the OrderNumber shown by GetDeviceItemInfo (e.g. 'OrderNumber:1FK2102-1AG1x-xMxx' with wildcards) is a family placeholder and usually NOT pluggable; obtain a concrete identifier from the hardware catalog or an existing module's TypeIdentifierNormalized. NOTE: compact single-axis drives like S210 have a fixed topology (one motor / one encoder DRIVE-CLiQ port) - PlugNew for a second motor fails with 'Could not create the device item at the container'. Component addition is mainly meaningful on expandable drive units (S120/G120 etc.).")]
+        [McpServerTool(Name = "AddDriveComponent"), Description("[L2][Drive] Add a drive hardware component under a SINAMICS device item via the public Openness DeviceItem.PlugNew. Requires an exact, catalog-resolvable typeIdentifier - the OrderNumber shown by GetDeviceItemInfo (e.g. 'OrderNumber:1FK2102-1AG1x-xMxx' with wildcards) is a family placeholder and usually NOT pluggable; obtain a concrete identifier from the hardware catalog or an existing module's TypeIdentifierNormalized. NOTE: compact single-axis drives like S210 have a fixed topology (one motor / one encoder DRIVE-CLiQ port) - PlugNew for a second motor fails with 'Could not create the device item at the container'. Component addition is mainly meaningful on expandable drive units (S120/G120 etc.). DEFAULTS TO dryRun=true: the default call only reports what WOULD be added. Pass dryRun=false to plug it for real; the result is then verified by re-reading the module back BY PATH (a freshly plugged child does not always appear in the host's DeviceItems composition immediately).")]
         public static ResponseMessage AddDriveComponent(
             [System.ComponentModel.Description("deviceItemPath: SINAMICS application device item path, e.g. 'SINAMICS S_1/驱动闭环控制'")] string deviceItemPath,
             [System.ComponentModel.Description("typeIdentifier: exact component type identifier / MLFB, e.g. 'DriveUnit' or a catalog MLFB")] string typeIdentifier,
             [System.ComponentModel.Description("name: name for the new component")] string name,
-            [System.ComponentModel.Description("positionNumber: plug position (1-based); 0 lets TIA auto-place")] int positionNumber = 0)
+            [System.ComponentModel.Description("positionNumber: plug position (1-based); 0 lets TIA auto-place")] int positionNumber = 0,
+            [System.ComponentModel.Description("dryRun: DEFAULT true - reports what would be added and changes nothing. Pass false to actually plug the component.")] bool dryRun = true)
         {
             // Openness compliance: resolve the DeviceItem and invoke PlugNew on the STA thread.
             return Portal.RunOnSta(() =>
@@ -821,14 +836,43 @@ namespace TiaMcpServer.ModelContextProtocol
                     RequireConnected();
                     var di = Portal.GetDeviceItem(deviceItemPath);
                     if (di == null) throw new McpException($"Device item not found: {deviceItemPath}");
+
+                    if (dryRun)
+                    {
+                        return new ResponseMessage
+                        {
+                            Message = $"DRY RUN - nothing was added. Would plug '{typeIdentifier}' as '{name}' under '{deviceItemPath}'"
+                                      + (positionNumber > 0 ? $" at position {positionNumber}" : " (auto position)")
+                                      + ". Call again with dryRun=false to do it.",
+                            Meta = new JsonObject { ["timestamp"] = DateTime.Now, ["success"] = true, ["dryRun"] = true }
+                        };
+                    }
+
                     var plugNew = typeof(DeviceItem).GetMethods()
                         .FirstOrDefault(m => m.Name == "PlugNew" && m.GetParameters().Length == 3);
                     if (plugNew == null) throw new McpException("PlugNew(string,string,int) not found on DeviceItem");
                     var newItem = (DeviceItem)plugNew.Invoke(di, new object[] { typeIdentifier, name, positionNumber });
+
+                    // 读回验证：PlugNew 之后宿主的 DeviceItems 组合**不一定会立刻刷新**（真机实测过同一坑），
+                    // 所以按**路径**重新定位新模块 —— 与 PlugDeviceItem 修好后的那条路径一致。
+                    string childName = string.IsNullOrWhiteSpace(newItem?.Name) ? name : newItem!.Name;
+                    DeviceItem? verify = null;
+                    try { verify = Portal.GetDeviceItem(deviceItemPath.TrimEnd('/') + "/" + childName); } catch { }
+                    bool verified = verify != null;
                     return new ResponseMessage
                     {
-                        Message = $"Component '{name}' added under '{deviceItemPath}'",
-                        Meta = new JsonObject { ["timestamp"] = DateTime.Now, ["success"] = true, ["name"] = newItem?.Name }
+                        Message = verified
+                            ? $"Component '{childName}' added under '{deviceItemPath}' (read back by path: present)."
+                            : "⚠️ 未验证：PlugNew 没有抛异常，但按路径 '" + deviceItemPath + "/" + childName
+                              + "' 读回**找不到**新模块。它可能已经插进去了（组合集合滞后），也可能没有 —— "
+                              + "请在 TIA 里手工确认后再决定是否重试，不要直接重插。",
+                        Meta = new JsonObject
+                        {
+                            ["timestamp"] = DateTime.Now,
+                            ["success"] = verified,
+                            ["verified"] = verified,
+                            ["name"] = childName
+                        }
                     };
                 }
                 catch (Exception ex) when (ex is not McpException)

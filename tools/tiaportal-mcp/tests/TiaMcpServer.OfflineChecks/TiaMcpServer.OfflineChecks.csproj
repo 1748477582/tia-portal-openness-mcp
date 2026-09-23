@@ -49,5 +49,7 @@
     <Compile Include="..\..\src\TiaMcpServer\ModelContextProtocol\S7ResScanner.cs" Link="S7ResScanner.cs" />
     <!-- 判断「本次调用失败」还是「TIA 进程已死」：零依赖（按类型名判断，不硬引用 Openness 异常类型）。 -->
     <Compile Include="..\..\src\TiaMcpServer\ModelContextProtocol\PortalFailureClassifier.cs" Link="PortalFailureClassifier.cs" />
+    <!-- 语义打分词表（中性默认 + 环境变量可扩展行业术语）：零依赖。"默认不含行业词"这条通用化边界靠用例钉住。 -->
+    <Compile Include="..\..\src\TiaMcpServer\ModelContextProtocol\SemanticLexicon.cs" Link="SemanticLexicon.cs" />
   </ItemGroup>
 </Project>

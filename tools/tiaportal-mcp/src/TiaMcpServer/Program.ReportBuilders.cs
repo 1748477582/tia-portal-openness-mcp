@@ -2672,15 +2672,16 @@ namespace TiaMcpServer
                     reasons.Add("HMI相关DB/变量");
                 }
 
-                if (desired.IndexOf("Axis", StringComparison.OrdinalIgnoreCase) >= 0 &&
-                    Regex.IsMatch(normalizedSymbol, "Axis|Gantry|Crane|大车|小车|行走|速度|位置", RegexOptions.IgnoreCase))
+                // 词表已外置到 SemanticLexicon（中性默认 + 环境变量可扩展行业术语）。
+                // 不再把某个行业的词（Gantry/Crane/大车/小车/行走）写死在打分里 —— 那种语境属于使用者，
+                // 由用户分析阶段按需通过 TIA_MCP_SEMANTIC_MOTION_EXTRA / _PID_EXTRA 注入。
+                if (SemanticLexicon.MatchesMotion(desired) && SemanticLexicon.MatchesMotion(normalizedSymbol))
                 {
                     score += 8;
                     reasons.Add("轴/运动语义相关");
                 }
 
-                if (desired.IndexOf("PID", StringComparison.OrdinalIgnoreCase) >= 0 &&
-                    Regex.IsMatch(normalizedSymbol, "PID|PV|SP|Kp|Ti|OUT|输出|给定|反馈", RegexOptions.IgnoreCase))
+                if (SemanticLexicon.MatchesPid(desired) && SemanticLexicon.MatchesPid(normalizedSymbol))
                 {
                     score += 8;
                     reasons.Add("PID语义相关");

@@ -53,7 +53,7 @@ namespace TiaMcpServer.ModelContextProtocol
             + "Requires an open project (V20+).")]
         public static ResponseMessage CreateVersionControlWorkspace(
             [Description("workspaceName: name shown in the TIA project tree, e.g. 'git'.")] string workspaceName,
-            [Description("folderPath: existing folder the text files are written to, e.g. 'D:\\\\repos\\\\crane-plc'. Use your Git working tree.")] string folderPath)
+            [Description("folderPath: existing folder the text files are written to, e.g. 'D:\\repos\\my-project'. Use your Git working tree.")] string folderPath)
         {
             try
             {

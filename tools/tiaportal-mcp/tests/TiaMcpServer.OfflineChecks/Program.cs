@@ -99,6 +99,9 @@ namespace TiaMcpServer.OfflineChecks
             Console.WriteLine("\nPortalFailureClassifier:");
             PortalFailureClassifierTests.Run();
 
+            Console.WriteLine("\nSemanticLexicon:");
+            SemanticLexiconTests.Run();
+
             Console.WriteLine($"\n{T.Passed} passed, {T.Failed} failed");
             return T.Failed == 0 ? 0 : 1;
         }

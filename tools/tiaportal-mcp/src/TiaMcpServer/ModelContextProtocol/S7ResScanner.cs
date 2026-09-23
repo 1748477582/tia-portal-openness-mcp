@@ -10,9 +10,9 @@ namespace TiaMcpServer.ModelContextProtocol
     /// A .s7res is **YAML**, not XML:
     ///
     ///     MultiLingualTexts:
-    ///       - id: MLC_jr
-    ///         zh-CN: 起升
-    ///         en-US: Hoist
+    ///       - id: MLC_start
+    ///         zh-CN: 启动
+    ///         en-US: Start
     ///
     /// The previous implementation fed it to <c>XDocument.Load</c> and looked for
     /// SimaticML &lt;Comment&gt;/&lt;MultiLanguageText&gt; elements, so it threw
