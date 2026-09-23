@@ -16,6 +16,11 @@ namespace TiaMcpServer.ModelContextProtocol
             string m = Flatten(ex);
             if (m.Length == 0) return "";
 
+            // TIA 进程已死（NonRecoverable / RPC / Remoting）：所有 Openness 句柄作废、未保存改动全丢。
+            // 必须**最先**判 —— 当成普通失败会把调用方引向「重试这一步」，而重试不可能有用。
+            if (PortalFailureClassifier.IsPortalProcessLost(ex))
+                return Tip("the TIA Portal process is GONE (NonRecoverable/RPC error). Every Openness handle is invalid and unsaved changes were lost — reconnect (Connect), then re-apply and SaveProject.");
+
             // not connected
             if (Has(m, "not connected") || Has(m, "connect first") || Has(m, "_portal") || Has(m, "no tia portal"))
                 return Tip("call Connect first (the server also auto-connects when a TIA Portal is already running).");

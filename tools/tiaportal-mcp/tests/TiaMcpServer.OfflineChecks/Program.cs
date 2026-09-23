@@ -87,6 +87,18 @@ namespace TiaMcpServer.OfflineChecks
             Console.WriteLine("\nArgDiagnostics:");
             ArgDiagnosticsTests.Run();
 
+            Console.WriteLine("\nSimaticMlText:");
+            SimaticMlTextTests.Run();
+
+            Console.WriteLine("\nHmiScreenWalk:");
+            HmiScreenWalkTests.Run();
+
+            Console.WriteLine("\nS7ResScanner:");
+            S7ResScannerTests.Run();
+
+            Console.WriteLine("\nPortalFailureClassifier:");
+            PortalFailureClassifierTests.Run();
+
             Console.WriteLine($"\n{T.Passed} passed, {T.Failed} failed");
             return T.Failed == 0 ? 0 : 1;
         }

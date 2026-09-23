@@ -1358,7 +1358,7 @@ namespace TiaMcpServer.Siemens
             }
 
             var sw = softwareContainer.Software;
-            var screen = TryFindByNameInCollection(sw, new[] { "Screens", "ScreenFolder" }, screenName);
+            var screen = FindHmiScreen(sw, screenName);
             if (screen == null)
             {
                 return new ModelContextProtocol.ResponseObjectDescribe
@@ -1568,7 +1568,7 @@ namespace TiaMcpServer.Siemens
             }
 
             var sw = sc.Software;
-            var screen = TryFindByNameInCollection(sw, new[] { "Screens", "ScreenFolder" }, screenName);
+            var screen = FindHmiScreen(sw, screenName);
             if (screen == null)
             {
                 return new ModelContextProtocol.ResponseObjectDescribe
@@ -1707,7 +1707,7 @@ namespace TiaMcpServer.Siemens
                 Step("resolveSoftware", true, sw.GetType().FullName);
 
                 // Resolve screen + tag table
-                var screen = TryFindByNameInCollection(sw, new[] { "Screens", "ScreenFolder" }, screenName);
+                var screen = FindHmiScreen(sw, screenName);
                 if (screen == null)
                 {
                     Step("findScreen", false, $"Screen '{screenName}' not found");
@@ -2252,7 +2252,7 @@ namespace TiaMcpServer.Siemens
                 var screens = TryGetPropertyValue(sw, "Screens");
                 if (screens == null) throw new InvalidOperationException("HMI Screens collection not found.");
 
-                var screen = TryFindByNameInCollection(sw, new[] { "Screens", "ScreenFolder" }, screenName);
+                var screen = FindHmiScreen(sw, screenName);
                 var action = "exists";
                 if (screen == null)
                 {
@@ -3397,7 +3397,7 @@ namespace TiaMcpServer.Siemens
             return _sta.Run(() =>
             {
             var sw = ResolveHmiSoftwareOrThrow(hmiSoftwarePath);
-            var screen = TryFindByNameInCollection(sw, new[] { "Screens", "ScreenFolder" }, screenName);
+            var screen = FindHmiScreen(sw, screenName);
             if (screen == null)
             {
                 throw new InvalidOperationException($"HMI screen '{screenName}' not found.");
@@ -4749,7 +4749,7 @@ namespace TiaMcpServer.Siemens
             var softwareContainer = GetSoftwareContainer(softwarePath);
             if (softwareContainer?.Software == null) throw new PortalException(PortalErrorCode.NotFound, $"HMI software not found: {softwarePath}");
 
-            var screen = TryFindByNameInCollection(softwareContainer.Software, new[] { "Screens", "ScreenFolder" }, screenName);
+            var screen = FindHmiScreen(softwareContainer.Software, screenName);
             if (screen == null) throw new PortalException(PortalErrorCode.NotFound, $"HMI screen not found: {screenName}");
 
             if (!TryExportEngineeringObject(screen, exportPath, out var err))
@@ -5962,42 +5962,18 @@ namespace TiaMcpServer.Siemens
 
         private static List<string> TryListScreens(object hmiRoot)
         {
-            var result = new List<string>();
-
-            try
-            {
-                // Try common shapes: root.Screens OR root.ScreenFolder.Screens
-                var rootType = hmiRoot.GetType();
-                var screens = rootType.GetProperty("Screens")?.GetValue(hmiRoot);
-                if (screens == null)
-                {
-                    var folder = rootType.GetProperty("ScreenFolder")?.GetValue(hmiRoot);
-                    if (folder != null)
-                    {
-                        screens = folder.GetType().GetProperty("Screens")?.GetValue(folder);
-                    }
-                }
-
-                if (screens is System.Collections.IEnumerable enumerable)
-                {
-                    foreach (var item in enumerable)
-                    {
-                        if (item == null) continue;
-                        var name = item.GetType().GetProperty("Name")?.GetValue(item)?.ToString();
-                        if (!string.IsNullOrWhiteSpace(name))
-                        {
-                            result.Add(name!);
-                        }
-                    }
-                }
-            }
-            catch
-            {
-                // best-effort only
-            }
-
-            return result;
+            // 递归遍历嵌套画面组/文件夹（Unified: ScreenGroups→Groups；Classic: ScreenFolder→Folders）。
+            // 判定逻辑抽出到零依赖文件 HmiScreenWalk —— 原来只读根级 Screens，组里的画面会「查不到」。
+            return HmiScreenWalk.ListNames(hmiRoot);
         }
+
+        /// <summary>
+        /// 先按根/单层文件夹找（保留既有语义），找不到再递归到嵌套画面组（HmiScreenWalk）。
+        /// 只做「兜底扩展」：命中根级时行为与原来完全一致。
+        /// </summary>
+        private static object? FindHmiScreen(object hmiRoot, string screenName)
+            => TryFindByNameInCollection(hmiRoot, new[] { "Screens", "ScreenFolder" }, screenName)
+               ?? ModelContextProtocol.HmiScreenWalk.FindByName(hmiRoot, screenName);
 
         private static List<string> TryListNamesFromCollection(object root, string[] propertyHints, string finalCollectionNameHint)
         {

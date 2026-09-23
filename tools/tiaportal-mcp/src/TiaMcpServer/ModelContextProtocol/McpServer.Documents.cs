@@ -609,25 +609,10 @@ namespace TiaMcpServer.ModelContextProtocol
 
         private static List<string> GetResMissingEnUsIds(string directory, string baseName)
         {
-            var resPath = Path.Combine(directory, baseName + ".s7res");
-            var missing = new List<string>();
-            if (!File.Exists(resPath))
-            {
-                return missing;
-            }
-            var xdoc = XDocument.Load(resPath);
-            XNamespace ns = xdoc.Root?.Name.Namespace ?? XNamespace.None;
-            foreach (var comment in xdoc.Descendants(ns + "Comment"))
-            {
-                var hasEnUs = comment.Elements(ns + "MultiLanguageText")
-                                     .Any(e => string.Equals((string?)e.Attribute("Lang"), "en-US", StringComparison.OrdinalIgnoreCase));
-                if (!hasEnUs)
-                {
-                    var id = (string?)comment.Attribute("Id") ?? "";
-                    missing.Add(id);
-                }
-            }
-            return missing;
+            // .s7res 是 YAML，不是 XML：旧实现用 XDocument.Load 解析，对每个真实文件都抛 XmlException，
+            // 被上层 catch 吞掉 —— 这条 en-US 预检从来没有真正报过警。判定抽到零依赖文件 S7ResScanner
+            // （可被离线套件喂真 .s7res 文本），此处的职责只剩定位文件。
+            return S7ResScanner.GetMissingEnUsIds(directory, baseName);
         }
 
         #endregion

@@ -40,5 +40,14 @@
          "参数写错"退回成一句零信息失败，或者反过来把本来能跑的调用拦下来；两种都是
          "看起来正常"的坏，只有会失败的用例盯得住。 -->
     <Compile Include="..\..\src\TiaMcpServer\ModelContextProtocol\ArgDiagnostics.cs" Link="ArgDiagnostics.cs" />
+    <!-- SimaticML Access / SCL 正文回读的判定（LadTextRenderer 已改用它）：只依赖 System.Xml.Linq。
+         盯的是「函数调用被读成 #A.B」这类**静默回读造假** —— 编不出错、看不出假，只有会失败的用例盯得住。 -->
+    <Compile Include="..\..\src\TiaMcpServer\ModelContextProtocol\SimaticMlText.cs" Link="SimaticMlText.cs" />
+    <!-- HMI 画面树的递归遍历（含嵌套画面组）：纯反射、零依赖。原来只读根级 Screens，组里的画面会「查不到」。 -->
+    <Compile Include="..\..\src\TiaMcpServer\ModelContextProtocol\HmiScreenWalk.cs" Link="HmiScreenWalk.cs" />
+    <!-- .s7res（是 YAML 不是 XML）缺 en-US 的扫描：零依赖。旧实现用 XDocument.Load 必抛、预检从未报过警。 -->
+    <Compile Include="..\..\src\TiaMcpServer\ModelContextProtocol\S7ResScanner.cs" Link="S7ResScanner.cs" />
+    <!-- 判断「本次调用失败」还是「TIA 进程已死」：零依赖（按类型名判断，不硬引用 Openness 异常类型）。 -->
+    <Compile Include="..\..\src\TiaMcpServer\ModelContextProtocol\PortalFailureClassifier.cs" Link="PortalFailureClassifier.cs" />
   </ItemGroup>
 </Project>

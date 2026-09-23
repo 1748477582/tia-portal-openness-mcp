@@ -1733,7 +1733,7 @@ namespace TiaMcpServer.Siemens
                     !Regex.IsMatch(screenName, nameRegex, RegexOptions.IgnoreCase))
                     continue;
 
-                var screen = TryFindByNameInCollection(sw, new[] { "Screens", "ScreenFolder" }, screenName);
+                var screen = FindHmiScreen(sw, screenName);
                 if (screen == null) { failed.Add($"{screenName}: not found"); continue; }
 
                 var tempDir = Path.Combine(Path.GetTempPath(), "tia_mcp_move_screen", Guid.NewGuid().ToString("N"));
@@ -2021,7 +2021,7 @@ namespace TiaMcpServer.Siemens
 
             foreach (var screenName in names)
             {
-                var screen = TryFindByNameInCollection(sw, new[] { "Screens", "ScreenFolder" }, screenName);
+                var screen = FindHmiScreen(sw, screenName);
                 if (screen == null) { failed.Add($"{screenName}: not found"); continue; }
 
                 var key = DetectScreenSubtype(screen);
@@ -2363,7 +2363,7 @@ namespace TiaMcpServer.Siemens
                     var screenName = parts[1];
                     var sc = GetSoftwareContainer(swPath);
                     if (sc?.Software == null) return null;
-                    return TryFindByNameInCollection(sc.Software, new[] { "Screens", "ScreenFolder" }, screenName);
+                    return FindHmiScreen(sc.Software, screenName);
                 }
 
                 case "hmitagtable":
@@ -2446,7 +2446,7 @@ namespace TiaMcpServer.Siemens
                     var itemName = parts[2];
                     var sc = GetSoftwareContainer(swPath);
                     if (sc?.Software == null) return null;
-                    var screen = TryFindByNameInCollection(sc.Software, new[] { "Screens", "ScreenFolder" }, screenName);
+                    var screen = FindHmiScreen(sc.Software, screenName);
                     if (screen == null) return null;
                     var itemsComp = screen.GetType().GetProperty("ScreenItems")?.GetValue(screen);
                     if (itemsComp == null) return null;

@@ -50,7 +50,7 @@ namespace TiaMcpServer.ModelContextProtocol
                 }
                 else if (lang.Equals("SCL", StringComparison.OrdinalIgnoreCase) || lang.Equals("STL", StringComparison.OrdinalIgnoreCase))
                 {
-                    var text = RenderStructuredText(unit);
+                    var text = SimaticMlText.RenderStructuredText(unit);
                     sb.Append(string.IsNullOrWhiteSpace(text)
                         ? "   (无代码或纯声明)\n"
                         : IndentBlock(text, "   "));
@@ -84,7 +84,7 @@ namespace TiaMcpServer.ModelContextProtocol
             {
                 var uid = acc.Attribute("UId")?.Value;
                 if (uid == null) continue;
-                accessText[uid] = ReadAccess(acc);
+                accessText[uid] = SimaticMlText.ReadAccess(acc);
             }
             foreach (var p in flg.Descendants("Part"))
             {
@@ -277,55 +277,8 @@ namespace TiaMcpServer.ModelContextProtocol
             return string.IsNullOrEmpty(s) ? "" : $"({s})";
         }
 
-        private static (string text, bool literal) ReadAccess(XElement acc)
-        {
-            var scope = acc.Attribute("Scope")?.Value ?? "";
-            if (scope.Contains("Constant"))
-            {
-                var v = acc.Descendants("ConstantValue").FirstOrDefault()?.Value?.Trim() ?? "?";
-                return (v, true);
-            }
-            // symbol: join Component names with '.'
-            var comps = acc.Descendants("Component").Select(c => c.Attribute("Name")?.Value).Where(v => !string.IsNullOrEmpty(v)).ToList();
-            var name = string.Join(".", comps);
-            if (string.IsNullOrEmpty(name)) name = "?";
-            return (scope.Contains("Global") ? $"\"{name}\"" : $"#{name}", false);
-        }
-
-        // ---- StructuredText (SCL/STL) ----
-
-        private static string RenderStructuredText(XElement unit)
-        {
-            var st = unit.Descendants("StructuredText").FirstOrDefault();
-            if (st == null) return "";
-            var sb = new StringBuilder();
-            foreach (var node in st.Elements())
-            {
-                switch (node.Name.LocalName)
-                {
-                    case "Text": sb.Append(node.Value); break;
-                    case "Token": sb.Append(node.Attribute("Text")?.Value ?? ""); break;
-                    case "Blank": sb.Append(new string(' ', ParseNum(node, 1))); break;
-                    case "NewLine": sb.Append('\n'); break;
-                    case "Access":
-                        var comps = node.Descendants("Component").Select(c => c.Attribute("Name")?.Value).Where(v => !string.IsNullOrEmpty(v));
-                        var nm = string.Join(".", comps);
-                        var scope = node.Attribute("Scope")?.Value ?? "";
-                        var lit = node.Descendants("ConstantValue").FirstOrDefault()?.Value;
-                        sb.Append(lit ?? (scope.Contains("Global") ? $"\"{nm}\"" : (string.IsNullOrEmpty(nm) ? "" : "#" + nm)));
-                        break;
-                    case "Comment":
-                    case "LineComment":
-                        var ct = node.Descendants("Text").FirstOrDefault()?.Value;
-                        if (!string.IsNullOrEmpty(ct)) sb.Append("//" + ct);
-                        break;
-                }
-            }
-            return sb.ToString();
-        }
-
-        private static int ParseNum(XElement e, int def)
-            => int.TryParse(e.Attribute("Num")?.Value, out var n) ? n : def;
+        // Access 文本回读与 SCL/STL 正文重放已抽出到零依赖文件 SimaticMlText（可被离线套件喂真输入）。
+        // 这里不再自带一份 —— 两份副本正是「函数调用被读成 #A.B」那类静默缺陷的温床。
 
         private static string FirstMultilingual(XElement unit, string composition)
         {
