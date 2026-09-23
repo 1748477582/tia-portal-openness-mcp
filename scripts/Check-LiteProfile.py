@@ -50,6 +50,8 @@ REQUIRED = [
     "GenerateBlocksFromExternalSource",
     # 校验
     "CompileSoftware", "CompileAndDiagnosePlc", "CompileAndDiagnoseHmi",
+    # 版本控制（VCI，V20+）：导出/状态/同步 —— 工程进 Git 的黄金路径
+    "GetVersionControlWorkspaces", "GetVersionControlStatus", "SyncVersionControlWorkspace",
     # 大响应寄存 —— 超阈值响应拿回全文的**唯一**途径，掉出 lite 就等于那条路断了
     "GetExport", "ListExports", "SaveExport",
 ]

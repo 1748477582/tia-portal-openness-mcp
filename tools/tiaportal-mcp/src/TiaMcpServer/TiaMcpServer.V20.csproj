@@ -12,7 +12,7 @@
     <Prefer32Bit>false</Prefer32Bit>
     <DefineConstants>$(DefineConstants);TIA_V20</DefineConstants>
     <TiaPortalLocation>D:\Program Files\Siemens\Automation\Portal V20</TiaPortalLocation>
-    <DefaultItemExcludes>$(DefaultItemExcludes);obj\**;obj-v20\**;obj-v18\**;obj-verify*\**;bin\**;bin-v20\**;bin-v18\**;bin-verify*\**</DefaultItemExcludes>
+    <DefaultItemExcludes>$(DefaultItemExcludes);obj\**;obj-v20\**;obj-v18\**;obj-stage-v18\**;obj-stage-v20\**;obj-verify*\**;bin\**;bin-v20\**;bin-v18\**;bin-stage-v18\**;bin-stage-v20\**;bin-verify*\**</DefaultItemExcludes>
   </PropertyGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="TiaMcpServer.Tests" />
