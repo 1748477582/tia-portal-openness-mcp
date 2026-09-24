@@ -84,8 +84,12 @@ namespace TiaMcpServer.OfflineChecks
             T.Eq("xml: emptied en-US -> missing", "MLC_34j", m1.Count == 1 ? m1[0] : "<none>");
 
             // en-US 元素整行被删 -> 同样算缺
-            var removed = RealV20S7Res.Replace(
+            // ⚠️ 先把 CRLF 归一化：CI 在 Windows runner 上检出时会把 LF 转成 CRLF，
+            //    直接按 "\n" 做替换会匹配不上（曾因此在 CI 红过一次），本用例必须对换行符免疫。
+            var lf = RealV20S7Res.Replace("\r\n", "\n");
+            var removed = lf.Replace(
                 "    <MultiLanguageText Lang=\"en-US\">Call the Manual  Logic</MultiLanguageText>\n", "");
+            T.Eq("xml: crlf normalised for the removal case", true, removed.Length < lf.Length);
             var m2 = ScanText(removed);
             T.Eq("xml: en-US element removed -> missing", "MLC_34j", m2.Count == 1 ? m2[0] : "<none>");
 
@@ -107,6 +111,11 @@ namespace TiaMcpServer.OfflineChecks
 
             // 空块的空资源文件（真实形态 `<root />`）-> 没有 id 元素 -> 空（不误报"全缺"）
             T.Eq("xml: empty <root /> -> nothing to warn", 0, ScanText("\uFEFF<root />").Count);
+
+            // 换行符形态不该影响判定（CI 上真出现过 LF/CRLF 差异）
+            T.Eq("xml: CRLF sample behaves the same", 0, ScanText(RealV20S7Res.Replace("\n", "\r\n")).Count);
+            T.Eq("xml: CRLF sample missing en-US still reported", "MLC_34j",
+                 firstOrNone(ScanText(RealV20S7Res.Replace("\n", "\r\n").Replace(">Call the Manual  Logic<", "><"))));
 
             // 非 Comment 的 id 容器（如 Title）同样要认
             T.Eq("xml: non-Comment id element handled", "MLC_t",
