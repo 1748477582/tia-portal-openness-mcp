@@ -66,13 +66,54 @@ namespace TiaMcpServer.ModelContextProtocol
             {
                 // ConnectPortal 失败时抛 PortalException（结构化错误码），下方 catch 统一映射到 McpException
                 Portal.ConnectPortal();
+
+                // Connect() used to answer "Connected to TIA-Portal" for BOTH outcomes, so "we started our
+                // OWN empty TIA and bound nothing of yours" became indistinguishable from a real attach.
+                // A tool that "cannot see the project that is plainly open in the UI" is exactly that
+                // confusion — so state which of the two happened, and what to do about it.
+                var mode = Portal.ConnectMode;
+                var boundProject = Portal.BoundProjectName;
+                string message;
+                switch (mode)
+                {
+                    case "attached":
+                        message = "Connected to TIA-Portal: attached to your running instance"
+                                + (string.IsNullOrWhiteSpace(boundProject)
+                                    ? " (no project is open in it yet — call AttachToOpenProject/OpenProject)."
+                                    : $", project '{boundProject}' is bound.");
+                        break;
+
+                    case "attached-no-project":
+                        message = "Connected to TIA-Portal: attached to a running instance, but it exposes NO project. "
+                                + "Open the project in the TIA UI and call AttachToOpenProject(projectName), or use OpenProject(path). "
+                                + (Portal.LastConnectError ?? "");
+                        break;
+
+                    case "new-instance":
+                        message = "Connected to TIA-Portal — WARNING: a NEW EMPTY TIA instance was started, because no "
+                                + "running instance with an open project could be attached. NOTHING of yours is bound, so "
+                                + "tools will NOT see the project you have open in the TIA UI. Check: (1) the project really "
+                                + $"is open in TIA V{Engineering.TiaMajorVersion}; (2) the attach did not time out — raise "
+                                + "TIA_MCP_ATTACH_TIMEOUT_MS (current: " + Portal.AttachTimeoutMs + "ms); "
+                                + "then call Connect again, or AttachToOpenProject(projectName).";
+                        break;
+
+                    default:
+                        message = "Connected to TIA-Portal (" + mode + ").";
+                        break;
+                }
+
                 return new ResponseConnect
                 {
-                    Message = "Connected to TIA-Portal",
+                    Message = message,
                     Meta = new JsonObject
                     {
                         ["timestamp"] = DateTime.Now,
-                        ["success"] = true
+                        ["success"] = true,
+                        ["connectMode"] = mode,
+                        ["attached"] = mode.StartsWith("attached", StringComparison.Ordinal),
+                        ["project"] = boundProject ?? "",
+                        ["attachTimeoutMs"] = Portal.AttachTimeoutMs
                     }
                 };
             }
@@ -199,14 +240,24 @@ namespace TiaMcpServer.ModelContextProtocol
                 {
                     return new ResponseState
                     {
-                        Message = "TIA-Portal MCP server state retrieved",
+                        Message = "TIA-Portal MCP server state retrieved"
+                                  // project "-" alone told the caller nothing. If we are on our own empty
+                                  // instance, say so here too — otherwise "no project" looks like a UI problem.
+                                  + (Portal.ConnectMode == "new-instance"
+                                        ? " — WARNING: this server started its OWN empty TIA instance; nothing of yours is "
+                                          + "bound. Tools will NOT see a project that is open in the TIA UI "
+                                          + "(see Connect for the checklist)."
+                                        : ""),
                         IsConnected = state.IsConnected,
                         Project = state.Project,
                         Session = state.Session,
                         Meta = new JsonObject
                         {
                             ["timestamp"] = DateTime.Now,
-                            ["success"] = true
+                            ["success"] = true,
+                            ["connectMode"] = Portal.ConnectMode,
+                            ["attached"] = Portal.ConnectMode.StartsWith("attached", StringComparison.Ordinal),
+                            ["attachTimeoutMs"] = Portal.AttachTimeoutMs
                         }
                     };
                 }

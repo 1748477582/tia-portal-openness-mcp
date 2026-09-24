@@ -77,6 +77,39 @@ namespace TiaMcpServer.Siemens
         private readonly ILogger<Portal>? _logger;
         public string? LastConnectError { get; private set; }
 
+        /// <summary>
+        /// How the current connection was obtained. This is the difference the caller MUST be able to
+        /// see and previously could not: "attached" means the user's running TIA was bound and their
+        /// project is reachable; "new-instance" means we found nothing to attach to and started our OWN
+        /// EMPTY TIA — so nothing of the user's is bound, no matter how successful Connect looked.
+        /// Values: "none" (before Connect) / "attached" / "attached-no-project" / "new-instance" / "isolated".
+        /// </summary>
+        public string ConnectMode { get; private set; } = "none";
+
+        /// <summary>Name of the bound project right after Connect (null when nothing is bound).</summary>
+        public string? BoundProjectName { get; private set; }
+
+        /// <summary>
+        /// Attach timeout. This used to be a hard-coded 30 s, which is too short for a large V20 project
+        /// that the user has just opened and which is still loading/compiling: the attach times out, the
+        /// engine SILENTLY falls back to starting its own empty instance, and the tool then "cannot see"
+        /// the project that is plainly open in the TIA UI. Raise/lower it with TIA_MCP_ATTACH_TIMEOUT_MS
+        /// (values below 5 s are ignored as a typo guard).
+        /// </summary>
+        public int AttachTimeoutMs
+        {
+            get
+            {
+                var raw = Environment.GetEnvironmentVariable("TIA_MCP_ATTACH_TIMEOUT_MS");
+                if (int.TryParse(raw, out var ms) && ms >= 5000)
+                {
+                    return ms;
+                }
+
+                return 120000;
+            }
+        }
+
         // Q-CRASH: CompilerResult.Messages is an Openness COM object that MUST be read on the
         // STA thread. Tool-layer callers (CompileAndDiagnosePlc / GetCompileDiagnostics / etc.)
         // run on the MCP dispatch thread (off-STA); accessing .Messages there can throw a
@@ -498,7 +531,16 @@ namespace TiaMcpServer.Siemens
                         worker.Join(TimeSpan.FromSeconds(60));
                         TiaPortal? late;
                         lock (gate) { late = result; result = null; }
-                        if (late != null) { try { _sta.Run(() => late.Dispose()); } catch { } }
+                        if (late != null)
+                        {
+                            // 🔴 NEVER dispose a portal obtained via Attach(). That object belongs to the
+                            // USER's TIA instance: disposing it CLOSES THEIR TIA (same class of bug as the
+                            // 2026-09-17 incident where an idle sibling disposed the shared portal). Worst
+                            // case here is one leaked RCW — survivable. Killing the user's session is not.
+                            _logger?.LogWarning($"Late attach to TIA Portal PID={proc.Id} completed after the {timeoutMs}ms "
+                                              + "timeout; dropping the handle WITHOUT disposing it (disposing an attached "
+                                              + "portal would close the user's TIA).");
+                        }
                     }
                     catch { }
                 });
@@ -568,8 +610,8 @@ namespace TiaMcpServer.Siemens
                         TiaPortal? candidate = null;
                         try
                         {
-                            _logger?.LogInformation($"Trying attach to TIA Portal process PID={proc.Id}");
-                            candidate = AttachWithTimeout(proc, 30000);
+                            _logger?.LogInformation($"Trying attach to TIA Portal process PID={proc.Id} (timeout {AttachTimeoutMs}ms)");
+                            candidate = AttachWithTimeout(proc, AttachTimeoutMs);
                             _logger?.LogInformation(candidate == null
                                 ? $"Attach returned null/timed out for PID={proc.Id} — skipping"
                                 : $"Attach succeeded for PID={proc.Id}");
@@ -595,6 +637,8 @@ namespace TiaMcpServer.Siemens
                                 _logger?.LogInformation($"Selected attached TIA Portal PID={proc.Id}");
                                 _ownsPortal = false;   // attached, not started by us
                                 _ownsProject = false;  // user's project — never auto-close
+                                ConnectMode = "attached";
+                                BoundProjectName = null;
 
                                 if (hasSession)
                                 {
@@ -611,6 +655,10 @@ namespace TiaMcpServer.Siemens
                                     try { _project = _portal.Projects.First(); } catch { }
                                 }
 
+                                // Record what the caller will actually be working on. Best-effort: an
+                                // unnamed/unreadable project must not fail the connection.
+                                try { BoundProjectName = (_project as IEngineeringObject)?.GetAttribute("Name")?.ToString(); } catch { }
+                                _logger?.LogInformation($"ConnectMode=attached; bound project = {BoundProjectName ?? "<none>"}");
                                 return true;
                             }
                         }
@@ -621,10 +669,14 @@ namespace TiaMcpServer.Siemens
                         }
                         finally
                         {
-                            // If this candidate wasn't selected and isn't firstAttachable, dispose it.
+                            // 🔴 Do NOT dispose an unattached-but-not-selected candidate: every candidate here
+                            // came from Attach(), so the object belongs to a USER TIA instance and disposing it
+                            // CLOSES THAT INSTANCE. Previously this disposed every candidate that lost the
+                            // "has a project" election — i.e. the engine could shut down the user's TIA merely
+                            // by looking at it. Just drop the reference (one RCW leak at worst).
                             if (candidate != null && candidate != _portal && candidate != firstAttachable)
                             {
-                                try { candidate.Dispose(); } catch { }
+                                _logger?.LogInformation($"Not selecting PID={proc.Id}; keeping the handle (never Dispose an attached portal).");
                             }
                         }
                     }
@@ -636,6 +688,8 @@ namespace TiaMcpServer.Siemens
                         _logger?.LogInformation($"Falling back to first attachable TIA Portal ({firstAttachableInfo})");
                         _ownsPortal = false;
                         _ownsProject = false;
+                        ConnectMode = "attached-no-project";
+                        BoundProjectName = null;
                         LastConnectError = $"Attached to first available portal ({firstAttachableInfo}), but it has no visible projects/sessions.";
                         return true;
                     }
@@ -652,7 +706,11 @@ namespace TiaMcpServer.Siemens
                 _logger?.LogInformation($"Starting a new TIA Portal instance ({launchMode}).");
                 _portal = new TiaPortal(launchMode);
                 _ownsPortal = true;   // we started it, so we may dispose it
-
+                // Nothing of the user's is bound here. Connect/GetState must say so explicitly —
+                // silently returning "Connected" is what made an empty instance look like success.
+                ConnectMode = "new-instance";
+                BoundProjectName = null;
+                _logger?.LogInformation("ConnectMode=new-instance (started an empty TIA; no user project is bound).");
                 return true;
             }
             catch (Exception ex)
@@ -699,6 +757,8 @@ namespace TiaMcpServer.Siemens
                     _ownsProject = false;  // no project yet
                     _project = null;
                     _session = null;
+                    ConnectMode = "isolated";
+                    BoundProjectName = null;
                     return true;
                 }
                 catch (Exception ex)
@@ -776,9 +836,11 @@ namespace TiaMcpServer.Siemens
                 }
                 finally
                 {
+                    // 🔴 This is a read-only PROBE of the user's TIA instances — never dispose the handle
+                    // we attached with, or merely *inspecting* the machine would close their TIA.
                     if (candidate != null && candidate != _portal)
                     {
-                        try { candidate.Dispose(); } catch { }
+                        _logger?.LogInformation($"probe: keeping handle for PID={proc.Id} (never Dispose an attached portal).");
                     }
                 }
             }
@@ -927,18 +989,27 @@ namespace TiaMcpServer.Siemens
                             if (candidate == null) continue;
                             if (TryAttachProjectInPortal(candidate, projectName))
                             {
-                                if (_portal != null && !ReferenceEquals(_portal, candidate))
+                                // Only ever dispose an instance WE started. Disposing a portal obtained via
+                                // Attach() closes the user's TIA (same class as the 2026-09-17 incident).
+                                if (_portal != null && !ReferenceEquals(_portal, candidate) && _ownsPortal)
                                 {
                                     try { _portal.Dispose(); } catch { }
                                 }
 
                                 _portal = candidate;
+                                _ownsPortal = false;   // attached, not started by us
+                                _ownsProject = false;  // the user's project — never auto-close
+                                ConnectMode = "attached";
+                                BoundProjectName = projectName;
                                 return true;
                             }
 
+                            // Not the project we are looking for: keep the handle. Disposing an attached
+                            // portal would close the user's TIA instance — a leak is survivable, that is not.
                             if (!ReferenceEquals(_portal, candidate))
                             {
-                                try { candidate.Dispose(); } catch { }
+                                _logger?.LogInformation($"AttachToOpenProject: PID={proc.Id} has no '{projectName}'; "
+                                                      + "keeping the handle (never Dispose an attached portal).");
                             }
                         }
                         catch { }
