@@ -51,6 +51,11 @@
   - `PortalFailureClassifier` 接入 `McpHints.Recovery` —— 区分"这次调用失败"与"TIA 进程已死、未保存改动全丢"。
 - **CI `dead tool references` 红**：新增工具后漏同步 `manifest/tools-list.json` 与
   `manifest/package-manifest.json`（222→225 那次）；已补并加进上面的维护规则。
+- 🔴 **`Connect` 的隐式回退会凭空弹出博图窗口**（用户报"执行任务时老是莫名打开博图窗口，实际没创建新项目"）：
+  attach 失败时回退自起实例，而这个回退分支**沿用了 `--with-ui`** ⇒ **每次重连会话都可能弹出一个空的 TIA 窗口**。
+  现改为：**隐式回退一律强制无界面**；要窗口必须显式 `TIA_MCP_AUTOSTART_UI=1`；
+  `Connect` 的 meta 新增 `fallbackHeadless`，消息里写明 `headless (no window)` 或 `WITH a user interface`；
+  显式的 `ConnectIsolated` 仍尊重 `--with-ui`（那才是"我要看窗口"的表达）。
 
 ### 移除
 - 无（本次未删任何工具）。
