@@ -90,6 +90,14 @@ namespace TiaMcpServer.Siemens
         public string? BoundProjectName { get; private set; }
 
         /// <summary>
+        /// True when the last Connect fell back to starting its own instance WITHOUT a GUI.
+        /// This exists because of a real user-visible bug: the implicit fallback honoured --with-ui, so
+        /// every session reconnect that failed to attach silently booted a full TIA window in the user's
+        /// face ("重连会话就弹出博图窗口"). An implicit fallback is not a request to see a window.
+        /// </summary>
+        public bool FallbackHeadless { get; private set; }
+
+        /// <summary>
         /// Per-process attach outcome of the LAST Connect, one short line each, in the order tried.
         /// This exists because the attach decision was a black box: the engine logged it through an
         /// ILogger that is not wired to stderr or to any file, so "the tool cannot see my open project"
@@ -721,19 +729,26 @@ namespace TiaMcpServer.Siemens
                     _logger?.LogInformation(LastConnectError);
                 }
 
-                // start new TIA Portal. Headless (WithoutUserInterface) is the default because it
-                // starts far faster than booting the full GUI; --with-ui flips it for visual inspection.
-                var launchMode = Engineering.LaunchWithUserInterface
+                // start new TIA Portal. This is the IMPLICIT fallback of Connect: the caller asked to
+                // CONNECT, not to see a window — so it is headless even when --with-ui is set, which is
+                // what used to make a stray TIA window appear on every reconnect that could not attach.
+                // A visible instance remains available either explicitly (ConnectIsolated), or by opting
+                // in with TIA_MCP_AUTOSTART_UI=1.
+                bool autoStartUi = string.Equals(Environment.GetEnvironmentVariable("TIA_MCP_AUTOSTART_UI"), "1", StringComparison.OrdinalIgnoreCase)
+                                || string.Equals(Environment.GetEnvironmentVariable("TIA_MCP_AUTOSTART_UI"), "true", StringComparison.OrdinalIgnoreCase);
+                var launchMode = (Engineering.LaunchWithUserInterface && autoStartUi)
                     ? TiaPortalMode.WithUserInterface
                     : TiaPortalMode.WithoutUserInterface;
-                _logger?.LogInformation($"Starting a new TIA Portal instance ({launchMode}).");
+                _logger?.LogInformation($"Starting a new TIA Portal instance ({launchMode}) — implicit Connect fallback "
+                                      + "(headless unless TIA_MCP_AUTOSTART_UI=1).");
                 _portal = new TiaPortal(launchMode);
                 _ownsPortal = true;   // we started it, so we may dispose it
                 // Nothing of the user's is bound here. Connect/GetState must say so explicitly —
                 // silently returning "Connected" is what made an empty instance look like success.
                 ConnectMode = "new-instance";
+                FallbackHeadless = launchMode == TiaPortalMode.WithoutUserInterface;
                 BoundProjectName = null;
-                _logger?.LogInformation("ConnectMode=new-instance (started an empty TIA; no user project is bound).");
+                _logger?.LogInformation($"ConnectMode=new-instance (started an empty TIA; no user project is bound; headless={FallbackHeadless}).");
                 return true;
             }
             catch (Exception ex)

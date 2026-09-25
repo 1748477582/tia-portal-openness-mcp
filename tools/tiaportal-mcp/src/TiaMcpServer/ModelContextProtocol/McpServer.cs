@@ -90,8 +90,11 @@ namespace TiaMcpServer.ModelContextProtocol
                         break;
 
                     case "new-instance":
-                        message = "Connected to TIA-Portal — WARNING: a NEW EMPTY TIA instance was started, because no "
-                                + "running instance with an open project could be attached. NOTHING of yours is bound, so "
+                        message = "Connected to TIA-Portal — WARNING: a NEW EMPTY TIA instance was started"
+                                + (Portal.FallbackHeadless
+                                    ? " (headless — no window; set TIA_MCP_AUTOSTART_UI=1 if you do want one)"
+                                    : " (WITH a user interface — a TIA window was opened)")
+                                + ", because no running instance with an open project could be attached. NOTHING of yours is bound, so "
                                 + "tools will NOT see the project you have open in the TIA UI. Check: (1) the project really "
                                 + $"is open in TIA V{Engineering.TiaMajorVersion}; (2) the attach did not time out — raise "
                                 + "TIA_MCP_ATTACH_TIMEOUT_MS (current: " + Portal.AttachTimeoutMs + "ms); "
@@ -114,6 +117,8 @@ namespace TiaMcpServer.ModelContextProtocol
                         ["attached"] = mode.StartsWith("attached", StringComparison.Ordinal),
                         ["project"] = boundProject ?? "",
                         ["attachTimeoutMs"] = Portal.AttachTimeoutMs,
+                        // False would mean a TIA window was opened by the implicit fallback.
+                        ["fallbackHeadless"] = Portal.FallbackHeadless,
                         // Raw per-process attach outcomes — the reason attach failed must not be a black box.
                         ["attachAttempts"] = new JsonArray(Portal.AttachAttempts.Select(a => (JsonNode)a!).ToArray())
                     }
