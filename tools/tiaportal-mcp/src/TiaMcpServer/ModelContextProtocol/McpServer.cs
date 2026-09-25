@@ -119,6 +119,8 @@ namespace TiaMcpServer.ModelContextProtocol
                         ["attachTimeoutMs"] = Portal.AttachTimeoutMs,
                         // False would mean a TIA window was opened by the implicit fallback.
                         ["fallbackHeadless"] = Portal.FallbackHeadless,
+                        // Projects the new instance had auto-opened and that we closed without saving.
+                        ["autoClosedProjects"] = new JsonArray(Portal.AutoClosedProjects.Select(x => (JsonNode)x!).ToArray()),
                         // Raw per-process attach outcomes — the reason attach failed must not be a black box.
                         ["attachAttempts"] = new JsonArray(Portal.AttachAttempts.Select(a => (JsonNode)a!).ToArray())
                     }

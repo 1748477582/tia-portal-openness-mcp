@@ -98,6 +98,13 @@ namespace TiaMcpServer.Siemens
         public bool FallbackHeadless { get; private set; }
 
         /// <summary>
+        /// Projects that the freshly started fallback instance had AUTO-OPENED (TIA reloads the last
+        /// project this Windows user worked on) and that we then closed, without saving.
+        /// Reported by Connect so the caller can see that something unexpected was loaded and dropped.
+        /// </summary>
+        public List<string> AutoClosedProjects { get; } = new List<string>();
+
+        /// <summary>
         /// Per-process attach outcome of the LAST Connect, one short line each, in the order tried.
         /// This exists because the attach decision was a black box: the engine logged it through an
         /// ILogger that is not wired to stderr or to any file, so "the tool cannot see my open project"
@@ -592,6 +599,7 @@ namespace TiaMcpServer.Siemens
 
                 // connect to running TIA Portal
                 AttachAttempts.Clear();
+                AutoClosedProjects.Clear();
                 var processes = TiaPortal.GetProcesses();
                 var procList = processes.ToList();
                 AttachAttempts.Add($"Openness reports {procList.Count} running TIA process(es); server targets V{Engineering.TiaMajorVersion}.");
@@ -743,6 +751,29 @@ namespace TiaMcpServer.Siemens
                                       + "(headless unless TIA_MCP_AUTOSTART_UI=1).");
                 _portal = new TiaPortal(launchMode);
                 _ownsPortal = true;   // we started it, so we may dispose it
+
+                // 🔴 A brand-new instance may AUTO-LOAD the project this Windows user last worked on.
+                // That is both surprising (tools suddenly operate on a project nobody asked for — we hit
+                // exactly that: a leftover TEST project got auto-loaded, so Openness "pointed at" it) and
+                // harmful: our instance would hold that project file open and lock it against the user's
+                // own TIA. Close whatever came up, WITHOUT saving.
+                try
+                {
+                    foreach (var autoOpened in _portal.Projects)
+                    {
+                        var nm = "(unnamed)";
+                        try { nm = (autoOpened as IEngineeringObject)?.GetAttribute("Name")?.ToString() ?? nm; } catch { }
+                        AutoClosedProjects.Add(nm);
+                        try { autoOpened.Close(); } catch { }
+                    }
+                }
+                catch { }
+                if (AutoClosedProjects.Count > 0)
+                {
+                    _logger?.LogWarning($"The new instance auto-opened {AutoClosedProjects.Count} project(s) "
+                                      + $"[{string.Join(", ", AutoClosedProjects)}] — closed them without saving "
+                                      + "so nothing is locked or silently mis-bound.");
+                }
                 // Nothing of the user's is bound here. Connect/GetState must say so explicitly —
                 // silently returning "Connected" is what made an empty instance look like success.
                 ConnectMode = "new-instance";
