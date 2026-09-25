@@ -90,6 +90,16 @@ namespace TiaMcpServer.Siemens
         public string? BoundProjectName { get; private set; }
 
         /// <summary>
+        /// Per-process attach outcome of the LAST Connect, one short line each, in the order tried.
+        /// This exists because the attach decision was a black box: the engine logged it through an
+        /// ILogger that is not wired to stderr or to any file, so "the tool cannot see my open project"
+        /// was undiagnosable from the outside (we spent a whole session guessing). Now Connect returns
+        /// the raw attempts in its meta, so the reason (version mismatch / attach threw / timed out /
+        /// attached-but-no-project) is visible without a debugger.
+        /// </summary>
+        public List<string> AttachAttempts { get; } = new List<string>();
+
+        /// <summary>
         /// Attach timeout. This used to be a hard-coded 30 s, which is too short for a large V20 project
         /// that the user has just opened and which is still loading/compiling: the attach times out, the
         /// engine SILENTLY falls back to starting its own empty instance, and the tool then "cannot see"
@@ -521,6 +531,8 @@ namespace TiaMcpServer.Siemens
             worker.Start();
             if (!worker.Join(timeoutMs))
             {
+                AttachAttempts.Add($"PID={proc.Id}: attach TIMED OUT after {timeoutMs}ms — Openness Attach() never returned. "
+                                 + "This is the case that used to silently fall back to a brand-new empty instance.");
                 _logger?.LogWarning($"Attach to TIA Portal PID={proc.Id} exceeded {timeoutMs}ms; skipping (likely orphaned/dying instance).");
                 // The attach may still complete on PortalSta after our timeout. Reap the leaked RCW
                 // best-effort so it doesn't hold the project open.
@@ -571,8 +583,11 @@ namespace TiaMcpServer.Siemens
                 AcquireSingleAttachLock();
 
                 // connect to running TIA Portal
+                AttachAttempts.Clear();
                 var processes = TiaPortal.GetProcesses();
-                _logger?.LogInformation($"TIA Portal process count: {processes.Count()}");
+                var procList = processes.ToList();
+                AttachAttempts.Add($"Openness reports {procList.Count} running TIA process(es); server targets V{Engineering.TiaMajorVersion}.");
+                _logger?.LogInformation($"TIA Portal process count: {procList.Count}");
 
                 // Test/isolation escape hatch: when TIA_MCP_NO_ATTACH is set, NEVER attach to a
                 // running instance (e.g. the user's own TIA session). Always spin up a fresh
@@ -598,11 +613,12 @@ namespace TiaMcpServer.Siemens
                     TiaPortal? firstAttachable = null;
                     string? firstAttachableInfo = null;
 
-                    foreach (var proc in processes)
+                    foreach (var proc in procList)
                     {
                         // Only consider TIA Portal processes of the matching major version.
                         if (!TiaPortalProcessMatchesVersion(proc.Id))
                         {
+                            AttachAttempts.Add($"PID={proc.Id}: SKIPPED — major version mismatch (server targets V{Engineering.TiaMajorVersion}).");
                             _logger?.LogInformation($"Skipping TIA Portal PID={proc.Id}: major version mismatch (server targets V{Engineering.TiaMajorVersion}).");
                             continue;
                         }
@@ -612,6 +628,10 @@ namespace TiaMcpServer.Siemens
                         {
                             _logger?.LogInformation($"Trying attach to TIA Portal process PID={proc.Id} (timeout {AttachTimeoutMs}ms)");
                             candidate = AttachWithTimeout(proc, AttachTimeoutMs);
+                            if (candidate == null)
+                            {
+                                AttachAttempts.Add($"PID={proc.Id}: attach FAILED (returned null — see the timeout/exception line above).");
+                            }
                             _logger?.LogInformation(candidate == null
                                 ? $"Attach returned null/timed out for PID={proc.Id} — skipping"
                                 : $"Attach succeeded for PID={proc.Id}");
@@ -629,6 +649,8 @@ namespace TiaMcpServer.Siemens
                             bool hasProject = false;
                             try { hasSession = candidate.LocalSessions.Any(); } catch { }
                             try { hasProject = candidate.Projects.Any(); } catch { }
+                            AttachAttempts.Add($"PID={proc.Id}: attach OK, hasSession={hasSession}, hasProject={hasProject}"
+                                             + (hasSession || hasProject ? " -> SELECTED" : " -> not selected (no project visible)"));
                             _logger?.LogInformation($"Portal PID={proc.Id}: hasSession={hasSession}, hasProject={hasProject}");
 
                             if (hasSession || hasProject)
@@ -664,6 +686,7 @@ namespace TiaMcpServer.Siemens
                         }
                         catch (Exception ex)
                         {
+                            AttachAttempts.Add($"PID={proc.Id}: attach THREW {ex.GetType().Name}: {FormatExceptionDetail(ex)}");
                             _logger?.LogWarning(ex, $"Attach failed for TIA Portal PID={proc.Id}");
                             LastConnectError = ex.ToString();
                         }

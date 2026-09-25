@@ -113,7 +113,9 @@ namespace TiaMcpServer.ModelContextProtocol
                         ["connectMode"] = mode,
                         ["attached"] = mode.StartsWith("attached", StringComparison.Ordinal),
                         ["project"] = boundProject ?? "",
-                        ["attachTimeoutMs"] = Portal.AttachTimeoutMs
+                        ["attachTimeoutMs"] = Portal.AttachTimeoutMs,
+                        // Raw per-process attach outcomes — the reason attach failed must not be a black box.
+                        ["attachAttempts"] = new JsonArray(Portal.AttachAttempts.Select(a => (JsonNode)a!).ToArray())
                     }
                 };
             }
