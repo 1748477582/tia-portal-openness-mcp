@@ -4,18 +4,34 @@
   "packageName": "TIA_MCP_Delivery_v2.4.0_20260928",
   "packageType": "tia-portal-mcp-complete-offline-delivery-bundle",
   "generatedAt": "2026-05-31T20:30:00+08:00",
-  "refreshedAt": "2026-09-28T08:24:18+08:00",
+  "refreshedAt": "2026-09-28T10:42:04.694442+08:00",
   "target": {
     "tiaPortalMajorVersion": [
+      18,
       20,
       21
     ],
-    "publicApiPathExample": "D:\\app\\TIA21\\Portal V21\\PublicAPI or D:\\app\\TIA20\\Portal V20\\PublicAPI",
+    "verifiedOnThisMachine": [
+      18,
+      20
+    ],
+    "unverifiedTiaMajorVersionsNote": "The V21 build target is maintained in the repo as a first-class target, but it could NOT be built or verified on this machine: TIA V21 is not installed here, so the Siemens Openness 21.x package (which IS present in the NuGet cache, 21.0.1765349347) cannot resolve its reference assemblies. That package self-resolves Siemens.Engineering.*.dll from <TiaPortalLocation>\\PublicAPI\\V21\\net48 or the HKLM\\SOFTWARE\\Siemens\\Automation\\Openness\\21.0 registry key; with no Portal V21 installed neither exists and the build emits CS0246. Build and verify on a host that has TIA V21 before relying on it. V18 requires the V18 build (hides 23 WinCC Unified tools).",
+    "runtimeLayout": {
+      "note": "Version-aware self-routing (Siemens/EngineRouter.cs): the bundle ships one exe per TIA major version under runtime/v<NN>/, and the plugin entry (.mcp.json -> runtime/v21/TiaMcpServer.exe) re-execs the sibling exe matching the TIA version actually installed on the host. This requires the sibling directories to exist.",
+      "shippedHere": [
+        "runtime/v18",
+        "runtime/v20",
+        "runtime/v21"
+      ],
+      "verifiedRouting": "runtime/v21 exe on this V20 host: detected V20 -> re-exec runtime/v20/TiaMcpServer.exe -> TIA Openness API initialized (verified 2026-09-28).",
+      "v21ExecutableNote": "runtime/v21/TiaMcpServer.exe is the upstream-shipped binary (unmodified, 1700864 bytes, 2026-07-04 build). It predates the VersionControl (VCI) and CompileAndDiagnoseHmi tools, which is why it must reroute to runtime/v20 on a V20 host rather than serve tools itself. A genuine V21 rebuild is only possible on a host with TIA V21 installed."
+    },
+    "publicApiPathExample": "C:\\Program Files\\Siemens\\Automation\\Portal V18\\PublicAPI or D:\\Program Files\\Siemens\\Automation\\Portal V20\\PublicAPI (V21: <TIA V21 install>\\Portal V21\\PublicAPI)",
     "runtimeRequirement": ".NET Framework 4.8",
     "windowsGroupRequirement": "Siemens TIA Openness",
     "newCliFlags": [
       "--tia-portal-location <path>",
-      "--tia-major-version {20|21}"
+      "--tia-major-version {18|20|21}"
     ]
   },
   "selfContainedScope": {
@@ -90,6 +106,8 @@
       "L1": 57,
       "L2": 168
     },
+    "v18ToolCount": 208,
+    "v18HiddenToolsNote": "23 WinCC Unified HMI tools are hidden in the V18 build via #if !TIA_V18 (231 - 23 = 208).",
     "newToolsThisRelease": [
       "DeletePlcBlock (v2.4.0)",
       "DeletePlcTagTable (v2.4.0)",
@@ -102,6 +120,12 @@
       "ConnectProjectToWorkspace (v2.4.0)"
     ],
     "removedToolsThisRelease": [],
+    "fixedThisRelease": [
+      "EngineRouter.TryRedirect (Siemens/EngineRouter.cs): the redirect re-exec used to be unguarded, so on .NET Framework (where ProcessStartInfo.EnvironmentVariables is a case-INSENSITIVE Hashtable) any host environment carrying case-variant duplicate variables (e.g. HTTP_PROXY and http_proxy, common under Git Bash / MSYS / some CI runners) made the psi.EnvironmentVariables[TIAMCP_NO_REDIRECT] assignment throw ArgumentException and abort with an opaque FATAL. It now removes any same-key entry first and wraps the re-exec in try/catch, degrading to a log + 'staying in this exe' instead of crashing.",
+      "Program.cs version-routing warning: when a sibling exe existed but re-execing it failed, the WARN wrongly claimed no sibling was found. It now distinguishes 'no sibling build present' from 'sibling found but re-exec failed' and points at the concrete EngineRouter log line.",
+      "manifest/tools-list.json + manifest/package-manifest.json: regenerated to 231 tools (L0 6 / L1 57 / L2 168), bringing the two manifests back into agreement (the VCI and CompileAndDiagnoseHmi tools had been added without resyncing tools-list.json).",
+      "runtime/: added the missing runtime/v18 and runtime/v20 sibling directories (64-file runtime sets) so version-aware self-routing can actually delegate on V18/V20 hosts instead of crashing; runtime/v21 remains the upstream-shipped binary, unmodified."
+    ],
     "hmiTemplateJsonCount": 8,
     "plcTemplateJsonCount": 9,
     "projectBlueprintJsonCount": 1,

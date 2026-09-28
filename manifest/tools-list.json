@@ -1,9 +1,9 @@
 {
-  "package": "TIA_MCP_Delivery_v2.3.0",
-  "generatedAt": "2026-09-23T12:00:45.831288+08:00",
+  "package": "TIA_MCP_Delivery_v2.4.0_20260928",
+  "generatedAt": "2026-09-28T10:42:04.694442+08:00",
   "source": "live MCP tools/list of TiaMcpServer.exe (dev build)",
   "toolCount": 231,
-  "note": "Full roster. Regenerate with scripts/Generate-ToolsList.py after any tool add/remove. 3 deletion tools (DeletePlcBlock/DeletePlcTagTable/DeletePlcType) added manually on 2026-09-21 to fix dead-tool-references CI gate; re-run the live generator to refresh.",
+  "note": "Full roster, generated from the live MCP engine. Regenerate with scripts/Generate-ToolsList.py after any tool add/remove. Runtime tools/list remains authoritative when the server is running.",
   "tools": [
     {
       "name": "AddDevice",
@@ -461,6 +461,18 @@
       "description": "[L2][PLC-Online][PreCondition:Connect+OpenProject+GoOnline] Compare the offline PLC software in the project against the program currently running on the physical CPU. Use after editing blocks to confirm what differs from the live CPU before downloading, or after a download to verify offline/online consistency. Returns a tree-walked list of differences (only entries where ComparisonResult is not 'Equal' are reported). Requires GoOnline to be called first; will return IsOnline=false with guidance otherwise."
     },
     {
+      "name": "CompileAndDiagnoseHmi",
+      "layer": "L1",
+      "domain": "HMI",
+      "method": "CompileAndDiagnoseHmi",
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "timeoutSeconds"
+      ],
+      "description": "[L1][HMI] Compile an HMI and return structured errors/warnings, the HMI counterpart of CompileAndDiagnosePlc. Use it after generating screens/tags so you can read the diagnostics and fix them yourself instead of asking the engineer to compile in the TIA UI. WinCC Unified: HmiSoftware is not compilable on its own, so the owning device is compiled (same as the TIA UI does) and hardware diagnostics may appear alongside screen ones. Classic (Comfort/KTP): the HMI software itself is compiled. Requires: Connect + OpenProject. softwarePath from GetProjectTree, e.g. 'HMI_RT_1'."
+    },
+    {
       "name": "CompileAndDiagnosePlc",
       "layer": "L1",
       "domain": "PLC-Software",
@@ -550,6 +562,21 @@
       "description": "[L1][Portal] Start a BRAND-NEW TIA Portal instance (headless by default; --with-ui makes it visible) instead of attaching to a running one. USE THIS when the user is working in the TIA Portal UI: plain Connect attaches to their instance and OpenProject then (correctly) refuses to touch their already-open project, so the whole server is unusable until they close it. It never attaches to, modifies or closes any TIA window or project the user already has open — so it also can NOT drive the project the user has open; for that use Connect. Must be the FIRST connection action in a fresh MCP process. Afterwards use OpenProject or CreateProject as usual, then CloseProject and Disconnect."
     },
     {
+      "name": "ConnectProjectToWorkspace",
+      "layer": "L2",
+      "domain": "VersionControl",
+      "method": "ConnectProjectToWorkspace",
+      "returnType": "",
+      "parameters": [
+        "workspaceName",
+        "dryRun",
+        "deviceFilter",
+        "maxObjects",
+        "walkTrace"
+      ],
+      "description": "[L2][VersionControl] Put a WHOLE project under version control automatically - no TIA UI clicks. Walks the project tree, asks every object whether VCI can map it (Workspace.GetSupportedFileFormats) and maps each supported object with Workspace.ConnectObject. COARSE-FIRST: when a device or PLC software object is mappable as one unit it is mapped whole and its children are not visited, so you get the fewest mappings that still cover everything. Objects VCI does not support (typically hardware configuration) are reported, never silently dropped. DEFAULTS TO dryRun=true: the default call only reports what it WOULD map. After a real run call SyncVersionControlWorkspace(ProjectToWorkspace, dryRun=false), then git commit."
+    },
+    {
       "name": "CreatePlcBlockGroup",
       "layer": "L2",
       "domain": "PLC-Software",
@@ -572,6 +599,18 @@
         "projectName"
       ],
       "description": "[L1][Project] Create a new empty TIA Portal project. Requires: Connect. After creation, call AddDevice to add PLCs/HMIs, then GetProjectTree to verify. The project is automatically opened after creation — no separate OpenProject call needed."
+    },
+    {
+      "name": "CreateVersionControlWorkspace",
+      "layer": "L2",
+      "domain": "VersionControl",
+      "method": "CreateVersionControlWorkspace",
+      "returnType": "",
+      "parameters": [
+        "workspaceName",
+        "folderPath"
+      ],
+      "description": "[L2][VersionControl] Create a VCI workspace pointing at a folder on disk — normally the working tree of a Git repository, so every synchronized export lands where Git can commit it. Creating the workspace does NOT map any objects into it — call ConnectProjectToWorkspace afterwards to map the whole project (or one device) automatically. Requires an open project (V20+)."
     },
     {
       "name": "DeleteBlock",
@@ -597,6 +636,19 @@
       "description": "[L1][Exports] Drop one export handle once you are done with it. Optional — handles expire on their own after 24 hours and the oldest are evicted automatically when the store fills up."
     },
     {
+      "name": "DeletePlcBlock",
+      "layer": "L2",
+      "domain": "PLC-Software",
+      "method": "DeletePlcBlock",
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "blockPath",
+        "dryRun"
+      ],
+      "description": "[L2][PLC-Software][Destructive] Preview or delete exactly one PLC block by its exact path, including blocks inside nested groups. THIS IS ALSO THE TOOL FOR DELETING A DATA BLOCK: global DB, instance DB, ARRAY DB, FB, FC and OB are all PLC blocks, so there is no separate DeleteGlobalDb / DeleteDb / DeleteFunctionBlock tool - use this one. Defaults to dryRun=true, which changes nothing and reports the resolved target plus its cross references. It never deletes instance DBs or callers automatically. Before dryRun=false, review the previewed cross references (or run GetCrossReferences) and back the block up with ExportBlock / ExportBlocks; compile with CompileSoftware after deletion and before SaveProject. Regex and wildcards are rejected. To delete a tag table use DeletePlcTagTable, a UDT use DeletePlcType."
+    },
+    {
       "name": "DeletePlcExternalSource",
       "layer": "L2",
       "domain": "PLC-Software",
@@ -607,6 +659,32 @@
         "externalSourceName"
       ],
       "description": "[L2][PLC-Software]Delete a PLC external source by name so ImportPlcExternalSource can replace it (idempotent). Name may include or omit .scl."
+    },
+    {
+      "name": "DeletePlcTagTable",
+      "layer": "L2",
+      "domain": "PLC-Software",
+      "method": "DeletePlcTagTable",
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "tagTableName",
+        "dryRun"
+      ],
+      "description": "[L2][PLC-Software][Destructive] Preview or delete ONE PLC tag table (variable table / tag list) by name, including tables nested in user groups. Defaults to dryRun=true, which only reports what the table contains and deletes nothing. DANGER: deleting a tag table removes the SYMBOLS of every tag in it. HMI panels bind PLC tags by symbolic name, so the PLC may still compile clean while the HMI silently loses its bindings - always review the previewed tag list and cross references first. The default tag table (IsDefault) is refused. Cross references are attempted but may be unavailable at tag-table level; the response says explicitly whether they were obtained. Regex and wildcards are rejected. Back up first with ExportPlcTagTable."
+    },
+    {
+      "name": "DeletePlcType",
+      "layer": "L2",
+      "domain": "PLC-Software",
+      "method": "DeletePlcType",
+      "returnType": "",
+      "parameters": [
+        "softwarePath",
+        "typePath",
+        "dryRun"
+      ],
+      "description": "[L2][PLC-Software][Destructive] Preview or delete ONE PLC user data type (UDT / PlcType) by its exact path. Defaults to dryRun=true. Deleting a UDT breaks every DB and block interface declared with it, so the preview reports its cross references (GetCrossReferences works at type level) before you commit - review them first. Regex and wildcards are rejected. Export the type first with ExportType, and CompileSoftware afterwards."
     },
     {
       "name": "DescribeBlockLogic",
@@ -1700,6 +1778,27 @@
       "description": "[L2][PLC-Software]Get a list of types from the plc software"
     },
     {
+      "name": "GetVersionControlStatus",
+      "layer": "L1",
+      "domain": "VersionControl",
+      "method": "GetVersionControlStatus",
+      "returnType": "",
+      "parameters": [
+        "workspaceName",
+        "changedOnly"
+      ],
+      "description": "[L1][VersionControl] Per-object status of a VCI workspace: which mapped objects differ between the TIA project and the text files on disk. This is the input for a change log — it names exactly what changed before you commit. Read-only, changes nothing. Status values: Equal (in sync), Unequal (project and file differ), WorkspaceFileMissing (never exported), Unknown."
+    },
+    {
+      "name": "GetVersionControlWorkspaces",
+      "layer": "L1",
+      "domain": "VersionControl",
+      "method": "GetVersionControlWorkspaces",
+      "returnType": "",
+      "parameters": [],
+      "description": "[L1][VersionControl] List this project's version control (VCI) workspaces: name, folder on disk, language, and how many objects are mapped. A workspace is the plain-text mirror of the project that Git can actually diff and commit. Read-only. Requires an open project (V20+)."
+    },
+    {
       "name": "GoOffline",
       "layer": "L1",
       "domain": "PLC-Online",
@@ -2740,6 +2839,20 @@
       "description": "[L2][PLC-Software] Returns the next FREE number for a block type (FB/FC/DB/OB) so you avoid collisions when creating/importing. If you pass preferredNumber and it is free, that number is returned; otherwise the next free one is suggested. Pair with ImportBlock / RegenerateBlockFromSource / ImportPlcProgramFromDirectory. Requires: Connect + OpenProject."
     },
     {
+      "name": "SyncVersionControlWorkspace",
+      "layer": "L1",
+      "domain": "VersionControl",
+      "method": "SyncVersionControlWorkspace",
+      "returnType": "",
+      "parameters": [
+        "direction",
+        "workspaceName",
+        "dryRun",
+        "changedOnly"
+      ],
+      "description": "[L1][VersionControl] Synchronize a VCI workspace. direction='ProjectToWorkspace' writes the TIA project's objects out as text files (do this before `git commit`); 'WorkspaceToProject' reads the text files back INTO the project (do this after `git pull` / to restore a reviewed version). DEFAULTS TO dryRun=true: the default call only reports what WOULD be synchronized. WorkspaceToProject OVERWRITES blocks in the open project — compile and save afterwards."
+    },
+    {
       "name": "TraceTagCause",
       "layer": "L2",
       "domain": "PLC-Online",
@@ -2827,119 +2940,6 @@
         "outputPath"
       ],
       "description": "[L1][PLC-Software][Offline] Write SCL source text to a local .scl external-source file (UTF-8 WITH BOM, so Chinese comments are not imported as mojibake/乱码). This tool does NOT connect to TIA Portal and does NOT import anything — it only writes the file to disk and returns the path plus manual-import instructions. Use it as the robust fallback when XML block import is rejected (e.g. a TIA V20 portal rejecting V21 SimaticML tokens: 'Cannot create SW.Blocks.CompileUnit... token not supported'): the user imports the .scl manually in TIA via project tree → 'External source files' → 'Add new external file', then right-clicks the source → 'Generate blocks from source'. The sclContent must be a complete source, e.g. FUNCTION_BLOCK \"Name\" ... END_FUNCTION_BLOCK. SECURITY: path traversal (..) is blocked; outputPath must be a valid file path."
-    },
-    {
-      "name": "DeletePlcBlock",
-      "layer": "L2",
-      "domain": "PLC-Software",
-      "method": "DeletePlcBlock",
-      "returnType": "",
-      "parameters": [
-        "softwarePath",
-        "blockPath",
-        "dryRun"
-      ],
-      "description": "[L2][PLC-Software][Destructive] Preview or delete exactly one PLC block by its exact path, including blocks inside nested groups. THIS IS ALSO THE TOOL FOR DELETING A DATA BLOCK: global DB, instance DB, ARRAY DB, FB, FC and OB are all PLC blocks, so there is no separate DeleteGlobalDb / DeleteDb / DeleteFunctionBlock tool - use this one. Defaults to dryRun=true, which changes nothing and reports the resolved target plus its cross references. It never deletes instance DBs or callers automatically. Before dryRun=false, review the previewed cross references (or run GetCrossReferences) and back the block up with ExportBlock / ExportBlocks; compile with CompileSoftware after deletion and before SaveProject. Regex and wildcards are rejected. To delete a tag table use DeletePlcTagTable, a UDT use DeletePlcType."
-    },
-    {
-      "name": "DeletePlcTagTable",
-      "layer": "L2",
-      "domain": "PLC-Software",
-      "method": "DeletePlcTagTable",
-      "returnType": "",
-      "parameters": [
-        "softwarePath",
-        "tagTableName",
-        "dryRun"
-      ],
-      "description": "[L2][PLC-Software][Destructive] Preview or delete ONE PLC tag table (variable table / tag list) by name, including tables nested in user groups. Defaults to dryRun=true, which only reports what the table contains and deletes nothing. DANGER: deleting a tag table removes the SYMBOLS of every tag in it. HMI panels bind PLC tags by symbolic name, so the PLC may still compile clean while the HMI silently loses its bindings - always review the previewed tag list and cross references first. The default tag table (IsDefault) is refused. Cross references are attempted but may be unavailable at tag-table level; the response says explicitly whether they were obtained. Regex and wildcards are rejected. Back up first with ExportPlcTagTable."
-    },
-    {
-      "name": "DeletePlcType",
-      "layer": "L2",
-      "domain": "PLC-Software",
-      "method": "DeletePlcType",
-      "returnType": "",
-      "parameters": [
-        "softwarePath",
-        "typePath",
-        "dryRun"
-      ],
-      "description": "[L2][PLC-Software][Destructive] Preview or delete ONE PLC user data type (UDT / PlcType) by its exact path. Defaults to dryRun=true. Deleting a UDT breaks every DB and block interface declared with it, so the preview reports its cross references (GetCrossReferences works at type level) before you commit - review them first. Regex and wildcards are rejected. Export the type first with ExportType, and CompileSoftware afterwards."
-    },
-    {
-      "name": "CompileAndDiagnoseHmi",
-      "layer": "L1",
-      "domain": "HMI",
-      "method": "CompileAndDiagnoseHmi",
-      "returnType": "",
-      "parameters": [
-        "softwarePath",
-        "timeoutSeconds"
-      ],
-      "description": "[L1][HMI] Compile an HMI and return structured errors/warnings, the HMI counterpart of CompileAndDiagnosePlc. Use it after generating screens/tags so you can read the diagnostics and fix them yourself instead of asking the engineer to compile in the TIA UI. WinCC Unified: HmiSoftware is not compilable on its own, so the owning device is compiled (same as the TIA UI does) and hardware diagnostics may appear alongside screen ones. Classic (Comfort/KTP): the HMI software itself is compiled. Requires: Connect + OpenProject. softwarePath from GetProjectTree, e.g. 'HMI_RT_1'."
-    },
-    {
-      "name": "GetVersionControlWorkspaces",
-      "layer": "L1",
-      "domain": "VersionControl",
-      "method": "GetVersionControlWorkspaces",
-      "returnType": "",
-      "parameters": [],
-      "description": "[L1][VersionControl] List this project's version control (VCI) workspaces: name, folder on disk, language, and how many objects are mapped. A workspace is the plain-text mirror of the project that Git can actually diff and commit. Read-only. Requires an open project (V20+)."
-    },
-    {
-      "name": "CreateVersionControlWorkspace",
-      "layer": "L2",
-      "domain": "VersionControl",
-      "method": "CreateVersionControlWorkspace",
-      "returnType": "",
-      "parameters": [
-        "workspaceName",
-        "folderPath"
-      ],
-      "description": "[L2][VersionControl] Create a VCI workspace pointing at a folder on disk — normally the working tree of a Git repository, so every synchronized export lands where Git can commit it. Creating the workspace does NOT map any objects into it — call ConnectProjectToWorkspace afterwards to map the whole project (or one device) automatically. Requires an open project (V20+)."
-    },
-    {
-      "name": "GetVersionControlStatus",
-      "layer": "L1",
-      "domain": "VersionControl",
-      "method": "GetVersionControlStatus",
-      "returnType": "",
-      "parameters": [
-        "workspaceName",
-        "changedOnly"
-      ],
-      "description": "[L1][VersionControl] Per-object status of a VCI workspace: which mapped objects differ between the TIA project and the text files on disk. This is the input for a change log — it names exactly what changed before you commit. Read-only, changes nothing. Status values: Equal (in sync), Unequal (project and file differ), WorkspaceFileMissing (never exported), Unknown."
-    },
-    {
-      "name": "SyncVersionControlWorkspace",
-      "layer": "L1",
-      "domain": "VersionControl",
-      "method": "SyncVersionControlWorkspace",
-      "returnType": "",
-      "parameters": [
-        "direction",
-        "workspaceName",
-        "dryRun",
-        "changedOnly"
-      ],
-      "description": "[L1][VersionControl] Synchronize a VCI workspace. direction='ProjectToWorkspace' writes the TIA project's objects out as text files (do this before `git commit`); 'WorkspaceToProject' reads the text files back INTO the project (do this after `git pull` / to restore a reviewed version). DEFAULTS TO dryRun=true: the default call only reports what WOULD be synchronized. WorkspaceToProject OVERWRITES blocks in the open project — compile and save afterwards."
-    },
-    {
-      "name": "ConnectProjectToWorkspace",
-      "layer": "L2",
-      "domain": "VersionControl",
-      "method": "ConnectProjectToWorkspace",
-      "returnType": "",
-      "parameters": [
-        "workspaceName",
-        "dryRun",
-        "deviceFilter",
-        "maxObjects",
-        "walkTrace"
-      ],
-      "description": "[L2][VersionControl] Put a WHOLE project under version control automatically - no TIA UI clicks. Walks the project tree, asks every object whether VCI can map it (Workspace.GetSupportedFileFormats) and maps each supported object with Workspace.ConnectObject. COARSE-FIRST: when a device or PLC software object is mappable as one unit it is mapped whole and its children are not visited, so you get the fewest mappings that still cover everything. Objects VCI does not support (typically hardware configuration) are reported, never silently dropped. DEFAULTS TO dryRun=true: the default call only reports what it WOULD map. After a real run call SyncVersionControlWorkspace(ProjectToWorkspace, dryRun=false), then git commit."
     }
   ]
 }

@@ -152,9 +152,23 @@ namespace TiaMcpServer
                         Environment.Exit(routedExit);
                         return;
                     }
-                    LogDiag($"WARN: TIA V{tiaMajorVersion} requested but this exe is built for V{EngineRouter.CompiledTiaMajorVersion} " +
-                            $"and no V{tiaMajorVersion} sibling exe was found next to it — Siemens assembly load will likely fail. " +
-                            $"Run the V{tiaMajorVersion} exe from the bundle, or pass --tia-major-version {EngineRouter.CompiledTiaMajorVersion} to force.");
+                    // TryRedirect returns false for two distinct reasons, and the operator fix
+                    // differs: (a) no sibling exe build exists → ship/point at one; or
+                    // (b) a sibling WAS found but re-execing it failed → look at the log line
+                    // EngineRouter already emitted for the concrete cause. Report the right one
+                    // instead of always blaming a missing sibling.
+                    if (EngineRouter.FindSiblingExe(tiaMajorVersion) == null)
+                    {
+                        LogDiag($"WARN: TIA V{tiaMajorVersion} requested but this exe is built for V{EngineRouter.CompiledTiaMajorVersion} " +
+                                $"and no V{tiaMajorVersion} sibling exe was found next to it — Siemens assembly load will likely fail. " +
+                                $"Run the V{tiaMajorVersion} exe from the bundle, or pass --tia-major-version {EngineRouter.CompiledTiaMajorVersion} to force.");
+                    }
+                    else
+                    {
+                        LogDiag($"WARN: TIA V{tiaMajorVersion} requested and a V{tiaMajorVersion} sibling exe exists, but re-execing it failed " +
+                                $"(see the EngineRouter line above for the cause); staying in this exe, so Siemens assembly load will likely fail. " +
+                                $"Run the V{tiaMajorVersion} exe from the bundle, or pass --tia-major-version {EngineRouter.CompiledTiaMajorVersion} to force.");
+                    }
                 }
 
                 // 静态自检也会枚举 MCP 工具特性，方法签名里引用的 Siemens 程序集需要先能被解析。

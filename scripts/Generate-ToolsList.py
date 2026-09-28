@@ -91,14 +91,30 @@ try:
             "description": description,
         })
     rows.sort(key=lambda item: item["name"].lower())
+
+    # Derive the package label from package-manifest.json instead of hardcoding a version.
+    # The hardcoded "TIA_MCP_Delivery_v2.3.0" silently regressed the bundle name every time the
+    # generator ran after a version bump (the file is checked in, so the stale label shipped).
+    pm_path = ROOT / "manifest" / "package-manifest.json"
+    package_label = "TIA_MCP_Delivery"
+    if pm_path.exists():
+        try:
+            _pm = json.loads(pm_path.read_text(encoding="utf-8-sig"))
+            package_label = _pm.get("packageName") or (
+                "TIA_MCP_Delivery_v" + str(_pm.get("bundleVersion", "")) if _pm.get("bundleVersion")
+                else package_label)
+        except Exception:
+            pass
+
     document = {
-        "package": "TIA_MCP_Delivery_v2.3.0",
+        "package": package_label,
         "generatedAt": datetime.datetime.now(
             datetime.timezone(datetime.timedelta(hours=8))).isoformat(),
         "source": f"live MCP tools/list of {EXE.name} (dev build)",
         "toolCount": len(rows),
-        "note": "Full roster. Regenerate with scripts/Generate-ToolsList.py after any tool "
-                "add/remove. Runtime tools/list remains authoritative when the server is running.",
+        "note": "Full roster, generated from the live MCP engine. Regenerate with "
+                "scripts/Generate-ToolsList.py after any tool add/remove. Runtime tools/list "
+                "remains authoritative when the server is running.",
         "tools": rows,
     }
     OUT.write_text(json.dumps(document, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -106,7 +122,6 @@ try:
 
     # Keep package-manifest.json's roster fields in sync (count + layer breakdown).
     # Without this the two manifests drift — which is exactly what happened before.
-    pm_path = ROOT / "manifest" / "package-manifest.json"
     if pm_path.exists():
         pm = json.loads(pm_path.read_text(encoding="utf-8-sig"))
         layers = {}

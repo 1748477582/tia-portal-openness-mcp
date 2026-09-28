@@ -93,19 +93,37 @@ namespace TiaMcpServer.Siemens
             if (sibling == null) return false;
 
             log($"EngineRouter: TIA V{version} requested but this exe is built for V{CompiledTiaMajorVersion}; rerouting to {sibling}");
-            var psi = new ProcessStartInfo
+            try
             {
-                FileName = sibling,
-                Arguments = QuoteArgs(args),
-                UseShellExecute = false,
-            };
-            psi.EnvironmentVariables[RedirectGuardVar] = "1";
-            using (var p = Process.Start(psi))
-            {
-                p.WaitForExit();
-                exitCode = p.ExitCode;
+                var psi = new ProcessStartInfo
+                {
+                    FileName = sibling,
+                    Arguments = QuoteArgs(args),
+                    UseShellExecute = false,
+                };
+                // ProcessStartInfo.EnvironmentVariables is a CASE-INSENSITIVE Hashtable on
+                // .NET Framework. Windows env vars are case-insensitive, so shells such as
+                // Git Bash / MSYS / some CI runners can export e.g. both HTTP_PROXY and
+                // http_proxy; the auto-populated copy then holds two keys that collide
+                // case-insensitively and the assignment below throws ArgumentException
+                // ("已添加项 / An item with the same key has already been added"), killing
+                // an otherwise-working redirect. Assign via the indexer only after
+                // removing any existing case-variant of the key, and keep this best-effort:
+                // a failed redirect must degrade to a log, never a fatal crash.
+                psi.EnvironmentVariables.Remove(RedirectGuardVar);
+                psi.EnvironmentVariables[RedirectGuardVar] = "1";
+                using (var p = Process.Start(psi))
+                {
+                    p.WaitForExit();
+                    exitCode = p.ExitCode;
+                }
+                return true;
             }
-            return true;
+            catch (Exception ex)
+            {
+                log($"EngineRouter: reroute to {sibling} failed ({ex.GetType().Name}: {ex.Message}); staying in this exe.");
+                return false;
+            }
         }
 
         /// <summary>Windows-correct argument re-quoting (spaces, quotes, trailing backslashes).</summary>
