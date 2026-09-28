@@ -5,8 +5,9 @@
 package-manifest 还写着 2.3.0，用户拿到手根本分不清是哪一版。这类不一致不会让任何
 东西崩，只会让排查时多绕半天，只有对拍能挡住。
 
-⚠️ 本仓**没有 CHANGELOG.md，且是有意不维护**（见项目记忆：已删除、不再维护）。
-   所以这里**不**校验 CHANGELOG —— 别"顺手"把它加回来。
+ℹ️ 本仓**已有 CHANGELOG.md**（2026-09-25 起按用户要求逐版维护：新增/变更/修复/移除）。
+   本闸门**只**校验 csproj ↔ package-manifest 的版本号，不校验 CHANGELOG
+   —— 保持职责单一：CHANGELOG 的完备性是人的责任，不是编译期能判的。
 
 用法（仓库根目录）：
     python scripts/Check-VersionConsistency.py            # 0=一致 1=不一致

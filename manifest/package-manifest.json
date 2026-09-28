@@ -1,10 +1,10 @@
 {
   "schemaVersion": "2026-05-25",
-  "bundleVersion": "2.3.0",
-  "packageName": "TIA_MCP_Delivery_v2.3.0_20260704",
+  "bundleVersion": "2.4.0",
+  "packageName": "TIA_MCP_Delivery_v2.4.0_20260928",
   "packageType": "tia-portal-mcp-complete-offline-delivery-bundle",
   "generatedAt": "2026-05-31T20:30:00+08:00",
-  "refreshedAt": "2026-09-23T11:26:32.155482+08:00",
+  "refreshedAt": "2026-09-28T08:24:18+08:00",
   "target": {
     "tiaPortalMajorVersion": [
       20,
@@ -91,8 +91,15 @@
       "L2": 168
     },
     "newToolsThisRelease": [
-      "DescribeBlockLogic (v2.3.0)",
-      "Doctor (v2.2.8)"
+      "DeletePlcBlock (v2.4.0)",
+      "DeletePlcTagTable (v2.4.0)",
+      "DeletePlcType (v2.4.0)",
+      "CompileAndDiagnoseHmi (v2.4.0)",
+      "GetVersionControlWorkspaces (v2.4.0)",
+      "CreateVersionControlWorkspace (v2.4.0)",
+      "GetVersionControlStatus (v2.4.0)",
+      "SyncVersionControlWorkspace (v2.4.0)",
+      "ConnectProjectToWorkspace (v2.4.0)"
     ],
     "removedToolsThisRelease": [],
     "hmiTemplateJsonCount": 8,

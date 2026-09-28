@@ -1,6 +1,6 @@
 # TIA Portal Openness MCP — 多版本（V18 / V20 / V21）
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) ![TIA Portal](https://img.shields.io/badge/TIA%20Portal-V18%20%2F%20V20%20%2F%20V21-blue.svg) ![MCP Tools](https://img.shields.io/badge/MCP%20Tools-166-green.svg)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) ![TIA Portal](https://img.shields.io/badge/TIA%20Portal-V18%20%2F%20V20%20%2F%20V21-blue.svg) ![MCP Tools](https://img.shields.io/badge/MCP%20Tools-231-green.svg)
 
 > 本项目为 **TIA Portal Openness MCP**，以 MIT 许可证发布，独立维护，支持 **TIA Portal V18 / V20 / V21** 三个版本构建。
 
@@ -11,10 +11,10 @@
 > 照这 3 步，把 MCP 客户端连上你的 TIA Portal V18。
 
 1. **准备**：装好 **TIA Portal V18** + **.NET Framework 4.8**；把当前 Windows 用户加入本地组 **`Siemens TIA Openness`**，注销重登一次。
-2. **下载解压**：从本仓库 `master` 根目录下载 `TIA_Portal_Openness_MCP.zip` 并解压到任意目录。
+2. **下载解压**：在本仓库页面点 **`Code` → `Download ZIP`**（或 `git clone`），解压到任意目录。
 3. **挂载 MCP**：在 MCP 客户端（WorkBuddy / Cursor / VS Code / Claude Desktop 等）配置里，把 `command` 指向解压目录内的
    `tools\tiaportal-mcp\src\TiaMcpServer\bin-v18\Release\net48\TiaMcpServer.exe`，
-   `args` 传 `["--tia-major-version","18","--logging","0"]`，信任该连接器并重启客户端。连接器将暴露 **166 个 V18 安全工具**。
+   `args` 传 `["--tia-major-version","18","--logging","0"]`，信任该连接器并重启客户端。连接器将暴露 **208 个 V18 安全工具**。
 
 ---
 
@@ -23,7 +23,7 @@
 本仓库同时维护 **V18 / V20 / V21** 三个构建（三个 csproj，输出同名 `TiaMcpServer.exe`，按输出目录 `bin-v18` / `bin-v20` / `bin` 区分）。其中 **V18 构建**做了如下兼容性处理：
 
 - **WinCC Unified HMI 在 V18 不可用**：V18 的 Openness 全安装不含 `Siemens.Engineering.HmiUnified` 程序集。相关 **23 个 Unified HMI 工具**已用 `#if !TIA_V18` 条件编译守卫在 V18 构建中隐藏（方法体保留，仅不注册为 MCP 工具，从 `tools/list` 中消失）。
-- **暴露工具数**：连接器实测 **166 个 V18 安全工具**（基线 189 − 23 个 Unified）；V20/V21 构建暴露完整工具集。
+- **暴露工具数**：连接器实测 **208 个 V18 安全工具**（基线 231 − 23 个 Unified）；V20/V21 构建暴露完整工具集。
 - **深度审计结论**：除这 23 个 Unified 工具外，其余暴露工具在 V18 全部安全可用；V20 专属文档工具（`Export/Import*Documents`）在 V18 构建中仅以引导提示暴露、不可调用。
 - **HMI 自动化路径**：V18 下请走 **Classic / Comfort HMI** 工具族；Unified 需求须使用 V20/V21 构建。
 
@@ -48,7 +48,7 @@
      "mcpServers": {
        "tia-portal": {
          "command": "C:/path/to/unzip/tools/tiaportal-mcp/src/TiaMcpServer/bin-v18/Release/net48/TiaMcpServer.exe",
-         "args": ["--tia-major-version", "18", "--logging", "0", "--with-ui"],
+         "args": ["--tia-major-version", "18", "--logging", "0"],
          "env": { "TiaPortalLocation": "C:/Program Files/Siemens/Automation/Portal V18" }
        }
      }
@@ -81,7 +81,7 @@
 | 通用 PLC / Classic HMI 工具 | ✅ | ✅ |
 | WinCC Unified HMI 工具 | ❌（已守卫隐藏） | ✅ |
 | 文档导入导出（`*Documents` / S7DCL） | ⚠️ 仅引导提示 | ✅ 可调用 |
-| 暴露工具数 | **166** | ~180–189 |
+| 暴露工具数 | **208** | **231** |
 
 ---
 
@@ -113,12 +113,12 @@ dotnet build TiaMcpServer.csproj -c Release
 `master` 分支根目录提供：
 
 ```
-TIA_Portal_Openness_MCP.zip   ← 完整工具（约 26 MB，663 个文件）
+（本仓库不发布单独的 `TIA_Portal_Openness_MCP.zip` 资产，也没有 GitHub Release —— 早期文档里的那个 zip 已不存在。）
 ```
 
 压缩包内含：已编译运行时 `bin-v18/`、源码 `src/`、文档 `docs/`、模板 `templates/`、Skill、能力矩阵 `manifest/`、配置 `.mcp.json`、以及更详细的 `README.md` 与 `LICENSE`。解压后所有文档与模板均在包内，无需另行克隆源码仓库。
 
-> 本仓库以「打包交付」形式提供，不单独提交源码树，以避免与构建产物混淆。需要源码请解压该 zip。
+> 本仓库**直接包含完整源码树**（`tools/tiaportal-mcp/src/`，三个 csproj：V18 / V20 / V21），另有预置运行时 `runtime/`。下载方式：`Code` → `Download ZIP`，或 `git clone`。
 
 ---
 

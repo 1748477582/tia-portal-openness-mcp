@@ -11,7 +11,7 @@
 
 ---
 
-## [2.4.0] — 2026-09-24（**未打版**：代码已就位并过 CI，版本号待统一 bump）
+## [2.4.0] — 2026-09-28（**已定版**）
 
 ### 新增
 - **VCI 版本控制 5 工具**（**V20+**，V18 构建下由 `#if !TIA_V18` 隐藏）：
@@ -56,6 +56,11 @@
   现改为：**隐式回退一律强制无界面**；要窗口必须显式 `TIA_MCP_AUTOSTART_UI=1`；
   `Connect` 的 meta 新增 `fallbackHeadless`，消息里写明 `headless (no window)` 或 `WITH a user interface`；
   显式的 `ConnectIsolated` 仍尊重 `--with-ui`（那才是"我要看窗口"的表达）。
+- 🔴 **新建实例会自动加载"上次用过的工程"**（用户报"自动连接 Openness 直接指向测试程序"）：
+  TIA 会重新加载该 Windows 用户上次使用的工程 ⇒ 回退新建的实例一上来就开着别人/上次的工程，
+  既让工具静默操作一个没人要求的工程，**又会占住那个工程文件、把用户自己的 TIA 挡在门外**。
+  现改为：回退新建实例后**关闭它自动加载的任何工程（绝不保存）**，名字记入
+  `Portal.AutoClosedProjects`，并通过 `Connect` 的 `meta.autoClosedProjects` 回报。
 
 ### 移除
 - 无（本次未删任何工具）。
