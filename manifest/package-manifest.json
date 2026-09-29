@@ -106,8 +106,8 @@
       "L1": 57,
       "L2": 168
     },
-    "v18ToolCount": 208,
-    "v18HiddenToolsNote": "23 WinCC Unified HMI tools are hidden in the V18 build via #if !TIA_V18 (231 - 23 = 208).",
+    "v18ToolCount": 203,
+    "v18HiddenToolsNote": "28 tools are hidden in the V18 build via #if !TIA_V18 (231 - 28 = 203): 23 WinCC Unified HMI tools + 5 VersionControl (VCI) tools. Verified by source scan 2026-09-29. VCI is V20+ only because the V18 Siemens.Engineering assembly does not ship MappedObject/ExportObject/ConnectObject/GetSupportedFileFormats.",
     "newToolsThisRelease": [
       "DeletePlcBlock (v2.4.0)",
       "DeletePlcTagTable (v2.4.0)",

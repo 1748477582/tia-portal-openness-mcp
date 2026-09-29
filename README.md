@@ -14,7 +14,7 @@
 2. **下载解压**：在本仓库页面点 **`Code` → `Download ZIP`**（或 `git clone`），解压到任意目录。
 3. **挂载 MCP**：在 MCP 客户端（WorkBuddy / Cursor / VS Code / Claude Desktop 等）配置里，把 `command` 指向解压目录内的
    `tools\tiaportal-mcp\src\TiaMcpServer\bin-v18\Release\net48\TiaMcpServer.exe`，
-   `args` 传 `["--tia-major-version","18","--logging","0"]`，信任该连接器并重启客户端。连接器将暴露 **208 个 V18 安全工具**。
+   `args` 传 `["--tia-major-version","18","--logging","0"]`，信任该连接器并重启客户端。连接器将暴露 **203 个 V18 安全工具**。
 
 ---
 
@@ -23,8 +23,9 @@
 本仓库同时维护 **V18 / V20 / V21** 三个构建（三个 csproj，输出同名 `TiaMcpServer.exe`，按输出目录 `bin-v18` / `bin-v20` / `bin` 区分）。其中 **V18 构建**做了如下兼容性处理：
 
 - **WinCC Unified HMI 在 V18 不可用**：V18 的 Openness 全安装不含 `Siemens.Engineering.HmiUnified` 程序集。相关 **23 个 Unified HMI 工具**已用 `#if !TIA_V18` 条件编译守卫在 V18 构建中隐藏（方法体保留，仅不注册为 MCP 工具，从 `tools/list` 中消失）。
-- **暴露工具数**：连接器实测 **208 个 V18 安全工具**（基线 231 − 23 个 Unified）；V20/V21 构建暴露完整工具集。
-- **深度审计结论**：除这 23 个 Unified 工具外，其余暴露工具在 V18 全部安全可用；V20 专属文档工具（`Export/Import*Documents`）在 V18 构建中仅以引导提示暴露、不可调用。
+- **暴露工具数**：连接器实测 **203 个 V18 安全工具**（基线 231 − 28 个守卫工具）；V20/V21 构建暴露完整工具集。
+- **VersionControl（VCI）在 V18 不可用**：V18 的 `Siemens.Engineering` 程序集不含 `MappedObject` / `ExportObject` / `ConnectObject` / `GetSupportedFileFormats`，VCI 为 **V20+ 能力**，其 **5 个工具**同样以 `#if !TIA_V18` 在 V18 构建中隐藏。
+- **深度审计结论**：除上述 **28 个工具**（23 个 Unified HMI + 5 个 VCI）外，其余暴露工具在 V18 全部安全可用；V20 专属文档工具（`Export/Import*Documents`）在 V18 构建中仅以引导提示暴露、不可调用。
 - **HMI 自动化路径**：V18 下请走 **Classic / Comfort HMI** 工具族；Unified 需求须使用 V20/V21 构建。
 
 ---
@@ -81,7 +82,7 @@
 | 通用 PLC / Classic HMI 工具 | ✅ | ✅ |
 | WinCC Unified HMI 工具 | ❌（已守卫隐藏） | ✅ |
 | 文档导入导出（`*Documents` / S7DCL） | ⚠️ 仅引导提示 | ✅ 可调用 |
-| 暴露工具数 | **208** | **231** |
+| 暴露工具数 | **203** | **231** |
 
 ---
 
@@ -90,7 +91,7 @@
 三个 csproj 对应三个 TIA 版本，输出目录区分：
 
 ```bat
-:: V18（隐藏 Unified HMI，166 个工具）
+:: V18（隐藏 28 个工具：23 Unified HMI + 5 VCI，共 203 个）
 dotnet build TiaMcpServer.V18.csproj -c Release ^
   -p:TiaPortalLocation="C:/Program Files/Siemens/Automation/Portal V18" ^
   -p:BaseOutputPath=bin-v18/ -p:BaseIntermediateOutputPath=obj-v18/
