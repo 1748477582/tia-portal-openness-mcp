@@ -33,8 +33,13 @@ if (-not $SourceFile) {
 
 # Match each attribute block: [McpServerTool(Name = "X"), Description( <body> )]
 # Body may span lines as "..." + "..." concatenation; Singleline lets . cross newlines.
+# 🔴 The attribute MUST start a real code line: a DISABLED tool is commented out as
+#    `// [DISABLED-A] [McpServerTool(Name = "...")...]`. A naive regex counts those too
+#    and inflates the matrix above the live tools/list (2026-09-29: 240-268 vs 231).
+#    `(?m)^[ \t]*\[McpServerTool` anchors to a line whose first non-space char is `[`,
+#    so any line starting with `//` (comment) is skipped.
 $blockRx = [regex]::new(
-    '\[McpServerTool\(Name\s*=\s*"(?<name>[^"]+)"\)\s*,\s*Description\((?<body>.*?)\)\]',
+    '(?m)^[ \t]*\[McpServerTool\(Name\s*=\s*"(?<name>[^"]+)"\)\s*,\s*Description\((?<body>.*?)\)\]',
     [System.Text.RegularExpressions.RegexOptions]::Singleline)
 $segRx = [regex]'"(?<seg>[^"]*)"'
 
@@ -71,7 +76,7 @@ foreach ($layer in @("L0", "L1", "L2", "L?")) {
         [void]$sb.AppendLine("| Tool | Description |")
         [void]$sb.AppendLine("|---|---|")
         foreach ($t in ($inLayer | Where-Object { $_.Domain -eq $domain } | Sort-Object Order)) {
-            [void]$sb.AppendLine(("| {0} | {1} |" -f $t.Name, $t.Desc))
+            [void]$sb.AppendLine(("| ``{0}`` | {1} |" -f $t.Name, $t.Desc))
         }
         [void]$sb.AppendLine("")
     }
