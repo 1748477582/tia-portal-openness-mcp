@@ -1,24 +1,32 @@
 @echo off
 setlocal EnableExtensions
-:: ─────────────────────────────────────────────────────────────────────────────
+:: -----------------------------------------------------------------------------
 :: Single MCP launcher for multi-version TIA Portal (V18 / V20 / ...).
 :: Picks the correct build (bin-vXX) by version, injects the matching TIA Bin
 :: into PATH and passes --tia-major-version + --tia-portal-location so the
 :: server loads the right Openness assemblies. stdio (MCP) is inherited clean.
-:: ─────────────────────────────────────────────────────────────────────────────
+:: -----------------------------------------------------------------------------
+:: ASCII-only on purpose: this file is read by cmd.exe with the OEM code page,
+:: so non-ASCII bytes in comments can be re-parsed as commands on GBK hosts.
+:: -----------------------------------------------------------------------------
 
 :: Version resolution, fastest path first:
-::   1. TIA_MCP_VERSION env var (set by the host, e.g. in ~/.workbuddy/mcp.json) -> used
-::      directly, PowerShell is NOT started at all (~1.3-1.5 s saved per cold start);
-::   2. otherwise ask detect_tia_version.ps1 (running-Portal probe, registry fallback).
-:: NOTE: pinning TIA_MCP_VERSION means this launcher no longer follows whichever TIA
-:: version you actually have open — unset it to restore auto-detection.
+::   1. TIA_MCP_VERSION env var (set by the host, e.g. in mcp.json) -> used
+::      as-is and the probe process below is NOT started at all (saves ~1.3-1.5 s
+::      per cold start);
+::   2. otherwise ask detect_tia_version.ps1 (running-Portal probe, then fallback).
+:: NOTE: pinning TIA_MCP_VERSION means this launcher no longer follows whichever
+::       TIA version you actually have open - clear it to restore auto-detection.
 set "VER="
 if defined TIA_MCP_VERSION set "VER=%TIA_MCP_VERSION%"
 if defined VER set "VER=%VER: =%"
-if not defined VER (
-    for /f "delims=" %%v in ('powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "%~dp0detect_tia_version.ps1" 2^>nul') do set "VER=%%v"
-)
+if defined VER goto :ver_ready
+
+:: NOTE: keep this for/f at TOP level. Wrapping it in an "if ( ... )" block breaks
+:: the 2^>nul escaping and silently yields an empty VER (i.e. the V18 fallback).
+for /f "delims=" %%v in ('powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "%~dp0detect_tia_version.ps1" 2^>nul') do set "VER=%%v"
+
+:ver_ready
 if "%VER%"=="" set "VER=18"
 
 if "%VER%"=="20" (
