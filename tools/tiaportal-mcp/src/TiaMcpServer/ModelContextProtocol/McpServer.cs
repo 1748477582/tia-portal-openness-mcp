@@ -57,7 +57,7 @@ namespace TiaMcpServer.ModelContextProtocol
 
         #region portal
 
-        [McpServerTool(Name = "Connect"), Description("[L1][Portal] Connect to a running TIA Portal instance or start a new one. MUST be the first tool called in every session. On success, state becomes Connected=true. If TIA Portal is not installed or the user is not in the 'Siemens TIA Openness' Windows group, this will fail — run EnsureOpennessUserGroup first.")]
+        [McpServerTool(Name = "Connect"), Description("[L1][Portal] Attach to a running TIA Portal instance, or cold-start a new headless one when no TIA is running. NOT a required first step: when a TIA is already open, most tools auto-attach and auto-bind it via self-heal. Call Connect only when a TIA-related task needs a portal and none is running. On success, state becomes Connected=true. If TIA Portal is not installed or the user is not in the 'Siemens TIA Openness' Windows group, this will fail — run EnsureOpennessUserGroup first.")]
         public static ResponseConnect Connect()
         {
             Logger?.LogInformation("Connecting to TIA Portal...");
@@ -287,7 +287,7 @@ namespace TiaMcpServer.ModelContextProtocol
 
         #region bootstrap
 
-        [McpServerTool(Name = "Bootstrap"), Description("[L0][Portal] FIRST tool any AI model should call. Read-only single-call orientation: returns TIA version, Openness group status, current connection/project state, the recommended next tool, the L0/L1 tool roster, and known TIA Openness limitations. Does NOT connect to TIA Portal — call Connect afterwards based on RecommendedNextTool.")]
+        [McpServerTool(Name = "Bootstrap"), Description("[L0][Portal] Read-only orientation for TIA-related tasks: returns TIA version, Openness group status, current connection/project state, the recommended next tool, the L0/L1 tool roster, and known TIA Openness limitations. Does NOT connect to TIA Portal. Skip it entirely for requests unrelated to TIA Portal — do not call it proactively.")]
         public static async Task<ResponseBootstrap> Bootstrap()
         {
             try
@@ -328,8 +328,8 @@ namespace TiaMcpServer.ModelContextProtocol
                 }
                 else if (portalDto.Connected != true)
                 {
-                    nextTool = "Connect";
-                    reason = "Not connected to TIA Portal yet. Connect first; if a project is already open in TIA UI, then call AttachToOpenProject.";
+                    nextTool = "(none yet — stay disconnected until a TIA task needs it)";
+                    reason = "Not connected, and that is fine. Most tools auto-attach and auto-bind when a TIA Portal is already running; Connect only attaches (~1s) or cold-starts a headless TIA when none is open. Do not connect proactively for unrelated requests.";
                 }
                 else if (string.IsNullOrWhiteSpace(portalDto.ProjectName) || portalDto.ProjectName == "-")
                 {
@@ -356,7 +356,7 @@ namespace TiaMcpServer.ModelContextProtocol
 
                 var rules = new[]
                 {
-                    "ORDER: Connect → (OpenProject | AttachToOpenProject | CreateProject) → GetProjectTree → read/write → CompileSoftware → SaveProject. The server now auto-connects and auto-binds an already-open project, but always confirm with GetState/GetProjectTree before writing.",
+                    "ORDER (when doing TIA work): Connect or AttachToOpenProject as needed → GetProjectTree → read/write → CompileSoftware → SaveProject. The server auto-connects and auto-binds an already-open project, so explicit Connect is only needed when no TIA is running; always confirm with GetState/GetProjectTree before writing.",
                     "AFTER ANY WRITE: call CompileSoftware to validate, then SaveProject to persist. Changes are NOT saved automatically.",
                     "NAMES ARE EXACT: plc software path defaults to 'PLC_1', HMI to 'HMI_RT_1'. If a name/path is rejected, call GetProjectTree / GetSoftwareTree to read the real names instead of guessing.",
                     "ON ERROR: read the error message — it names the recovery tool (e.g. 'call OpenProject/AttachToOpenProject'). Do that instead of retrying the same call or switching tools at random.",

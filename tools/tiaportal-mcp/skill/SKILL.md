@@ -1,6 +1,6 @@
 ---
 name: tiaportal-mcp
-description: Drive Siemens TIA Portal (博途) end-to-end through the TiaMcpServer MCP plugin. Use whenever the user mentions TIA Portal, 博途, STEP 7, WinCC, S7-1200/1500, PLC, HMI, SCL, LAD, STL, Openness, or asks to create/modify/compile/download a project. Always start by calling the `Bootstrap` tool — it returns environment status and the recommended next tool.
+description: Drive Siemens TIA Portal (博途) end-to-end through the TiaMcpServer MCP plugin. Use whenever the user mentions TIA Portal, 博途, STEP 7, WinCC, S7-1200/1500, PLC, HMI, SCL, LAD, STL, Openness, or asks to create/modify/compile/download a project. For TIA-related tasks start with the `Bootstrap` tool — it returns environment status and the recommended next tool. Do not call any tool from this server for requests unrelated to TIA Portal.
 ---
 
 # TIA Portal MCP — Single Skill
@@ -10,11 +10,11 @@ companion plugin lives at `tools/tiaportal-mcp/`. It exposes on the order of
 **~201** MCP tools (lite profile ~43; exact runtime set: call `tools/list` on the running server) covering
 project, hardware, PLC, HMI, and online operations.
 
-## 0. Always start here
+## 0. Always start here (TIA-related tasks only — never connect proactively for unrelated requests)
 
 ```
-1. Call Bootstrap                        ← returns env, project state, next step
-2. Follow RecommendedNextTool            ← e.g. Connect, AttachToOpenProject
+1. Call Bootstrap                        ← returns env, project state, next step (read-only, does NOT connect)
+2. Follow RecommendedNextTool            ← e.g. AttachToOpenProject, GetProjectTree; Connect only when no TIA is running
 3. Call GetProjectTree                   ← resolve real paths (PLC_1, HMI_RT_1)
 4. Read-before-write loop                ← inspect, smallest change, compile, save
 ```
@@ -34,8 +34,8 @@ else unless one of these tools' output explicitly tells you to call another:
 
 | 想做的事 | 用这个，别的别碰 |
 |---|---|
-| 开局/看环境 | `Bootstrap` → 然后照它返回的 `recommendedNextTool` 做 |
-| 连接 TIA | `Connect`（新工程）或 `AttachToOpenProject`（已打开的工程） |
+| 开局/看环境 | `Bootstrap` → 然后照它返回的 `recommendedNextTool` 做（与 TIA 无关的请求不要调任何工具） |
+| 连接 TIA | TIA 已开着时多数工具会自动 attach；仅当没有任何 TIA 在跑才显式 `Connect`；已打开的工程用 `AttachToOpenProject` |
 | 看工程里有什么 | `GetProjectTree`（拿真实 `softwarePath`，如 `PLC_1`），细看用 `GetSoftwareTree` / `GetBlocks` |
 | **做一个完整项目** | `ScaffoldProject`（一次调用搞定 PLC+HMI，见 §0.5） |
 | 加一段 PLC 逻辑/变量/DB/UDT | `PlcBuildAndImport`（先 `dryRun=true`，见 §6.2/§10） |
@@ -44,8 +44,8 @@ else unless one of these tools' output explicitly tells you to call another:
 | 存盘/收尾 | `SaveProject` → `Disconnect` |
 | 环境报错/装不上 | **`Doctor`** — 一次性体检(TIA装没装/Openness组/连接状态)，每项给出修复办法；`fix=true`(默认)会自动把你加进 Openness 组(可能弹 UAC) |
 
-**铁律(弱模型尤其要守):** ① 永远先 `Bootstrap`(或装不上时先 `Doctor`)，照
-`recommendedNextTool` 走。② 路径只从 `GetProjectTree` 拿，绝不自己编。③ 写操作前先
+**铁律(弱模型尤其要守):** ① 任务涉及 TIA 时先 `Bootstrap`(装不上时先 `Doctor`)，照
+`recommendedNextTool` 走；与 TIA 无关的请求**不要调用本服务器任何工具、不要重连**。② 路径只从 `GetProjectTree` 拿，绝不自己编。③ 写操作前先
 `dryRun=true`。④ 收尾必须 `CompileAndDiagnosePlc`(0 错) + `SaveProject`。⑤ 拿不准
 参数名时，照本表/§8 的"精确参数名"抄，不要猜。HMI 美化看 §12，库复用看 §15。
 
@@ -93,7 +93,7 @@ Notes:
 - `designJson` is the §6.3 Unified HMI schema. Size the screen to the panel's native resolution (WinCC Unified PC default 800×480) or it will be clipped.
 - HMI tags: use an absolute PLC address (`%DB100.DBX0.0`, `%MD10`) so the binding read-back verifies.
 - Critical-step failures (connect/createProject/PLC device) abort and throw; per-element failures are collected in the returned `steps` so you can see exactly what to fix and re-run.
-- For per-session fast connects, keep a warm headless instance running (`_prewarm_tia.py`); see §0.
+- For per-session fast connects, keep a warm headless instance running (`_prewarm_tia.py`); see §0. ⚠️ While prewarm holds the single-attach mutex, other MCP instances' `Connect` is refused — do not run it while an AI connector is in use (a TIA you keep open gives the same ~1s attach without the conflict).
 
 Only fall back to the manual runbook (`docs/full-project-generation-runbook.md`) when the user needs something `ScaffoldProject` does not cover.
 

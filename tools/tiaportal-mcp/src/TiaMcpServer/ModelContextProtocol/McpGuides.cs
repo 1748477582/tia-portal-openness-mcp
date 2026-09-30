@@ -23,7 +23,9 @@ namespace TiaMcpServer.ModelContextProtocol
         private const string ServerInstructionsCommon =
 @"TIA Portal MCP server (Siemens PLC/HMI engineering via Openness). How to work well:
 
-FIRST CALL: Bootstrap — returns environment status, connection state, the recommended next tool, and operating rules. Do this before anything else. If the environment itself seems broken (TIA missing, group membership, nothing connects), call Doctor for a plain-language diagnosis with exact fixes.
+SCOPE: these tools drive Siemens TIA Portal (PLC/HMI engineering via Openness). The server is lazy — nothing connects or launches until a tool is called. For requests unrelated to TIA Portal / PLC / HMI, do NOT call any tool from this server (no Bootstrap, no Connect, no probing) — just answer directly.
+
+WHEN THE TASK IS TIA-RELATED: start with Bootstrap — a read-only orientation returning environment status, connection state, the recommended next tool, and operating rules. It does NOT connect. If the environment itself seems broken (TIA missing, group membership, nothing connects), call Doctor for a plain-language diagnosis with exact fixes.
 
 GOLDEN PATHS (pick one, do not improvise):
 - Whole new project → ScaffoldProject with ONE JSON spec (PLC + blocks + HMI + compile + save in a single call). The DEFAULT call is a dry run (offline spec validation, nothing created); when it reports clean, call again with dryRun=false to actually create.

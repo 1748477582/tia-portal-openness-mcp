@@ -7,8 +7,18 @@ setlocal EnableExtensions
 :: server loads the right Openness assemblies. stdio (MCP) is inherited clean.
 :: ─────────────────────────────────────────────────────────────────────────────
 
-set "VER=18"
-for /f "delims=" %%v in ('powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "%~dp0detect_tia_version.ps1" 2^>nul') do set "VER=%%v"
+:: Version resolution, fastest path first:
+::   1. TIA_MCP_VERSION env var (set by the host, e.g. in ~/.workbuddy/mcp.json) -> used
+::      directly, PowerShell is NOT started at all (~1.3-1.5 s saved per cold start);
+::   2. otherwise ask detect_tia_version.ps1 (running-Portal probe, registry fallback).
+:: NOTE: pinning TIA_MCP_VERSION means this launcher no longer follows whichever TIA
+:: version you actually have open — unset it to restore auto-detection.
+set "VER="
+if defined TIA_MCP_VERSION set "VER=%TIA_MCP_VERSION%"
+if defined VER set "VER=%VER: =%"
+if not defined VER (
+    for /f "delims=" %%v in ('powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "%~dp0detect_tia_version.ps1" 2^>nul') do set "VER=%%v"
+)
 if "%VER%"=="" set "VER=18"
 
 if "%VER%"=="20" (

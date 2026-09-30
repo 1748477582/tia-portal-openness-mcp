@@ -9,10 +9,20 @@ Usage:
 
 How it works:
     Launches one MCP process and calls Connect, which cold-starts a headless TIA Portal once
-    (~10-30s), then holds it open. Later, when your AI client's MCP calls Connect, Openness
-    attaches to this already-running instance (~1s). The held instance has no project open, so
+    (~10-30s), then holds it open. The held instance has no project open, so
     CreateProject/OpenProject from the client land in it. If you also open a TIA GUI with a
     project, the attach prefers that one — no conflict. Stop this script and the headless TIA closes.
+
+⚠️ MUTEX CONFLICT (read before running, since the 2026-09-17 single-attach lock):
+    This script's MCP process HOLDS the named mutex `TiaMcpServer.SingleAttach.V<n>` for its
+    whole lifetime (acquired in ConnectPortal, released only on Disconnect). While it runs,
+    any OTHER TiaMcpServer instance's Connect — including your AI client's MCP connector —
+    is REFUSED with "另一个 TiaMcpServer 实例已占用 TIA 的 Openness 连接".
+    => Do NOT run this prewarm while a WorkBuddy/Cursor/Claude MCP connector for TIA is in use.
+    => The "client's MCP attaches to this instance in ~1s" behavior described above is
+       BLOCKED by that mutex until the lock is made per-TIA-instance (follow-up work).
+    Today the practical warm path is simply: keep your own TIA open — the server auto-attaches
+    to it (~1s) and never needs this script.
 """
 import json, subprocess, threading, io, sys, os, time, signal
 

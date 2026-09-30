@@ -2,7 +2,7 @@
 
 本文件由源码中的 `[McpServerTool]` 静态抽取生成，运行时仍以 `tools/list` 为准。
 
-- 生成时间：2026-09-29 09:36:52
+- 生成时间：2026-09-30 09:52:47
 - 工具数量：231
 
 ## L0
@@ -20,7 +20,7 @@
 | Tool | Description |
 |---|---|
 | `GetState` | [L0][Portal] Get current connection state: IsConnected, open Project name, and open Session name. Use this to check preconditions before other tools — if IsConnected=false, call Connect first; if Project is empty, call OpenProject or CreateProject. |
-| `Bootstrap` | [L0][Portal] FIRST tool any AI model should call. Read-only single-call orientation: returns TIA version, Openness group status, current connection/project state, the recommended next tool, the L0/L1 tool roster, and known TIA Openness limitations. Does NOT connect to TIA Portal — call Connect afterwards based on RecommendedNextTool. |
+| `Bootstrap` | [L0][Portal] Read-only orientation for TIA-related tasks: returns TIA version, Openness group status, current connection/project state, the recommended next tool, the L0/L1 tool roster, and known TIA Openness limitations. Does NOT connect to TIA Portal. Skip it entirely for requests unrelated to TIA Portal — do not call it proactively. |
 | `GetAuthoringGuide` | [L0][Portal] Verified syntax + workflow cheat sheet for authoring TIA content through this server. CALL THIS BEFORE writing any SCL/LAD/DB/HMI content — it prevents the common encoding, syntax and tool-routing mistakes. Topics: workflow, scl, lad, db, online, hmi, errors. Read-only, does not touch TIA Portal. |
 
 ## L1
@@ -100,7 +100,7 @@
 
 | Tool | Description |
 |---|---|
-| `Connect` | [L1][Portal] Connect to a running TIA Portal instance or start a new one. MUST be the first tool called in every session. On success, state becomes Connected=true. If TIA Portal is not installed or the user is not in the 'Siemens TIA Openness' Windows group, this will fail — run EnsureOpennessUserGroup first. |
+| `Connect` | [L1][Portal] Attach to a running TIA Portal instance, or cold-start a new headless one when no TIA is running. NOT a required first step: when a TIA is already open, most tools auto-attach and auto-bind it via self-heal. Call Connect only when a TIA-related task needs a portal and none is running. On success, state becomes Connected=true. If TIA Portal is not installed or the user is not in the 'Siemens TIA Openness' Windows group, this will fail — run EnsureOpennessUserGroup first. |
 | `ConnectIsolated` | [L1][Portal] Start a BRAND-NEW TIA Portal instance (headless by default; --with-ui makes it visible) instead of attaching to a running one. USE THIS when the user is working in the TIA Portal UI: plain Connect attaches to their instance and OpenProject then (correctly) refuses to touch their already-open project, so the whole server is unusable until they close it. It never attaches to, modifies or closes any TIA window or project the user already has open — so it also can NOT drive the project the user has open; for that use Connect. Must be the FIRST connection action in a fresh MCP process. Afterwards use OpenProject or CreateProject as usual, then CloseProject and Disconnect. |
 | `ListPortalProcessProjects` | [L1][Portal]List running TIA Portal processes and the projects/sessions visible in each process. |
 | `EnsureOpennessUserGroup` | [L1][Portal]Ensure current Windows user is in TIA Openness user group (may prompt UI). Returns success=true when membership is OK. |

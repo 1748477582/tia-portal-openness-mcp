@@ -1,6 +1,6 @@
 {
   "package": "TIA_MCP_Delivery_v2.4.0_20260928",
-  "generatedAt": "2026-09-28T10:42:04.694442+08:00",
+  "generatedAt": "2026-09-30T09:52:25.811436+08:00",
   "source": "live MCP tools/list of TiaMcpServer.exe (dev build)",
   "toolCount": 231,
   "note": "Full roster, generated from the live MCP engine. Regenerate with scripts/Generate-ToolsList.py after any tool add/remove. Runtime tools/list remains authoritative when the server is running.",
@@ -249,7 +249,7 @@
       "method": "Bootstrap",
       "returnType": "",
       "parameters": [],
-      "description": "[L0][Portal] FIRST tool any AI model should call. Read-only single-call orientation: returns TIA version, Openness group status, current connection/project state, the recommended next tool, the L0/L1 tool roster, and known TIA Openness limitations. Does NOT connect to TIA Portal — call Connect afterwards based on RecommendedNextTool."
+      "description": "[L0][Portal] Read-only orientation for TIA-related tasks: returns TIA version, Openness group status, current connection/project state, the recommended next tool, the L0/L1 tool roster, and known TIA Openness limitations. Does NOT connect to TIA Portal. Skip it entirely for requests unrelated to TIA Portal — do not call it proactively."
     },
     {
       "name": "BuildClassicHmiMinimalPackage",
@@ -537,7 +537,7 @@
       "method": "Connect",
       "returnType": "",
       "parameters": [],
-      "description": "[L1][Portal] Connect to a running TIA Portal instance or start a new one. MUST be the first tool called in every session. On success, state becomes Connected=true. If TIA Portal is not installed or the user is not in the 'Siemens TIA Openness' Windows group, this will fail — run EnsureOpennessUserGroup first."
+      "description": "[L1][Portal] Attach to a running TIA Portal instance, or cold-start a new headless one when no TIA is running. NOT a required first step: when a TIA is already open, most tools auto-attach and auto-bind it via self-heal. Call Connect only when a TIA-related task needs a portal and none is running. On success, state becomes Connected=true. If TIA Portal is not installed or the user is not in the 'Siemens TIA Openness' Windows group, this will fail — run EnsureOpennessUserGroup first."
     },
     {
       "name": "ConnectDeviceNodesToProfinetSubnet",
