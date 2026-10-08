@@ -2780,6 +2780,22 @@ namespace TiaMcpServer.Siemens
                     if (pt == typeof(long)) { converted[i] = Convert.ToInt64(av); continue; }
                     if (pt == typeof(double)) { converted[i] = Convert.ToDouble(av); continue; }
                     if (pt == typeof(bool)) { converted[i] = Convert.ToBoolean(av); continue; }
+                    // Siemens-protected APIs (AdvancedProtection.ProtectionProviderBase.Protect/Unprotect,
+                    // SafetyAdministration.LoginToSafetyOfflineProgram, ...) take a SecureString, which the
+                    // bridge previously could not produce: the raw string fell through to converted[i] = av and
+                    // reflection threw "cannot convert String to SecureString", so those public API calls were
+                    // unreachable. Build the SecureString here (same recipe as AttachPasswordHandler).
+                    if (pt == typeof(SecureString))
+                    {
+                        if (av is string pwText)
+                        {
+                            var ss = new SecureString();
+                            foreach (var c in pwText) ss.AppendChar(c);
+                            ss.MakeReadOnly();
+                            converted[i] = ss;
+                            continue;
+                        }
+                    }
                     if (pt == typeof(object)
                         && methodName.Equals("SetAttribute", StringComparison.OrdinalIgnoreCase)
                         && i == 1
