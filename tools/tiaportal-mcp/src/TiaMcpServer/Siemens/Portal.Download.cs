@@ -401,10 +401,19 @@ namespace TiaMcpServer.Siemens
                     break;
 
                 case "CheckBeforeDownload":
+                    DownloadConfigSetChecked(config, true);
+                    break;
+
                 case "AlarmTextLibrariesDownload":
                 case "UserManagementDownload":
                 case "DownloadCertificate":
-                    DownloadConfigSetChecked(config, true);
+                    // NOT checkboxes: the first two are CurrentSelection items and DownloadCertificate is
+                    // only a notification (verified against the PublicAPI upstream, commit 2aee11fb). We used
+                    // to set Checked on all three; with no Checked property that call did nothing at all, yet
+                    // the precheck still reported success. Leaving them explicitly unanswered keeps the
+                    // report honest instead of implying we had handled them.
+                    _logger?.LogDebug("Download prompt '{Type}' is not a checkbox - deliberately left unanswered.",
+                        config.GetType().Name);
                     break;
 
                 case "DifferentTargetConfiguration":
@@ -416,28 +425,61 @@ namespace TiaMcpServer.Siemens
             });
         }
 
-        private static void DownloadConfigSetSelection(object config, string selectionName)
+        /// <summary>Applies a CurrentSelection answer. Reports failure instead of swallowing it: a prompt
+        /// we could not answer used to look answered, which is how the download precheck ended up
+        /// reporting success for prompts it never touched (cf. upstream 2aee11fb / DownloadPromptPolicy).</summary>
+        private bool DownloadConfigSetSelection(object config, string selectionName)
         {
+            var typeName = config.GetType().Name;
             try
             {
                 var prop = config.GetType().GetProperty("CurrentSelection");
-                if (prop == null) return;
+                if (prop == null)
+                {
+                    _logger?.LogWarning("Download prompt '{Type}' has no CurrentSelection - left unanswered.", typeName);
+                    return false;
+                }
                 var enumType = prop.PropertyType;
-                if (!enumType.IsEnum) return;
+                if (!enumType.IsEnum)
+                {
+                    _logger?.LogWarning("Download prompt '{Type}'.CurrentSelection is not an enum - left unanswered.", typeName);
+                    return false;
+                }
                 var value = Enum.Parse(enumType, selectionName, ignoreCase: true);
                 prop.SetValue(config, value);
+                return true;
             }
-            catch { }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Download prompt '{Type}': answering with selection '{Selection}' failed.",
+                    typeName, selectionName);
+                return false;
+            }
         }
 
-        private static void DownloadConfigSetChecked(object config, bool value)
+        /// <summary>Applies a Checked answer; see <see cref="DownloadConfigSetSelection"/> for why this
+        /// reports rather than silently swallowing.</summary>
+        private bool DownloadConfigSetChecked(object config, bool value)
         {
+            var typeName = config.GetType().Name;
             try
             {
                 var prop = config.GetType().GetProperty("Checked");
-                prop?.SetValue(config, value);
+                if (prop == null)
+                {
+                    _logger?.LogWarning(
+                        "Download prompt '{Type}' has no Checked property (it is a selection or a notification, not a checkbox) - left unanswered.",
+                        typeName);
+                    return false;
+                }
+                prop.SetValue(config, value);
+                return true;
             }
-            catch { }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Download prompt '{Type}': setting Checked={Value} failed.", typeName, value);
+                return false;
+            }
         }
 
         private ResponseDownload BuildDownloadResponse(DownloadResult result, string softwarePath)

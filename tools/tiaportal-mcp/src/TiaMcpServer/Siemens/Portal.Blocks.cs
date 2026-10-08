@@ -814,7 +814,12 @@ namespace TiaMcpServer.Siemens
                         // Snapshot existing block before overwriting (best-effort rollback).
                         backupPath = BackupBlockBeforeImport(group, name);
 
-                        var list = group.Blocks.Import(fi, ImportOptions.Override);
+                        // The Find above only sees THIS group and the file name; the block name inside the
+                        // XML can differ and the block can live in another group. ImportOptions.None makes
+                        // TIA itself refuse to replace anything when the caller asked not to overwrite,
+                        // instead of relying on our name check having seen the right block
+                        // (upstream 2aee11fb).
+                        var list = group.Blocks.Import(fi, overwrite ? ImportOptions.Override : ImportOptions.None);
                         if (list != null && list.Count > 0)
                         {
                             imported.AddRange(list.Select(b => b?.Name).Where(n => !string.IsNullOrWhiteSpace(n))!.Cast<string>());

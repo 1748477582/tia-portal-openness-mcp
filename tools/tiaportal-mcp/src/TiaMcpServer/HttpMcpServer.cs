@@ -162,10 +162,25 @@ namespace TiaMcpServer
                 return;
             }
 
+            // A web page the user happens to visit must not be able to drive this server: browsers send a
+            // text/plain POST cross-site without a CORS preflight, but they always attach Origin. This
+            // endpoint can download to a PLC and delete blocks, so "who may call it" is not a detail.
+            if (!HttpSecurity.IsAllowedOrigin(req.Headers["Origin"]))
+            {
+                log("HTTP request rejected: Origin " + req.Headers["Origin"]);
+                res.StatusCode = 403;
+                res.Close();
+                return;
+            }
+
             if (secret != null && !AuthOk(req, secret))
             {
                 res.StatusCode = 401;
-                res.Headers["WWW-Authenticate"] = "Bearer";
+                // WWW-Authenticate is a restricted response header on .NET Framework: assigning it through
+                // the indexer throws, the handler aborts, and a client with a wrong key sees a connection
+                // reset instead of 401. The status code is what matters; the header is best-effort.
+                try { res.AddHeader("WWW-Authenticate", "Bearer"); }
+                catch (ArgumentException) { }
                 res.Close();
                 return;
             }
