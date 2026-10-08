@@ -51,5 +51,8 @@
     <Compile Include="..\..\src\TiaMcpServer\ModelContextProtocol\PortalFailureClassifier.cs" Link="PortalFailureClassifier.cs" />
     <!-- 语义打分词表（中性默认 + 环境变量可扩展行业术语）：零依赖。"默认不含行业词"这条通用化边界靠用例钉住。 -->
     <Compile Include="..\..\src\TiaMcpServer\ModelContextProtocol\SemanticLexicon.cs" Link="SemanticLexicon.cs" />
+    <!-- 工具风险分级表：零依赖。盯的是「看起来像只读的工具其实会改工程数据/关工程/动运行中 CPU」——
+         这类误标会让读者不再相信标注，那等于没有标注。 -->
+    <Compile Include="..\..\src\TiaMcpServer\ModelContextProtocol\ToolSafety.cs" Link="ToolSafety.cs" />
   </ItemGroup>
 </Project>

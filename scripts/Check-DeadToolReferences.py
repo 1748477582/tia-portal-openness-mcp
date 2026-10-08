@@ -137,6 +137,27 @@ def main():
         return 2
 
     bad = scan(src, names)
+
+    # ToolSafety.DirectOnly 里的名字必须真的注册了。改过工具名之后这张表会静默失效 ——
+    # 失效的方向恰好是最坏的那个：真正危险的工具不再被标成"必须直呼其名"。
+    ts_path = os.path.join(ROOT, "ModelContextProtocol", "ToolSafety.cs")
+    stale = []
+    if os.path.isfile(ts_path):
+        ts = open(ts_path, encoding="utf-8", errors="replace").read()
+        block = ""
+        m = re.search(r"DirectOnly\s*=\s*new HashSet<string>.*?\{(.*?)\};", ts, re.S)
+        if m:
+            block = m.group(1)
+        for tool in re.findall(r'"([A-Za-z][A-Za-z0-9]*)"', block):
+            if tool not in names:
+                stale.append(tool)
+    if stale:
+        print("[FAIL] ToolSafety.DirectOnly 里有这些名字，但没有任何已注册工具：")
+        for t in sorted(set(stale)):
+            print("  %s" % t)
+        print("修法：改名，或从表里删掉（表里的死名字会让危险工具失去\"必须直呼其名\"的标记）。")
+        return 1
+
     if not bad:
         print("[PASS] 工具描述里点名的工具全部真实注册（哨兵已验证闸门有效）。")
         return 0

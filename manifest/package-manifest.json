@@ -4,7 +4,7 @@
   "packageName": "TIA_MCP_Delivery_v2.4.0_20260928",
   "packageType": "tia-portal-mcp-complete-offline-delivery-bundle",
   "generatedAt": "2026-05-31T20:30:00+08:00",
-  "refreshedAt": "2026-09-30T09:52:25.811436+08:00",
+  "refreshedAt": "2026-10-08T16:52:41.099227+08:00",
   "target": {
     "tiaPortalMajorVersion": [
       18,
@@ -100,9 +100,9 @@
     }
   },
   "capabilities": {
-    "mcpToolCount": 231,
+    "mcpToolCount": 232,
     "mcpToolLayers": {
-      "L0": 6,
+      "L0": 7,
       "L1": 57,
       "L2": 168
     },

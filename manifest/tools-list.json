@@ -1,8 +1,8 @@
 {
   "package": "TIA_MCP_Delivery_v2.4.0_20260928",
-  "generatedAt": "2026-09-30T09:52:25.811436+08:00",
+  "generatedAt": "2026-10-08T16:52:41.099227+08:00",
   "source": "live MCP tools/list of TiaMcpServer.exe (dev build)",
-  "toolCount": 231,
+  "toolCount": 232,
   "note": "Full roster, generated from the live MCP engine. Regenerate with scripts/Generate-ToolsList.py after any tool add/remove. Runtime tools/list remains authoritative when the server is running.",
   "tools": [
     {
@@ -1312,6 +1312,18 @@
         "preservePath"
       ],
       "description": "[L2][PLC-Software]Export types from the plc software to path"
+    },
+    {
+      "name": "FindTools",
+      "layer": "L0",
+      "domain": "Meta",
+      "method": "FindTools",
+      "returnType": "",
+      "parameters": [
+        "query",
+        "limit"
+      ],
+      "description": "[L0][Meta] Search ALL tools by capability and get the exact name, parameter signature and risk flags. USE THIS whenever you are not certain which tool to call, before concluding the server cannot do something, or when a tool you half-remember seems to be missing. Search by capability words, not exact names: 'watch table', 'HMI screen', 'cross reference', 'GSD', 'block comments', 'drive telegram'. Every match is annotated: 'read-only', 'reads the project, writes a file', 'writes or overwrites engineering data', or 'RISK changes CPU/deletes data/closes project - call by name'. Empty query lists the whole roster."
     },
     {
       "name": "GenerateBlocksFromExternalSource",

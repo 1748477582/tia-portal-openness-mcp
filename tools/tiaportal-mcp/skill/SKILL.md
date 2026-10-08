@@ -107,6 +107,12 @@ The `Description` of every tool starts with one of three layer tags:
 | `[L1]` | Common workflow tool | 80% of normal sessions only need L0+L1 |
 | `[L2]` | Domain / advanced tool | Reach for these by name only after L0/L1 fails or when a specific need arises |
 
+Not sure which tool exists, or the one you half-remember is not in the list? **`FindTools(query, limit=12)`** searches the
+whole roster by capability words and returns each match's exact name, parameter signature and a risk flag:
+`read-only` / `reads the project, writes a file` / `writes or overwrites engineering data` /
+`RISK changes CPU, deletes data or closes project - call by name`. It changes nothing about which tools are
+advertised, so it is a fallback, not a step.
+
 Core L0/L1 set:
 
 ```

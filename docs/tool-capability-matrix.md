@@ -2,8 +2,8 @@
 
 本文件由源码中的 `[McpServerTool]` 静态抽取生成，运行时仍以 `tools/list` 为准。
 
-- 生成时间：2026-09-30 09:52:47
-- 工具数量：231
+- 生成时间：2026-10-08 16:53:07
+- 工具数量：232
 
 ## L0
 
@@ -14,6 +14,12 @@
 | `RunCapabilitySelfTest` | [L0][Diagnostics]Run a read-only MCP/TIA readiness self-test. It checks Openness group membership, connection state, visible portal processes, optional automation context, and optional project tree readback without writing to the project. |
 | `RunOnlineMonitoringSafetySelfTest` | [L0][Diagnostics]Run a static, read-only safety self-test for online monitoring guardrails. It does not connect to TIA Portal, open projects, modify watch tables, write PLC values, or expose forced-value operations. |
 | `Doctor` | [L0][Diagnostics] One-call environment doctor for non-experts. Checks TIA install, Openness group membership, and connection/project state, and returns a plain-language diagnosis with the exact fix per problem. When fix=true (default) it ENSURES Openness group membership (adds the current user; may prompt a Windows UAC dialog). Read-only apart from that one fix. Call this first when setup is failing or you are unsure the environment is ready. |
+
+### Meta
+
+| Tool | Description |
+|---|---|
+| `FindTools` | [L0][Meta] Search ALL tools by capability and get the exact name, parameter signature and risk flags. USE THIS whenever you are not certain which tool to call, before concluding the server cannot do something, or when a tool you half-remember seems to be missing. Search by capability words, not exact names: 'watch table', 'HMI screen', 'cross reference', 'GSD', 'block comments', 'drive telegram'. Every match is annotated: 'read-only', 'reads the project, writes a file', 'writes or overwrites engineering data', or 'RISK changes CPU/deletes data/closes project - call by name'. Empty query lists the whole roster. |
 
 ### Portal
 
