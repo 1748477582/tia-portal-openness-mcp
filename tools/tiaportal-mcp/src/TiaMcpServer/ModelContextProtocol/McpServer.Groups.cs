@@ -54,7 +54,7 @@ namespace TiaMcpServer.ModelContextProtocol
             [Description("softwarePath: PLC software path, e.g. 'PLC_1'")] string softwarePath,
             [Description("blockName: exact block name to move (searched across all groups)")] string blockName,
             [Description("targetGroupPath: '/'-separated destination group under Program blocks, e.g. '02_手自动接口'")] string targetGroupPath,
-            [Description("autoCreateGroup: create the target group path if it does not exist (default true)")] bool autoCreateGroup = true)
+            [Description("autoCreateGroup: create the target group path if it does not exist. DEFAULT FALSE: the call fails and names the missing path")] bool autoCreateGroup  = false)
         {
             try
             {
@@ -132,7 +132,7 @@ namespace TiaMcpServer.ModelContextProtocol
             [Description("targetGroupPath: '/' separated destination group under Program blocks, e.g. '02_手自动接口'")] string targetGroupPath,
             [Description("nameRegex: optional case-insensitive regex to filter block names (empty = all)")] string nameRegex = "",
             [Description("blockType: optional case-insensitive substring of the block's class name to filter, e.g. 'FB' (empty = all)")] string blockType = "",
-            [Description("autoCreateGroup: create the target group path if it does not exist (default true)")] bool autoCreateGroup = true)
+            [Description("autoCreateGroup: create the target group path if it does not exist. DEFAULT FALSE: the call fails and names the missing path")] bool autoCreateGroup  = false)
         {
             try
             {
@@ -157,7 +157,7 @@ namespace TiaMcpServer.ModelContextProtocol
         public static ResponseMessage AutoClassifyBlocks(
             [Description("softwarePath: PLC software path, e.g. 'PLC_1'")] string softwarePath,
             [Description("folderMappingJson: optional JSON object mapping subtype -> folder name, e.g. \"{\\\"FB\\\":\\\"功能块\\\",\\\"FC\\\":\\\"函数\\\"}\". Empty = use subtype abbreviation as folder name")] string folderMappingJson = "",
-            [Description("autoCreate: create the subtype folders if they do not exist (default true)")] bool autoCreate = true)
+            [Description("autoCreate: create the subtype folders if they do not exist. DEFAULT FALSE: nothing is created silently")] bool autoCreate  = false)
         {
             try
             {

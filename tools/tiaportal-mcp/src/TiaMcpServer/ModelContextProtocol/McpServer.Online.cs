@@ -348,7 +348,7 @@ namespace TiaMcpServer.ModelContextProtocol
             [Description("folderPath: optional technology object group path (use empty for root)")] string folderPath,
             [Description("dir: directory containing technology object XML files")] string dir,
             [Description("regexName: optional regex filter applied to filename without extension")] string regexName = "",
-            [Description("overwrite: true=Override (default)")] bool overwrite = true)
+            [Description("overwrite: true=Override existing objects. DEFAULT FALSE: existing objects are left alone and reported")] bool overwrite  = false)
         {
             try
             {

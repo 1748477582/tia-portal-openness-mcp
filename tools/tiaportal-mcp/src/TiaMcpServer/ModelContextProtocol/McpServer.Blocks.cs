@@ -401,7 +401,7 @@ throw McpError.WithRecovery(ex, $"Failed importing block from '{importPath}' to 
             [Description("groupPath: defines the path in the project structure to the group, where to import blocks")] string groupPath,
             [Description("dir: directory that contains block .xml files")] string dir,
             [Description("regexName: optional regex filter applied to filename without extension")] string regexName = "",
-            [Description("overwrite: true=Override, false=Rename")] bool overwrite = true)
+            [Description("overwrite: true=Override existing blocks. DEFAULT FALSE: an existing block is left untouched and reported instead of being replaced")] bool overwrite  = false)
         {
             try
             {
