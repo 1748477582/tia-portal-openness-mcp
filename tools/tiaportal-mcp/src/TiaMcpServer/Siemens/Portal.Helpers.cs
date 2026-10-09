@@ -2866,6 +2866,35 @@ namespace TiaMcpServer.Siemens
                 return "Denied by safety policy: force-table and force-related operations are not exposed through this MCP server.";
             }
 
+            // 🔴 The portal and the open project are the two objects whose methods can end the session or
+            // write engineering data. On 2026-09-24 this server closed a user's TIA with unsaved work because
+            // a Close() was reachable through the generic reflection bridge, and on 2026-10-09 a real-machine
+            // test reproduced it again: InvokeObject(portal, "Dispose", allowWrite=true) returned OK and took
+            // the open project down with it.
+            //
+            // Two traps, both of which cost a cycle to find:
+            //   1. It must sit BEFORE the `if (!isOnlineMonitorSurface) return null;` early exit below, or it
+            //      never runs for anything that is not an online/monitor surface - which is exactly portal/project.
+            //   2. The verdict is taken from the RESOLUTION PATH (resultKind), not from the instance type: the
+            //      portal and the project are COM CoClass RCWs, so GetType().FullName reports
+            //      System.__ComObject, and `instance is TiaPortal` / `as Project` were both tried and neither fired.
+            //      InvokeObject forwards the requested objectKind as resultKind; InvokeService passes "Service".
+            var bridgeKind = (resultKind ?? "").Trim().ToLowerInvariant();
+            if (bridgeKind == "portal" || bridgeKind == "project")
+            {
+                var attributeReadOnly = methodName == "ToString"
+                                     || methodName == "GetAttribute"
+                                     || methodName == "GetAttributeInfos";
+                if (!attributeReadOnly)
+                {
+                    return "Denied by safety policy: the reflection bridge does not call methods on the TIA "
+                         + "Portal or the open Project. Close/Dispose/Save/SaveAs there can end the session or "
+                         + "write engineering data, and a raw reflection call would bypass both the ownership "
+                         + "checks and the \"saved is not the same as checked in\" warning. Use the dedicated tools: "
+                         + "CloseProject, Disconnect, SaveProject, OpenProject.";
+                }
+            }
+
             var isOnlineMonitorSurface =
                 haystack.IndexOf("Online", StringComparison.OrdinalIgnoreCase) >= 0 ||
                 haystack.IndexOf("Monitor", StringComparison.OrdinalIgnoreCase) >= 0 ||
@@ -2915,6 +2944,7 @@ namespace TiaMcpServer.Siemens
                 return "Denied by safety policy: online/watch/monitor surfaces are read-only. The MCP server may read current status only and must not modify watch-table objects or PLC values.";
             }
 
+            
             return null;
         }
 

@@ -44,6 +44,9 @@ namespace TiaMcpServer
 
                 AppDomain.CurrentDomain.AssemblyResolve += ResolveFromBaseDir;
 
+                // 启动时清掉本服务器上次会话留在 %TEMP% 里的工程数据副本（只碰自家带唯一后缀的产物）。
+                TempArtifactSweeper.Sweep(24, m => LogDiag("INFO: " + m));
+
                 // Top-level last-resort handler: capture any exception that escapes the host
                 // (including corrupted-state exceptions thrown by Siemens COM) WITHOUT calling
                 // ToString() on a possibly-dead RCW, which would itself throw and kill the process.

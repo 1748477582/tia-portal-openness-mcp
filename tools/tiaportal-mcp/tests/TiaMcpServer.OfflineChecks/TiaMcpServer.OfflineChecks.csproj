@@ -54,5 +54,8 @@
     <!-- 工具风险分级表：零依赖。盯的是「看起来像只读的工具其实会改工程数据/关工程/动运行中 CPU」——
          这类误标会让读者不再相信标注，那等于没有标注。 -->
     <Compile Include="..\..\src\TiaMcpServer\ModelContextProtocol\ToolSafety.cs" Link="ToolSafety.cs" />
+    <!-- %TEMP% 自家产物清理器：零依赖（System + IO + LINQ）。盯的是「只删自家+唯一后缀+超时的」，
+         新鲜目录与固定名目录一律不删 —— 这段代码替用户删文件，误删代价远大于残留。 -->
+    <Compile Include="..\..\src\TiaMcpServer\TempArtifactSweeper.cs" Link="TempArtifactSweeper.cs" />
   </ItemGroup>
 </Project>

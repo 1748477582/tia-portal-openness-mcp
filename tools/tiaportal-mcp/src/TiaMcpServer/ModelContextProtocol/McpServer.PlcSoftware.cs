@@ -941,10 +941,11 @@ namespace TiaMcpServer.ModelContextProtocol
             }
         }
 
-        [McpServerTool(Name = "WritePlcSclSourceFile"), Description("[L1][PLC-Software][Offline] Write SCL source text to a local .scl external-source file (UTF-8 WITH BOM, so Chinese comments are not imported as mojibake/乱码). This tool does NOT connect to TIA Portal and does NOT import anything — it only writes the file to disk and returns the path plus manual-import instructions. Use it as the robust fallback when XML block import is rejected (e.g. a TIA V20 portal rejecting V21 SimaticML tokens: 'Cannot create SW.Blocks.CompileUnit... token not supported'): the user imports the .scl manually in TIA via project tree → 'External source files' → 'Add new external file', then right-clicks the source → 'Generate blocks from source'. The sclContent must be a complete source, e.g. FUNCTION_BLOCK \"Name\" ... END_FUNCTION_BLOCK. SECURITY: path traversal (..) is blocked; outputPath must be a valid file path.")]
+        [McpServerTool(Name = "WritePlcSclSourceFile"), Description("[L1][PLC-Software][Offline] Write SCL source text to a local .scl external-source file (UTF-8 WITH BOM, so Chinese comments are not imported as mojibake/乱码). This tool does NOT connect to TIA Portal and does NOT import anything — it only writes the file to disk and returns the path plus manual-import instructions. Use it as the robust fallback when XML block import is rejected (e.g. a TIA V20 portal rejecting V21 SimaticML tokens: 'Cannot create SW.Blocks.CompileUnit... token not supported'): the user imports the .scl manually in TIA via project tree → 'External source files' → 'Add new external file', then right-clicks the source → 'Generate blocks from source'. The sclContent must be a complete source, e.g. FUNCTION_BLOCK \"Name\" ... END_FUNCTION_BLOCK. SECURITY: path traversal (..) is blocked; outputPath must be a valid file path. If the target file already exists with DIFFERENT content the call fails instead of overwriting it — pass overwrite=true to replace it deliberately (identical content still succeeds).")]
         public static ResponseMessage WritePlcSclSourceFile(
             [Description("sclContent: the full SCL source text (complete FUNCTION_BLOCK / FUNCTION / DATA_BLOCK / TYPE declarations). This is written verbatim.")] string sclContent,
-            [Description("outputPath: target .scl file path. If a directory is given (or the path has no extension), the file is named after the first block found in the source. Empty means a temp file under %TEMP%\\tia_mcp_scl. Path traversal (..) is rejected.")] string outputPath = "")
+            [Description("outputPath: target .scl file path. If a directory is given (or the path has no extension), the file is named after the first block found in the source. Empty means a temp file under %TEMP%\\tia_mcp_scl. Path traversal (..) is rejected.")] string outputPath = "",
+            [Description("overwrite: set true to replace an existing file. Default false: if the target exists with DIFFERENT content the call fails instead of silently overwriting, so hand-edited sources are not lost. Same content still succeeds.")] bool overwrite = false)
         {
             try
             {
@@ -988,6 +989,28 @@ namespace TiaMcpServer.ModelContextProtocol
 
                 // Normalize to full path
                 finalPath = Path.GetFullPath(finalPath);
+
+                // A regenerated source silently replacing a hand-edited file is a real loss with no error
+                // anywhere, so an existing target with different content is refused unless the caller says so.
+                // Identical content still succeeds: re-running the same generation must stay idempotent.
+                if (!overwrite && File.Exists(finalPath))
+                {
+                    string existing;
+                    try { existing = File.ReadAllText(finalPath); }
+                    catch (Exception ex)
+                    {
+                        throw new McpException("Target exists and could not be read for comparison: "
+                            + ex.Message + " Pass overwrite=true to replace it deliberately.", McpErrorCode.InvalidParams);
+                    }
+                    if (!string.Equals(existing, sclContent, StringComparison.Ordinal))
+                    {
+                        throw new McpException(
+                            "Refusing to overwrite an existing .scl file with different content: " + finalPath
+                            + ". Either keep the existing file, or pass overwrite=true to replace it deliberately "
+                            + "(read the current file first if its content matters).",
+                            McpErrorCode.InvalidParams);
+                    }
+                }
 
                 var parent = Path.GetDirectoryName(finalPath);
                 if (!string.IsNullOrEmpty(parent))

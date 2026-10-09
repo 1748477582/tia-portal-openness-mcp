@@ -105,6 +105,9 @@ namespace TiaMcpServer.OfflineChecks
             Console.WriteLine("\nToolSafety:");
             ToolSafetyTests.Run();
 
+            Console.WriteLine("\nTempArtifactSweeper:");
+            TempArtifactSweeperTests.Run();
+
             Console.WriteLine($"\n{T.Passed} passed, {T.Failed} failed");
             return T.Failed == 0 ? 0 : 1;
         }
