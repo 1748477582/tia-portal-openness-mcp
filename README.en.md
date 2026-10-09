@@ -1,6 +1,6 @@
 # TIA Portal Openness MCP — Multi-Version (V18 / V20 / V21)
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) ![TIA Portal](https://img.shields.io/badge/TIA%20Portal-V18%20%2F%20V20%20%2F%20V21-blue.svg) ![MCP Tools](https://img.shields.io/badge/MCP%20Tools-231-green.svg)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) ![TIA Portal](https://img.shields.io/badge/TIA%20Portal-V18%20%2F%20V20%20%2F%20V21-blue.svg) ![MCP Tools](https://img.shields.io/badge/MCP%20Tools-232-green.svg)
 
 > **TIA Portal Openness MCP** — an independently maintained, MIT-licensed MCP server for **Siemens TIA Portal V18 / V20 / V21**.
 
@@ -12,7 +12,7 @@ On **Windows + TIA Portal V18 / V20 / V21**, drive TIA Portal through **MCP (std
 2. **Download & unzip**: use **`Code` → `Download ZIP`** on this repository page (or `git clone`), then unzip anywhere.
 3. **Mount the MCP**: in your MCP client (WorkBuddy / Cursor / VS Code / Claude Desktop, etc.), point `command` at
    `tools\tiaportal-mcp\src\TiaMcpServer\bin-v18\Release\net48\TiaMcpServer.exe`,
-   pass `args` `["--tia-major-version","18","--logging","0"]`, trust the connector, and restart the client. The connector exposes **203 safe V18 tools**.
+   pass `args` `["--tia-major-version","18","--logging","0"]`, trust the connector, and restart the client. The connector exposes **204 safe V18 tools**.
 
 ---
 
@@ -21,10 +21,29 @@ On **Windows + TIA Portal V18 / V20 / V21**, drive TIA Portal through **MCP (std
 This repository maintains **V18 / V20 / V21** builds (three csproj files producing the same `TiaMcpServer.exe`, distinguished by output directory `bin-v18` / `bin-v20` / `bin`). The **V18 build** applies the following compatibility handling:
 
 - **WinCC Unified HMI is unavailable in V18**: a full V18 Openness install does not include `Siemens.Engineering.HmiUnified`. The **23 Unified HMI tools** are hidden in the V18 build via `#if !TIA_V18` guards (bodies kept, simply not registered as MCP tools).
-- **Exposed tool count**: the connector reports **203 safe V18 tools** (baseline 231 − 28 guarded tools); V20/V21 builds expose the full set.
+- **Exposed tool count**: the connector reports **204 safe V18 tools** (baseline 232 − 28 guarded tools); V20/V21 builds expose the full set.
 - **VersionControl (VCI) is unavailable in V18**: the V18 `Siemens.Engineering` assembly does not ship `MappedObject` / `ExportObject` / `ConnectObject` / `GetSupportedFileFormats`, so VCI is a **V20+ capability**; its **5 tools** are likewise hidden in the V18 build via `#if !TIA_V18`.
 - **Audit result**: apart from those **28 tools** (23 Unified HMI + 5 VCI), every exposed tool is safe and usable under V18; V20-only document tools (`Export/Import*Documents`) are exposed in V18 only as guided hints and are not callable.
 - **HMI automation path**: under V18 use the **Classic / Comfort HMI** tool family; Unified requires the V20/V21 build.
+
+## Safe defaults and self-service tool search (since 2.5.0)
+
+- **`FindTools(query, limit)`** (L0): searches the **whole** roster by capability words and returns each match's exact name,
+  parameter signature and a **risk flag** (`read-only` / `reads the project, writes a file` /
+  `writes or overwrites engineering data` / `RISK changes CPU, deletes data or closes project - call by name`).
+  It does **not** change which tools are advertised — a fallback, not a step.
+- **The reflection bridge no longer reaches Portal / Project**: calling `Close` / `Dispose` / `Save` / `SaveAs` on
+  `TiaPortal` or `Project` through `InvokeObject` / `InvokeService` is refused, with the message pointing at
+  `CloseProject` / `Disconnect` / `SaveProject` / `OpenProject`. Before this, `InvokeObject(portal, "Dispose",
+  allowWrite=true)` could close a TIA the user had open — the same class of accident as 2026-09-24.
+- **`WritePlcSclSourceFile` no longer overwrites silently**: an existing target with different content fails and
+  requires an explicit `overwrite=true` (identical content still succeeds idempotently).
+- **Eight dangerous defaults now mean "safe when omitted"**: `overwrite` (5 batch-import tools) and
+  `autoCreateGroup` / `autoCreate` (3 grouping tools) default to `false`. **`CloseProject` / `Disconnect` keep
+  `saveBeforeClose = true`** — that default already pointed the safe way.
+- **Stale temp artifacts are swept at startup**: uniquely-suffixed export / read-back / backup directories this
+  server created under `%TEMP%` are removed after 24 hours. Fixed-name directories (e.g. `tia_mcp_scl`) and other
+  processes' files are never touched.
 
 ---
 
@@ -80,7 +99,7 @@ This repository maintains **V18 / V20 / V21** builds (three csproj files produci
 | Common PLC / Classic HMI tools | ✅ | ✅ |
 | WinCC Unified HMI tools | ❌ (guarded/hidden) | ✅ |
 | Document import/export (`*Documents` / S7DCL) | ⚠️ guided hint only | ✅ callable |
-| Exposed tool count | **203** | **231** |
+| Exposed tool count | **204** | **232** |
 
 ---
 
@@ -89,7 +108,7 @@ This repository maintains **V18 / V20 / V21** builds (three csproj files produci
 Three csproj files map to the three TIA versions, distinguished by output directory:
 
 ```bat
-:: V18 (28 tools hidden: 23 Unified HMI + 5 VCI, 203 total)
+:: V18 (28 tools hidden: 23 Unified HMI + 5 VCI, 204 total)
 dotnet build TiaMcpServer.V18.csproj -c Release ^
   -p:TiaPortalLocation="C:/Program Files/Siemens/Automation/Portal V18" ^
   -p:BaseOutputPath=bin-v18/ -p:BaseIntermediateOutputPath=obj-v18/

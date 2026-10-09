@@ -11,6 +11,63 @@
 
 ---
 
+## [2.5.0] — 2026-10-09（**已定版**）
+
+### 新增
+- **`FindTools`**（L0，Meta）：按能力词检索**全部**工具，返回精确名、参数签名与**风险标注**
+  （`read-only` / `reads the project, writes a file` / `writes or overwrites engineering data` /
+  `RISK changes CPU, deletes data or closes project - call by name`）。**对外通告的工具列表不变**，纯增量。
+- **工具风险分级表 `ToolSafety`**（移植上游 53731356，工具名换成本仓实际注册的）：
+  15 个高危工具标为 `DirectOnly`（动运行中CPU / 删工程数据 / 关或替换工程 ⇒ 必须直呼其名，让用户看见）。
+- **`TempArtifactSweeper`**：启动时清理本服务器自建、带唯一后缀且超 24 小时的 `%TEMP%` 产物
+  （导出块 / 接口回读 / 覆盖前备份 —— 含受 know-how 保护块的副本）。固定名目录与他人进程文件一律不动。
+- **离线套件 219 → 228**：新增 `ToolSafetyTests`（38 条，正反两向）与 `TempArtifactSweeperTests`（9 条边界）。
+- **闸门增强**：dead-tool-reference 现在还会校验 `ToolSafety.DirectOnly` 里的每个名字都真实注册
+  （改名后静默失效的方向恰好最坏）；已做负向验证——注入假名字 FAIL、还原 PASS。**从不会触发的闸门等于没有闸门。**
+
+### 变更
+- 🔴 **反射桥不再通向 Portal / 工程**：`InvokeObject` / `InvokeService` 调用 `TiaPortal` 或 `Project` 的方法一律拒绝，
+  报错指向 `CloseProject` / `Disconnect` / `SaveProject` / `OpenProject`。
+  此前 `InvokeObject(portal, Dispose, allowWrite=true)` **实测返回 OK 并关掉了已打开的工程**
+  —— 与 2026-09-24 事故同一类路径。真机复验：`portal.Dispose` / `portal.Quit` / `project.Close` / `project.Save` 全部被拒，
+  portal 与工程安然无恙。判定依据是**寻址路径**（`resultKind`）而非实例类型：这些都是 COM CoClass RCW，
+  `GetType()` 给的是 `System.__ComObject`，且 `instance is TiaPortal` / `as Project` 实测均不成立。
+- 🔴 **8 个危险默认值改为省略即安全**：`overwrite`（`ImportBlocksFromDirectory`、`ImportHmiScreensFromDirectory`、
+  `ImportHmiTagTablesFromDirectory`、`ImportTechnologyObjectsFromDirectory`、`ImportPlcTagTablesFromDirectory`）
+  与 `autoCreateGroup`（`MoveBlockToGroup` / `MoveBlocksToGroup`）、`autoCreate`（`AutoClassifyBlocks`）默认改为 `false`。
+  **`CloseProject` / `Disconnect` 的 `saveBeforeClose=true` 刻意保持不变** —— 它本来就是安全方向，改 false 才会丢未保存改动。
+  内部调用（如 `PlcBuildAndImport`）本来就显式传 `overwrite: true`，故无连带影响。
+  ⚠️ **老调用方注意**：原先依赖省略即覆盖的流程需显式补 `overwrite=true`。
+- 工具总数 **231 → 232**（L0 6 → 7 / L1 57 / L2 168）；V18 构建 **203 → 204**。
+
+### 修复
+- 🔴 **`WritePlcSclSourceFile` 静默覆盖手改源文件**：目标已存在且内容不同 ⇒ 报错并要求显式 `overwrite=true`；
+  内容相同仍幂等成功。此前重新生成的 SCL 会无声覆盖你手改过的同名文件。
+- **下载预检的假成功**：`AlarmTextLibrariesDownload` / `UserManagementDownload`（本应是选择项）与
+  `DownloadCertificate`（只是提示）原先被一并置 `Checked`——这些类型没有 `Checked` 属性，
+  调用静默失败而预检仍报成功。现在只 `CheckBeforeDownload` 置 Checked，其余三者**显式不答并写日志**。
+- **`DownloadConfigSetChecked` / `DownloadConfigSetSelection` 不再吞异常**：改为返回 bool 并记录
+  哪个提示没答上、为什么（缺属性 / 非枚举 / 应用时抛异常）。
+- **`HttpMcpServer` 的 `WWW-Authenticate` 改用 `AddHeader`**：该响应头在 .NET Framework 上受限，
+  走索引器赋值会抛异常并中断处理器，导致错密钥的客户端看到**连接被重置**而不是 401。
+- **HTTP 桥补 `Origin` 白名单**：浏览器发 `text/plain` 跨站 POST 不需要 CORS 预检但一定带 Origin，
+  而该端点能**下载到 PLC、删块**。新增 `HttpSecurity.IsAllowedOrigin`（移植上游 53731356）。
+- **`ImportBlocksFromDirectory(overwrite=false)` 改用 `ImportOptions.None`**：原先的块名检查只看当前组与文件名，
+  而 XML 里的块名可能不同、块也可能在别的组里；现在由 TIA 自己拒绝替换。
+- `InvokeService` 支持 `SecureString` 参数（`Protected` 一族需要密码），并可用 `allowWrite` 控制写方法。
+
+### 移除
+- （无）
+
+### 工具总数
+- **232**（L0 7 / L1 57 / L2 168）；V18 构建 **204**（隐藏 28 个：23 Unified HMI + 5 VCI）。
+
+### 验证
+V18/V20 构建 0 错误；离线套件 **228 passed / 0 failed**；三道闸门 + 清单/矩阵同步全PASS；
+A/B/C/D 四批均经**真机隔离实例**验证（反射桥守卫、覆盖保护、默认值翻转各一组，共 30+ 断言全过）。
+
+---
+
 ## [2.4.0] — 2026-09-28（**已定版**）
 
 ### 新增
