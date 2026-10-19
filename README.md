@@ -68,7 +68,8 @@ powershell -ExecutionPolicy Bypass -File install-mcp.ps1 -Client cursor -Remove
 默认只处理**本机确实装了**的那些。改配置前自动备份为 `*.bak`，重复执行是幂等的。
 
 需要 **Windows + TIA Portal V18/V20/V21（含 Openness 选项）**；装了多个 TIA 版本时默认用最高版本，
-想指定加 `-TiaMajorVersion 18`。也可以双击 `配置MCP-v18.bat` / `配置MCP-v20.bat` / `配置MCP.bat`（按版本选）。
+想指定加 `-TiaMajorVersion 18`。**只装一个版本时会自动钉住该版本**——启动器在"没打开 TIA"时兜底写死 V18，
+不钉会加载错误的构建（V18 目录不存在 → 起不来）。也可以双击 `配置MCP-v18.bat` / `配置MCP-v20.bat` / `配置MCP.bat`（按版本选）。
 
 更细的说明（含常见卡点）见 **`同事安装_给Agent的一句话.md`**。
 

@@ -47,6 +47,12 @@ dotnet run --project tools\tiaportal-mcp\tests\TiaMcpServer.OfflineChecks\TiaMcp
 
 全绿 = 环境就绪。任何一步红，先去 `docs/lessons-and-shortcuts.md` 搜报错关键词（那里面全是踩过的坑）。
 
+**前置条件（别误判成"仓库坏了"）**：
+- 第 1–2 步只需要 **TIA Portal V18+（含 Openness）+ PowerShell**；**只安装并使用 MCP 的话，到第 2 步就够了**。
+- 第 3–4 步需要 **.NET SDK 8** 与 **Python 3.8+**。新电脑上没有这两个，跳过即可，不影响使用。
+- 第 1 步若报 **"未找到 TIA Portal"**：多半装在非标准目录。用 `setx TiaPortalLocation "<安装目录>"`（如 `D:\Siemens\Automation\Portal V20`）指过去，重开终端再跑。
+- 本机**只装一个版本**时，安装器会**自动钉住**该版本——因为启动器的探测兜底写死 V18，不钉会在"没开 TIA"时错误加载 V18 构建（V18 目录不存在 → 起不来）。多版本机器则不钉，由启动器跟随当前打开的 TIA。
+
 ---
 
 ## 2. 必读顺序（按需，不必一次读完）

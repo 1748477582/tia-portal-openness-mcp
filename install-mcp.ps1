@@ -285,6 +285,16 @@ Ok "将使用 V$tiaVer"
 $tiaLocation = if ($tia.ContainsKey($tiaVer)) { $tia[$tiaVer] } else { '' }
 if ($supported.Count -gt 1) { Say "     若要指定其它版本，加参数 -TiaMajorVersion 18（可选：$($supported -join ' / ')）" }
 
+# 单版本机器必须钉住版本。原因：启动器的探测顺序是「env → 当前运行的 TIA → 兜底 V18」，
+# 而兜底写死的是 V18。若本机只装了 V20、又没开 TIA，启动器会去加载 bin-v18 构建，
+# 而 V18 的 PublicAPI 目录根本不存在 —— 表现为"装了却用不了"，且报错不直观。
+if ($TiaMajorVersion -eq 0 -and $supported.Count -eq 1) {
+    $TiaMajorVersion = $supported[0]
+    Ok "本机只装了 V$($supported[0]) —— 已自动钉住，避免启动器在未开 TIA 时兜底到 V18"
+} elseif ($TiaMajorVersion -eq 0 -and $supported.Count -gt 1) {
+    Say '     本机有多个版本：不钉版本，由启动器按"当前打开的 TIA"选择；若它选错，加 -TiaMajorVersion 钉住'
+}
+
 Step '定位引擎 exe'
 $root = $null
 foreach ($cand in @($Source, $PSScriptRoot, (Split-Path -Parent $MyInvocation.MyCommand.Path))) {
