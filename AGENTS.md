@@ -91,6 +91,7 @@ dotnet run --project tools\tiaportal-mcp\tests\TiaMcpServer.OfflineChecks\TiaMcp
 | `README.md` / `README.en.md` | 对外介绍、安装、版本说明 |
 | `CHANGELOG.md` | 版本变更（含行为变更） |
 | `AGENTS.md` | **本文**：agent 入口 |
+| `CLAUDE.md` / `llms.txt` / `.cursorrules` / `.cursor/rules/tia-mcp.mdc` / `.github/copilot-instructions.md` | **各家 agent 的自动读取约定**：都是薄壳，只指向 `AGENTS.md`（内容只保留一处，避免副本漂移） |
 | `docs/` | 使用手册、指令库、能力矩阵、**INDEX.md**、**lessons-and-shortcuts.md** |
 | `scripts/` | 闸门（`Check-*.py`）、生成器（`Generate-*`）、冒烟脚本 |
 | `manifest/` | `tools-list.json`（工具权威清单）、`package-manifest.json`（版本/能力快照） |

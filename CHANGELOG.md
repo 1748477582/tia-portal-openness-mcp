@@ -58,6 +58,10 @@ env: none
   3 次不成就停手、别让人反复提醒）、文风（去 AI 腔、正式书面语、不写琐碎、不提 AI 工具）、存储（云端优先、百度网盘限制）、
   本仓库专属（CHANGELOG 必记、改工具同步三份、一份配置覆盖多版本、换机可发现）。附**交付前 10 条自查**与**违反记录**。
   `AGENTS.md` 已把它列为第 2 必读条目。
+- **各家 agent 的入口指针（薄壳）**：`CLAUDE.md`、`llms.txt`、`.cursorrules`、`.cursor/rules/tia-mcp.mdc`、
+  `.github/copilot-instructions.md`。不同客户端自动读取的约定不同，这几份让"下一个 agent 无需被告知就能读到入口"；
+  内容只指向 `AGENTS.md`，不复制正文（多份副本必然漂移）。`llms.txt` 另按 llmstxt 约定给出项目、起始顺序与"不能碰的"。
+  内容索引已收录（55 项，`kind=entry`）。
 
 ### 修复
 - **`content-index` 闸门在 CI 上误报**：Windows runner 的 checkout 可能带 CRLF，而生成器写 LF，逐字符比较把"换行风格"

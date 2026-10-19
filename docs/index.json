@@ -1,7 +1,31 @@
 {
  "generatedBy": "scripts/Generate-DocIndex.py",
- "count": 50,
+ "count": 55,
  "items": [
+  {
+   "path": ".cursor/rules/tia-mcp.mdc",
+   "title": "tia-mcp.mdc",
+   "kind": "entry",
+   "summary": "给对应客户端的入口指针（薄壳）：只指向 AGENTS.md，不重复内容",
+   "when": "",
+   "env": "none"
+  },
+  {
+   "path": ".cursorrules",
+   "title": "本仓库的 agent 入口是 AGENTS.md（请先读它）",
+   "kind": "entry",
+   "summary": "给对应客户端的入口指针（薄壳）：只指向 AGENTS.md，不重复内容",
+   "when": "",
+   "env": "none"
+  },
+  {
+   "path": ".github/copilot-instructions.md",
+   "title": "Copilot / agent 入口指针",
+   "kind": "entry",
+   "summary": "给对应客户端的入口指针（薄壳）：只指向 AGENTS.md，不重复内容",
+   "when": "",
+   "env": "none"
+  },
   {
    "path": "AGENTS.md",
    "title": "AGENTS.md — 接手本仓库的入口",
@@ -16,6 +40,14 @@
    "kind": "doc",
    "summary": "版本变更记录：每版的新增 / 变更（含行为变更）/ 修复 / 移除，以及工具总数",
    "when": "升级前、排查回归、确认某个行为从哪一版开始变",
+   "env": "none"
+  },
+  {
+   "path": "CLAUDE.md",
+   "title": "CLAUDE.md",
+   "kind": "entry",
+   "summary": "给 Claude 系 agent 的入口指针（薄壳）：只指向 AGENTS.md，不重复内容",
+   "when": "Claude Code / Claude 系客户端自动读取本文件时",
    "env": "none"
   },
   {
@@ -201,6 +233,14 @@
    "summary": "单文件安装器：探测本机 TIA（≥V18）→ 选构建/启动器 → 写进已装客户端配置 → 体检；幂等、改前备份",
    "when": "新机器或同事的机器要装这套 MCP 时（先 -DryRun 看计划）",
    "env": "python"
+  },
+  {
+   "path": "llms.txt",
+   "title": "llms.txt — 给 LLM / agent 的机器可读入口（llmstxt 约定）",
+   "kind": "entry",
+   "summary": "给 LLM/agent 的机器可读入口（llmstxt 约定）：项目是什么、从哪开始、不能碰什么",
+   "when": "",
+   "env": "none"
   },
   {
    "path": "manifest/package-manifest.json",

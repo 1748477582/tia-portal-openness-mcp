@@ -45,11 +45,13 @@ SKIP_NAME_RE = re.compile(r"^(?:_|push_)|_plan\.json$", re.IGNORECASE)
 SKIP_DIR_PARTS = {"bin", "obj", "bin-v18", "bin-v20", "obj-v18", "obj-v20", "runtime", "node_modules"}
 
 SCAN = [
-    ("", ("*.md", "*.ps1", "*.bat", "*.cmd", "*.json"), "entry"),
+    ("", ("*.md", "*.ps1", "*.bat", "*.cmd", "*.json", "llms.txt", ".cursorrules"), "entry"),
     ("docs", ("*.md",), "doc"),
     ("scripts", ("*.py", "*.ps1"), "script"),
     ("manifest", ("*.json",), "manifest"),
     ("tools/tiaportal-mcp", ("skill/SKILL.md", "*.bat", "*.ps1", "*.csproj"), "skill"),
+    # 各家 agent 的自动读取约定：都是薄壳，统一指向 AGENTS.md
+    ("", (".github/copilot-instructions.md", ".cursor/rules/tia-mcp.mdc"), "entry"),
 ]
 
 EXT_KIND = {".md": "doc", ".py": "script", ".ps1": "script", ".bat": "script",
@@ -156,9 +158,15 @@ def title_of(body, fallback):
     return fallback
 
 
+POINTERS = {".cursorrules", "llms.txt", "CLAUDE.md",
+            ".github/copilot-instructions.md", ".cursor/rules/tia-mcp.mdc"}
+
+
 def kind_for(rel, meta):
     if meta.get("kind"):
         return meta["kind"]
+    if rel in POINTERS:
+        return "entry"                 # 指针/入口类，别归到 other 里
     low = rel.lower()
     for ext, k in EXT_KIND.items():
         if low.endswith(ext):
@@ -238,6 +246,10 @@ def special_summary(rel, text):
             if low.endswith(k):
                 return v
         return "JSON 数据/配置（%d 字节）" % len(text.encode("utf-8"))
+    if rel in (".cursorrules", ".github/copilot-instructions.md", ".cursor/rules/tia-mcp.mdc"):
+        return "给对应客户端的入口指针（薄壳）：只指向 AGENTS.md，不重复内容"
+    if rel == "llms.txt":
+        return "给 LLM/agent 的机器可读入口（llmstxt 约定）：项目是什么、从哪开始、不能碰什么"
     if low.endswith((".bat", ".cmd")):
         if name.startswith("配置MCP"):
             return "按 TIA 版本一键把本 MCP 注册进已安装客户端（转调 install-mcp.ps1，改前备份）"

@@ -1,0 +1,5 @@
+# 本仓库的 agent 入口是 AGENTS.md（请先读它）
+# 用户明确交代的硬约束：docs/user-directives.md（优先于其它文档）
+# 全部内容目录：docs/INDEX.md ｜ 踩坑与捷径：docs/lessons-and-shortcuts.md
+# 运行环境：Windows + TIA Portal V18/V20（含 Openness 选项）；安装见 install-mcp.ps1
+# 本文件只做指针，不重复内容（多份副本会互相漂移）。
