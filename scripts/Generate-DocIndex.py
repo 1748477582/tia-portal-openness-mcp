@@ -332,14 +332,24 @@ def snapshot(items):
     return render_md(items), json.dumps(data, ensure_ascii=False, indent=1) + "\n"
 
 
+def norm(text):
+    """把换行归一化再比较。
+
+    为什么必须这样做：Windows runner 上 checkout 可能把 LF 转成 CRLF（取决于 git 的
+    core.autocrlf），而生成器写的是 LF。逐字符比较会让 CI 报"索引过期"——但实际内容一致。
+    这条闸门要抓的是**内容**过期，不是换行风格差异。
+    """
+    return (text or "").replace("\r\n", "\n").replace("\r", "\n")
+
+
 def main(argv):
     items = build()
     md, js = snapshot(items)
     if "--check" in argv:
         stale = []
-        if (read_text(OUT_MD) or "") != md:
+        if norm(read_text(OUT_MD)) != norm(md):
             stale.append("docs/INDEX.md")
-        if (read_text(OUT_JSON) or "") != js:
+        if norm(read_text(OUT_JSON)) != norm(js):
             stale.append("docs/index.json")
         if stale:
             print("[FAIL] 内容索引已过期：%s" % ", ".join(stale))
