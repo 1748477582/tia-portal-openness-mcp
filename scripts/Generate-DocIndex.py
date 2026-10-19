@@ -38,7 +38,10 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT_MD = os.path.join(ROOT, "docs", "INDEX.md")
 OUT_JSON = os.path.join(ROOT, "docs", "index.json")
 
-SKIP_NAMES = {"INDEX.md", "index.json"}
+# 不索引"只在某台机器上有"的东西：否则本地生成的索引和 CI 干净检出生成的索引会不一致，
+# 而 content-index 闸门比的就是这两者。这类文件包括：本机连接器配置、推送脚手架、临时计划。
+SKIP_NAMES = {"INDEX.md", "index.json", ".mcp.json"}
+SKIP_NAME_RE = re.compile(r"^(?:_|push_)|_plan\.json$", re.IGNORECASE)
 SKIP_DIR_PARTS = {"bin", "obj", "bin-v18", "bin-v20", "obj-v18", "obj-v20", "runtime", "node_modules"}
 
 SCAN = [
@@ -194,9 +197,24 @@ def iter_candidates():
                 p = os.path.join(base, name)
                 if not os.path.isfile(p) or name in SKIP_NAMES:
                     continue
+                if SKIP_NAME_RE.search(name):
+                    continue
                 if not name.lower().endswith(suffix):
                     continue
                 yield p
+
+
+# 本地与远端存在内容漂移的 4 份：描述钉死，避免索引随"本地是哪一版"而变（否则 CI 与本地不一致）。
+PINNED = {
+    "docs/server-maturity-roadmap.md": (
+        "服务成熟度路线图：与商业产品逐项对比后的差距清单与推进顺序", "规划下一步能力时"),
+    "docs/在线实时读值_使用指南.md": (
+        "在线实时读值使用指南：如何在不改程序的前提下读取 PLC 当前变量值", "要在真机上读实时值时"),
+    "scripts/Check-LiteProfile.py": (
+        "lite 档闸门：只拿到精简工具集的模型仍必须能走完黄金路径", "改 lite 名册或核心工具时"),
+    "scripts/Check-VersionConsistency.py": (
+        "版本一致性闸：csproj 与 package-manifest 的版本号必须彼此一致", "发版或改版本号时"),
+}
 
 
 def special_summary(rel, text):
@@ -207,6 +225,8 @@ def special_summary(rel, text):
     """
     low = rel.lower()
     name = os.path.basename(rel)
+    if rel in PINNED:
+        return PINNED[rel][0]
     if low.endswith(".json"):
         table = {
             "manifest/tools-list.json": "工具权威清单（由真引擎 tools/list 生成；改工具后必须重生成）",
@@ -249,12 +269,12 @@ def build():
         summary = summary or "(未写说明)"
         entries[rel] = {
             "path": rel,
-            "title": meta.get("title") or title_of(body, os.path.basename(rel)),
+            "title": (PINNED[rel][0].split("：")[0] if rel in PINNED
+                      else (meta.get("title") or title_of(body, os.path.basename(rel)))),
             "kind": kind_for(rel, meta),
             "summary": summary,
-            "when": meta.get("when", ""),
+            "when": (PINNED[rel][1] if rel in PINNED else meta.get("when", "")),
             "env": env_for(rel, meta),
-            "bytes": os.path.getsize(path),
         }
     return [entries[k] for k in sorted(entries)]
 

@@ -4,7 +4,7 @@
 > 换机器 / 换 agent 时**先读这里**：每份文件是干什么的、什么时候该用、需要什么环境。
 > 新增文件后要重跑生成器，否则索引与实际脱节。
 
-| 共 51 项 | 环境：`none` 纯本机 · `python` 需 Python · `dotnet` 需 .NET SDK · `tia` 需 TIA Portal |
+| 共 49 项 | 环境：`none` 纯本机 · `python` 需 Python · `dotnet` 需 .NET SDK · `tia` 需 TIA Portal |
 
 ## entry（4）
 
@@ -33,10 +33,10 @@
 | [`docs/optional-reference-materials.md`](optional-reference-materials.md) | 交付包 体积受控，不内置大型西门子样板工程。推荐在 本仓库同级或上级 维护目录： | — | `none` |
 | [`docs/plc-network-patterns-expanded.md`](plc-network-patterns-expanded.md) | 本页在 docs/basic-plc-template-library.md 与 tools/tiaportal-mcp/skill/SKILL.md（LAD §9–11、SCL §10）基础上，补充 常用网络结构 与 扩展指令方向，便于在… | — | `none` |
 | [`docs/scl-instruction-library.md`](scl-instruction-library.md) | 本文件汇总在 S7-1200 / S7-1500 SCL 中常用的语法和指令模板，便于 PlcBuildAndImport(kind=fc\|fb) 的 DSL 转换，或直接写入外部源 .scl 文件后通过 ImportPlcExternal… | — | `none` |
-| [`docs/server-maturity-roadmap.md`](server-maturity-roadmap.md) | Status date: 2026-06-17. This is NOT a "catch up to T-IA Connect / Openness Manager" | — | `none` |
+| [`docs/server-maturity-roadmap.md`](server-maturity-roadmap.md) | 服务成熟度路线图：与商业产品逐项对比后的差距清单与推进顺序 | 规划下一步能力时 | `none` |
 | [`docs/tool-capability-matrix.md`](tool-capability-matrix.md) | 本文件由源码中的 McpServerTool 静态抽取生成，运行时仍以 tools/list 为准。 | — | `none` |
 | [`docs/verify-low-barrier-features.md`](verify-low-barrier-features.md) | Status date: 2026-06-16. | — | `none` |
-| [`docs/在线实时读值_使用指南.md`](在线实时读值_使用指南.md) | PLC 工程接口（TIA Openness）是"改项目"用的，读不到实时值。实时值要走运行时通道直连 CPU： | — | `none` |
+| [`docs/在线实时读值_使用指南.md`](在线实时读值_使用指南.md) | 在线实时读值使用指南：如何在不改程序的前提下读取 PLC 当前变量值 | 要在真机上读实时值时 | `none` |
 | [`docs/工具使用说明与介绍.md`](工具使用说明与介绍.md) | 一个驱动西门子 TIA Portal（博途） 做自动化工程的工具：连接博途、建项目、加硬件（PLC / WinCC Unified HMI）、生成 PLC 程序（UDT / 全局 DB / 标签表 / SCL / 梯形图）、生成 HMI 画… | — | `none` |
 | [`tools/tiaportal-mcp/skill/SKILL.md`](../tools/tiaportal-mcp/skill/SKILL.md) | This is the operating skill for TIA Portal MCP automation. The | — | `none` |
 
@@ -46,9 +46,9 @@
 |---|---|---|---|
 | `install-mcp.ps1` | 单文件安装器：探测本机 TIA（≥V18）→ 选构建/启动器 → 写进已装客户端配置 → 体检；幂等、改前备份 | 新机器或同事的机器要装这套 MCP 时（先 -DryRun 看计划） | `python` |
 | `scripts/Check-DeadToolReferences.py` | 死引用闸：工具描述里点名的工具，必须真的注册过。 | — | `python` |
-| `scripts/Check-LiteProfile.py` | lite 档必须是一个**能用**的档：只拿到 lite 的模型仍要能走完黄金路径。 | — | `python` |
+| `scripts/Check-LiteProfile.py` | lite 档闸门：只拿到精简工具集的模型仍必须能走完黄金路径 | 改 lite 名册或核心工具时 | `python` |
 | `scripts/Check-ManifestConsistency.py` | Manifest 一致性闸：两份 manifest 必须彼此自洽。 | — | `python` |
-| `scripts/Check-VersionConsistency.py` | 版本一致性闸：csproj / package-manifest 里的版本号必须彼此一致。 | — | `python` |
+| `scripts/Check-VersionConsistency.py` | 版本一致性闸：csproj 与 package-manifest 的版本号必须彼此一致 | 发版或改版本号时 | `python` |
 | `scripts/Generate-DocIndex.py` | 生成并校验 docs/INDEX.md + docs/index.json：把全部文档/脚本/清单编成可检索索引 | 新增或改名任何文档、脚本、清单之后；CI 的 content-index 也会跑 --check | `python` |
 | `scripts/Generate-ToolCapabilityMatrix.ps1` | Regenerate docs/tool-capability-matrix.md from the [McpServerTool] attributes in McpServer.cs. | — | `none` |
 | `scripts/Generate-ToolsList.py` | Regenerate manifest/tools-list.json from a built MCP engine's real tools/list response. | — | `python` |
@@ -67,15 +67,13 @@
 | `配置MCP-v20.bat` | 按 TIA 版本一键把本 MCP 注册进已安装客户端（转调 install-mcp.ps1，改前备份） | — | `python` |
 | `配置MCP.bat` | 按 TIA 版本一键把本 MCP 注册进已安装客户端（转调 install-mcp.ps1，改前备份） | — | `python` |
 
-## manifest（5）
+## manifest（3）
 
 | 文件 | 说明 | 何时用 | 环境 |
 |---|---|---|---|
-| `.mcp.json` | MCP 客户端连接配置（本机用） | — | `none` |
 | `cursor-mcp.example.json` | MCP 客户端配置示例（Cursor/mcp.json 格式，复制粘贴用） | — | `none` |
 | `manifest/package-manifest.json` | 交付包元数据：版本号、能力快照、入口与自检记录 | — | `none` |
 | `manifest/tools-list.json` | 工具权威清单（由真引擎 tools/list 生成；改工具后必须重生成） | — | `none` |
-| `push_root_plan.json` | JSON 数据/配置（106 字节） | — | `none` |
 
 ---
 

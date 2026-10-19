@@ -48,6 +48,10 @@ EXCLUDE_FILE_RE = re.compile(
     r"(^_|\.oldrun|\.bak$|\.log$|^push_.*\.py$|^push_.*\.json$|^manifest\.py$|^\.mcp\.json$|\.user$)",
     re.IGNORECASE)
 
+# 本文件是**要推送的工具**，却被上面的 ^push_.*\.py$ 规则误伤了（曾把它算成"远端独有"，
+# 差一步就被当成删除）。例外优先于规则。
+ALWAYS_INCLUDE = {"tools/tiaportal-mcp/push_repo.py"}
+
 # 远端比本地新/全、绝不能全量推的文件（本地是简化子集或过期副本）
 NEVER_PUSH = {
     "tools/tiaportal-mcp/src/TiaMcpServer/TiaMcpServer.csproj",
@@ -115,10 +119,10 @@ def local_files(extra_added):
     for dirpath, dirnames, filenames in os.walk(ROOT):
         dirnames[:] = [d for d in dirnames if d not in EXCLUDE_DIRS]
         for name in filenames:
-            if EXCLUDE_FILE_RE.search(name):
-                continue
             p = os.path.join(dirpath, name)
             rel = os.path.relpath(p, ROOT).replace(os.sep, "/")
+            if EXCLUDE_FILE_RE.search(name) and rel not in ALWAYS_INCLUDE:
+                continue
             out[rel] = p
     # 显式新增的即使命中排除规则也收进来（由调用方负责有意义）
     for rel in extra_added:
