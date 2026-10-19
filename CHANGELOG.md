@@ -50,6 +50,20 @@ env: none
   开关：`-Client / -Lite / -DryRun / -Remove / -Direct / -TiaMajorVersion / -Source / -ConfigPath / -SkipDoctor`。
 - **`配置MCP-v18.bat`**：补齐一直缺失的 V18 一键配置入口（原有 V21 / V20 两个）。
 - **`同事安装_给Agent的一句话.md`**：可整段复制给他人 agent 的一句话安装指令、完整版、卸载、配置位置与常见卡点。
+- **`tools/tiaportal-mcp/push_repo.py`**：仓库内的推送工具（`--plan` / `--push`）。原先把推送能力放在两个**只存在于本机**的
+  脚本里，换台电脑就推不了；现在它在仓库里。两条安全规则保留：**只推远端已存在的文件 + 显式 `--add` 的新文件**（本地树可能是远端子集，
+  全量推会静默回退），**绝不自动删除远端文件**。
+
+### 修复
+- **`content-index` 闸门在 CI 上误报**：Windows runner 的 checkout 可能带 CRLF，而生成器写 LF，逐字符比较把"换行风格"
+  报成"内容过期"（本地 PASS、CI FAIL，文件集合完全一致 49=49）。改为**换行归一化后比较**——闸门要抓内容漂移，不是换行风格。
+- **`push_repo.py` 把自己的文件排除了**：规则 `^push_.*\.py$` 本意是排除旧的一次性推送脚手架，却命中了工具自身，
+  把它判成"远端独有"（差一步被当成删除）。加 `ALWAYS_INCLUDE` 例外，优先于规则。
+- **DLP 结论更正**：此前记"按内容加密的脚本不可用、删不掉"，实测是**落盘加密、授权进程透明解密**——
+  `python _full_diff.py` 能正常跑出 0/0/0，只有编译工具链会拒绝（`CS2015`）。**判死活要用目标进程跑一遍，不要看字节头。**
+- **`Validate-Bundle.ps1` 的错误记录**：此前在 `package-manifest` 的 notes 里写它"2026-09-28 已删除"，实际**脚本仍在**
+  （本地与远端都有 5198 B），09-28 只是把它**从 CI 移出**（需要已构建产物）。已恢复 `offlineValidationScript` 指向它并更正说明。
+
 
 ### 变更
 - 🔴 **安装默认走启动器，而不是写死某个版本的 exe**。`tia_mcp_launcher.bat` 读 `env.TIA_MCP_VERSION` 选构建，
