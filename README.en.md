@@ -176,6 +176,7 @@ The archive contains: prebuilt runtime `bin-v18/`, source `src/`, docs `docs/`, 
 | `tools/tiaportal-mcp/skill/SKILL.md` | Primary spec: tool layers, parameter traps, HMI schema, LAD/SCL boundaries |
 | `manifest/tools-list.json` | Static tool names/layers (runtime authority is `tools/list` after connect) |
 | `docs/tool-capability-matrix.md` | Capability matrix |
+| **`docs/lessons-and-shortcuts.md`** | **Failures and shortcuts**: the incidents that cost real work (killing or closing the user's TIA), RCW type sniffing that lies, PowerShell 5.1 traps, push-direction auditing, encoding/BOM rules, DLP workarounds. Read before touching the server |
 | `docs/scl-instruction-library.md` / `docs/lad-instruction-library.md` | SCL / LAD instruction libraries |
 | `docs/hmi-plc-tag-binding-and-addressing.md` | HMI↔PLC binding & addressing |
 | `templates/plc/` · `templates/hmi/` | PLC / HMI template index |

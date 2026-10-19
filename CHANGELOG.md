@@ -17,6 +17,12 @@
 > 下次有代码改动时并入对应版本条目。
 
 ### 新增
+- **`docs/lessons-and-shortcuts.md`（踩过的坑与捷径）**：把散在 33 份日志里的失败经验收敛成一份可检索的文档，按
+  症状 / 根因 / 正确做法 / 证据 四段式记录。含：两起**关掉用户 TIA** 的事故与判定规则、RCW 类型嗅探说谎
+  （`GetType()` 报 `System.__ComObject`，`Siemens.Engineering.Portal` 这个类型根本不存在）、
+  PowerShell 5.1 七类陷阱（三元/`<-`/`Properties` 索引赋值/包装器 `.Value`/BOM/heredoc）、
+  推送「新旧方向」审计与外科手术式改一行、编码与 BOM 规则、DLP 按文件名与按内容两种加密的绕法、
+  "静默失败 + 报成功"这一类假成功的识别，以及**仍未解决**的 5 项（避免被当成已完成）。
 - **`install-mcp.ps1`**：单文件安装器。探测本机 TIA（**≥V18 才计入**，V16/V17 明确提示不支持）→ 定位引擎/启动器 →
   写进已安装的客户端配置（**WorkBuddy** / Claude Desktop / Claude Code / Cursor / VS Code）→ 跑 `doctor` 体检。
   幂等、改前备份 `*.bak`、不动同文件里其它 MCP 条目与嵌套结构；写出**无 BOM**（有 BOM 会让 JSON 解析器报错）。

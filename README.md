@@ -178,6 +178,7 @@ dotnet build TiaMcpServer.csproj -c Release
 | `tools/tiaportal-mcp/skill/SKILL.md` | 主规范：工具分层、参数陷阱、HMI schema、LAD/SCL 边界 |
 | `manifest/tools-list.json` | 静态工具名与层级；运行时权威列表以连上后的 `tools/list` 为准 |
 | `docs/tool-capability-matrix.md` | 能力矩阵（静态索引） |
+| **`docs/lessons-and-shortcuts.md`** | **踩过的坑与捷径**：事故级教训（误杀/误关用户 TIA）、RCW 类型嗅探谎言、PS 5.1 陷阱、推送新旧方向审计、编码与 BOM、DLP 绕法。**动手前先扫一遍** |
 | `docs/scl-instruction-library.md` / `docs/lad-instruction-library.md` | SCL / LAD 指令库 |
 | `docs/hmi-plc-tag-binding-and-addressing.md` | HMI↔PLC 绑定与寻址 |
 | `templates/plc/` · `templates/hmi/` | PLC / HMI 模板索引 |
