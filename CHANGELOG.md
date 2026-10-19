@@ -1,3 +1,10 @@
+---
+summary: 版本变更记录：每版的新增 / 变更（含行为变更）/ 修复 / 移除，以及工具总数
+kind: doc
+when: 升级前、排查回归、确认某个行为从哪一版开始变
+env: none
+---
+
 # 更新记录 / Changelog
 
 > **维护规则（硬性）**
@@ -17,12 +24,26 @@
 > 下次有代码改动时并入对应版本条目。
 
 ### 新增
-- **`docs/lessons-and-shortcuts.md`（踩过的坑与捷径）**：把散在 33 份日志里的失败经验收敛成一份可检索的文档，按
-  症状 / 根因 / 正确做法 / 证据 四段式记录。含：两起**关掉用户 TIA** 的事故与判定规则、RCW 类型嗅探说谎
-  （`GetType()` 报 `System.__ComObject`，`Siemens.Engineering.Portal` 这个类型根本不存在）、
-  PowerShell 5.1 七类陷阱（三元/`<-`/`Properties` 索引赋值/包装器 `.Value`/BOM/heredoc）、
-  推送「新旧方向」审计与外科手术式改一行、编码与 BOM 规则、DLP 按文件名与按内容两种加密的绕法、
-  "静默失败 + 报成功"这一类假成功的识别，以及**仍未解决**的 5 项（避免被当成已完成）。
+- **`AGENTS.md`（接手入口）**：换电脑 / 换 agent / 换人时的唯一入口。四步上手（装 → doctor → 四条自检 → 离线套件）、
+  必读顺序、**六条硬规则**（别关用户 TIA、别跨线程传 RCW、推送前审计新旧方向、改工具同步三份、加密块先问密码、别用 git push）、
+  目录地图、**新增内容时的义务**、常见任务入口、以及换机交接清单（哪些必须带走、哪些会丢要重配）。
+- **`docs/INDEX.md` + `docs/index.json`（内容索引，自动生成）**：把"各种形式的内容"（文档 / 脚本 / 清单 / 构建文件 / 批处理入口）
+  编成一份可检索目录，每项带**一句话用途 / 何时用 / 需要什么环境**（`none` / `python` / `dotnet` / `tia`）。
+  由 `scripts/Generate-DocIndex.py` 从文件自述（`.md` 用 front-matter，脚本用 `# SUMMARY:` 标记）生成，**不手写**。
+- **`scripts/Generate-DocIndex.py`**：生成器 + `--check`。新增 **CI job `content-index`**：索引过期就红。
+  理由很实际——**索引一旦能和实际文件脱节，就等于没有索引**；换机器时读到"看起来有、实际不对"的目录比没有更糟。
+- **`docs/lessons-and-shortcuts.md`（踩过的坑与捷径，v2 全面版）**：把散在 33 份日志、7 份主题分册、9 个技能包里的失败经验
+  收敛成一份可检索文档，按**症状 / 根因 / 正确做法 / 证据**四段式。共 15 章：
+  两起**关掉用户 TIA** 的事故与判定规则｜RCW 类型嗅探说谎（`GetType()` 报 `System.__ComObject`，
+  根本没有 `Siemens.Engineering.Portal` 这个类型）｜**TIA/Openness 硬限制清单**（在线禁止修改、`OpenProject` 只认 `.apXX`、
+  SCL 的 `ExportAsDocuments` 必失败、自动编号工程禁改块号、块号合法区间 `1;123-32767`、Acx/Startdrive 白名单）｜
+  关系查询（`callers` 而非 depth、块名带组路径、正则用非捕获组）｜**构建环境坑**（`MSB3027`、`CS0111`/`CS0579`、
+  `BaseIntermediateOutputPath` 不生效、`dotnet` 吞空格、遥测 `AccessViolation`）｜编码与 BOM｜
+  **PS 5.1 七类陷阱**（三元/`<-`/转义引号/`Properties` 索引赋值/包装器 `.Value`/TLS/chcp）｜Git Bash 与 heredoc｜
+  推送（只读连接器、token 非 JSON、代理端口、404 两种成因、`sha` 409、`Contents API` 备选、`base_tree` 是合并语义、
+  新旧方向审计、HEAD 中止、拆分推送留红）｜工具设计（不静默覆盖、危险默认值、大响应寄存、风险标注自洽、
+  `McpPrompts` 不是工具、宿主不在列表里怎么办）｜实机验证 harness｜**我自己的 9 条行为教训**｜DLP 两种加密与绕法｜
+  know-how 与密码｜捷径命令清单｜覆盖与复核方法｜**仍未解决的 6 项**。
 - **`install-mcp.ps1`**：单文件安装器。探测本机 TIA（**≥V18 才计入**，V16/V17 明确提示不支持）→ 定位引擎/启动器 →
   写进已安装的客户端配置（**WorkBuddy** / Claude Desktop / Claude Code / Cursor / VS Code）→ 跑 `doctor` 体检。
   幂等、改前备份 `*.bak`、不动同文件里其它 MCP 条目与嵌套结构；写出**无 BOM**（有 BOM 会让 JSON 解析器报错）。

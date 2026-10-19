@@ -109,3 +109,16 @@ jobs:
       # 两个方向都要验：错的必须被拦且说清原因，对的绝不能被拦。
       - name: argument diagnostics must really engage end to end
         run: python scripts/Smoke-ArgDiagnostics.py tools/tiaportal-mcp/src/TiaMcpServer/bin-ci-v20/Release/net48/TiaMcpServer.exe
+
+  # 内容索引：docs/INDEX.md 与 docs/index.json 必须能从当前文件树重新生成出来。
+  # 这条闸门存在的原因很实际：索引一旦能和实际文件脱节，就等于没有索引 ——
+  # 换机器/换 agent 时读到的是一份"看起来有、实际不对"的目录，比没有更糟。
+  content-index:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: index must be up to date (regenerate then compare)
+        run: python scripts/Generate-DocIndex.py --check

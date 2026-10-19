@@ -1,3 +1,10 @@
+---
+summary: 项目总览：这套 MCP 是什么、怎么装（含给同事的一句话）、版本说明与安全默认值
+kind: entry
+when: 想知道这个项目能干什么、怎么安装时
+env: none
+---
+
 # TIA Portal Openness MCP — 多版本（V18 / V20 / V21）
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) ![TIA Portal](https://img.shields.io/badge/TIA%20Portal-V18%20%2F%20V20%20%2F%20V21-blue.svg) ![MCP Tools](https://img.shields.io/badge/MCP%20Tools-232-green.svg)
@@ -29,6 +36,9 @@
 - **HMI 自动化路径**：V18 下请走 **Classic / Comfort HMI** 工具族；Unified 需求须使用 V20/V21 构建。
 
 ## 安装（给同事 / 新机器）
+
+> **接手这个仓库（换电脑 / 换 agent）先读 `AGENTS.md`**：入口、必读顺序、自检命令、硬规则。
+> 想找"有没有现成的文档/脚本"，查 **`docs/INDEX.md`**（自动生成，50+ 项，带"何时用/需要什么环境"）。
 
 最快的方式：把下面这句话发给对方 **AI agent**，让它自己装：
 
@@ -178,6 +188,8 @@ dotnet build TiaMcpServer.csproj -c Release
 | `tools/tiaportal-mcp/skill/SKILL.md` | 主规范：工具分层、参数陷阱、HMI schema、LAD/SCL 边界 |
 | `manifest/tools-list.json` | 静态工具名与层级；运行时权威列表以连上后的 `tools/list` 为准 |
 | `docs/tool-capability-matrix.md` | 能力矩阵（静态索引） |
+| **`AGENTS.md`** | **接手入口**：任何 agent / 任何人第一次接触本仓库时读这一份（必读顺序、自检、硬规则） |
+| **`docs/INDEX.md`** | **内容索引**（自动生成）：所有文档/脚本/清单的一句话说清 + 何时用 + 需要什么环境 |
 | **`docs/lessons-and-shortcuts.md`** | **踩过的坑与捷径**：事故级教训（误杀/误关用户 TIA）、RCW 类型嗅探谎言、PS 5.1 陷阱、推送新旧方向审计、编码与 BOM、DLP 绕法。**动手前先扫一遍** |
 | `docs/scl-instruction-library.md` / `docs/lad-instruction-library.md` | SCL / LAD 指令库 |
 | `docs/hmi-plc-tag-binding-and-addressing.md` | HMI↔PLC 绑定与寻址 |

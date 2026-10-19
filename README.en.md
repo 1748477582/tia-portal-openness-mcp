@@ -1,3 +1,10 @@
+---
+summary: English overview - what this MCP is, how to install it (incl. a one-liner for a colleague), version notes and safe defaults
+kind: entry
+when: English readers, or a non-Chinese colleague needs the overview
+env: none
+---
+
 # TIA Portal Openness MCP — Multi-Version (V18 / V20 / V21)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) ![TIA Portal](https://img.shields.io/badge/TIA%20Portal-V18%20%2F%20V20%20%2F%20V21-blue.svg) ![MCP Tools](https://img.shields.io/badge/MCP%20Tools-232-green.svg)
@@ -176,6 +183,8 @@ The archive contains: prebuilt runtime `bin-v18/`, source `src/`, docs `docs/`, 
 | `tools/tiaportal-mcp/skill/SKILL.md` | Primary spec: tool layers, parameter traps, HMI schema, LAD/SCL boundaries |
 | `manifest/tools-list.json` | Static tool names/layers (runtime authority is `tools/list` after connect) |
 | `docs/tool-capability-matrix.md` | Capability matrix |
+| **`AGENTS.md`** | **Handover entry point**: read this first when picking the repo up (reading order, self-checks, hard rules) |
+| **`docs/INDEX.md`** | **Content index** (generated): every doc/script/manifest with a one-line purpose, when to use it, and what it needs |
 | **`docs/lessons-and-shortcuts.md`** | **Failures and shortcuts**: the incidents that cost real work (killing or closing the user's TIA), RCW type sniffing that lies, PowerShell 5.1 traps, push-direction auditing, encoding/BOM rules, DLP workarounds. Read before touching the server |
 | `docs/scl-instruction-library.md` / `docs/lad-instruction-library.md` | SCL / LAD instruction libraries |
 | `docs/hmi-plc-tag-binding-and-addressing.md` | HMI↔PLC binding & addressing |

@@ -1,4 +1,7 @@
-﻿<#
+﻿# SUMMARY: 单文件安装器：探测本机 TIA（≥V18）→ 选构建/启动器 → 写进已装客户端配置 → 体检；幂等、改前备份
+# WHEN: 新机器或同事的机器要装这套 MCP 时（先 -DryRun 看计划）
+# ENV: python
+<#
 .SYNOPSIS
     一键把 TIA Portal Openness MCP 装到本机并注册进 AI 客户端（WorkBuddy / Claude / Cursor / VS Code）。
 

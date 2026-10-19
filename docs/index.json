@@ -1,0 +1,465 @@
+{
+ "generatedBy": "scripts/Generate-DocIndex.py",
+ "count": 51,
+ "items": [
+  {
+   "path": ".mcp.json",
+   "title": ".mcp.json",
+   "kind": "manifest",
+   "summary": "MCP 客户端连接配置（本机用）",
+   "when": "",
+   "env": "none",
+   "bytes": 175
+  },
+  {
+   "path": "AGENTS.md",
+   "title": "AGENTS.md — 接手本仓库的入口",
+   "kind": "entry",
+   "summary": "任何 agent / 任何人接手本仓库时的唯一入口：这是什么、先读什么、怎么自检、硬规则、加东西时的义务",
+   "when": "第一次接触本仓库（换电脑、换 agent、换人）时最先读这一份",
+   "env": "none",
+   "bytes": 8512
+  },
+  {
+   "path": "CHANGELOG.md",
+   "title": "更新记录 / Changelog",
+   "kind": "doc",
+   "summary": "版本变更记录：每版的新增 / 变更（含行为变更）/ 修复 / 移除，以及工具总数",
+   "when": "升级前、排查回归、确认某个行为从哪一版开始变",
+   "env": "none",
+   "bytes": 16893
+  },
+  {
+   "path": "README.en.md",
+   "title": "TIA Portal Openness MCP — Multi-Version (V18 / V20 / V21)",
+   "kind": "entry",
+   "summary": "English overview - what this MCP is, how to install it (incl. a one-liner for a colleague), version notes and safe defaults",
+   "when": "English readers, or a non-Chinese colleague needs the overview",
+   "env": "none",
+   "bytes": 13008
+  },
+  {
+   "path": "README.md",
+   "title": "TIA Portal Openness MCP — 多版本（V18 / V20 / V21）",
+   "kind": "entry",
+   "summary": "项目总览：这套 MCP 是什么、怎么装（含给同事的一句话）、版本说明与安全默认值",
+   "when": "想知道这个项目能干什么、怎么安装时",
+   "env": "none",
+   "bytes": 13337
+  },
+  {
+   "path": "cursor-mcp.example.json",
+   "title": "cursor-mcp.example.json",
+   "kind": "manifest",
+   "summary": "MCP 客户端配置示例（Cursor/mcp.json 格式，复制粘贴用）",
+   "when": "",
+   "env": "none",
+   "bytes": 229
+  },
+  {
+   "path": "docs/AI_spec_prompt.md",
+   "title": "让任意 AI 生成 tia spec 的提示词",
+   "kind": "doc",
+   "summary": "把下面这段（连同 tia schema 的输出）贴给任意 AI（Claude / GPT / Gemini / 国产模型均可），",
+   "when": "",
+   "env": "none",
+   "bytes": 2122
+  },
+  {
+   "path": "docs/CLI_quickstart.md",
+   "title": "tia 命令行 —— 5 分钟上手",
+   "kind": "doc",
+   "summary": "v2.0 起，交付包里的 同一个 exe 既是 MCP 服务，也是命令行 tia。",
+   "when": "",
+   "env": "none",
+   "bytes": 4703
+  },
+  {
+   "path": "docs/HMI_Unified_画面生成规范与模板.md",
+   "title": "WinCC Unified 画面生成规范",
+   "kind": "doc",
+   "summary": "本规范用于生成 WinCC Unified 画面、标签、按钮动作和动态化绑定。模板文件位于 templates/hmi/，均为可读、可修改、可直接应用的 designJson。",
+   "when": "",
+   "env": "none",
+   "bytes": 3172
+  },
+  {
+   "path": "docs/basic-plc-template-library.md",
+   "title": "PLC 指令与模板说明",
+   "kind": "doc",
+   "summary": "本说明用于配合 templates/plc/ 生成通用 PLC 程序结构。模板覆盖 SCL、LAD 调用网络、变量表、UDT、全局 DB、FC、FB 和 HMI 接口 DB。",
+   "when": "",
+   "env": "none",
+   "bytes": 2982
+  },
+  {
+   "path": "docs/full-project-generation-runbook.md",
+   "title": "完整项目生成运行手册",
+   "kind": "doc",
+   "summary": "本手册描述从空项目生成 PLC + WinCC Unified 工程的完整流程。所有文件均在交付包内。",
+   "when": "",
+   "env": "none",
+   "bytes": 4459
+  },
+  {
+   "path": "docs/hmi-connection-driver-matrix.md",
+   "title": "HMI 连接驱动选择表",
+   "kind": "doc",
+   "summary": "本文件给出 EnsureUnifiedHmiConnection 与 TIA 内创建 HMI 连接时，通讯驱动（CommunicationDriver） 的取值规则。驱动错配会导致 HMI 变量整列红字、运行时无值或连接处显示「未连接」。",
+   "when": "",
+   "env": "none",
+   "bytes": 3271
+  },
+  {
+   "path": "docs/hmi-plc-tag-binding-and-addressing.md",
+   "title": "HMI ↔ PLC 变量绑定（默认采用绝对地址）",
+   "kind": "doc",
+   "summary": "本包统一以 绝对地址 方式建立 WinCC Unified 与 PLC 的变量互连。原因：",
+   "when": "",
+   "env": "none",
+   "bytes": 4399
+  },
+  {
+   "path": "docs/lad-instruction-library.md",
+   "title": "LAD 指令库（中性参考）",
+   "kind": "doc",
+   "summary": "本文件汇总在 LAD（梯形图）网络中常见的指令、引脚、操作数与连接方式，配合 tools/tiaportal-mcp/skill/SKILL.md 中已验证的 Part Name 注册表使用。所有示例均为通用语法，不绑定特定工艺。",
+   "when": "",
+   "env": "none",
+   "bytes": 4251
+  },
+  {
+   "path": "docs/lessons-and-shortcuts.md",
+   "title": "踩过的坑与捷径（Lessons & Shortcuts）",
+   "kind": "doc",
+   "summary": "踩过的坑与捷径：症状 / 根因 / 正确做法 / 证据；含两起关掉用户 TIA 的事故、全部已知平台限制、PowerShell 与推送陷阱",
+   "when": "动手改代码、碰 TIA、推送、写脚本之前（先搜报错关键词）",
+   "env": "none",
+   "bytes": 27396
+  },
+  {
+   "path": "docs/mcp-ide-and-tool-visibility.md",
+   "title": "MCP 与 IDE：交付包边界说明",
+   "kind": "doc",
+   "summary": "交付包 不绑定 某一种 IDE（Cursor / VS Code / Claude Desktop / 自建 HTTP 客户端均可）。",
+   "when": "",
+   "env": "none",
+   "bytes": 1825
+  },
+  {
+   "path": "docs/optional-reference-materials.md",
+   "title": "可选参考素材（仓库 `reference` 目录）",
+   "kind": "doc",
+   "summary": "交付包 体积受控，不内置大型西门子样板工程。推荐在 本仓库同级或上级 维护目录：",
+   "when": "",
+   "env": "none",
+   "bytes": 1558
+  },
+  {
+   "path": "docs/plc-network-patterns-expanded.md",
+   "title": "PLC 程序扩展：网络与指令模式（提炼自工程实践 + SKILL 已验证子集）",
+   "kind": "doc",
+   "summary": "本页在 docs/basic-plc-template-library.md 与 tools/tiaportal-mcp/skill/SKILL.md（LAD §9–11、SCL §10）基础上，补充 常用网络结构 与 扩展指令方向，便于在…",
+   "when": "",
+   "env": "none",
+   "bytes": 2746
+  },
+  {
+   "path": "docs/scl-instruction-library.md",
+   "title": "SCL 指令库（中性参考）",
+   "kind": "doc",
+   "summary": "本文件汇总在 S7-1200 / S7-1500 SCL 中常用的语法和指令模板，便于 PlcBuildAndImport(kind=fc|fb) 的 DSL 转换，或直接写入外部源 .scl 文件后通过 ImportPlcExternal…",
+   "when": "",
+   "env": "none",
+   "bytes": 4954
+  },
+  {
+   "path": "docs/server-maturity-roadmap.md",
+   "title": "Server roadmap — aligned with the low-barrier direction",
+   "kind": "doc",
+   "summary": "Status date: 2026-06-17. This is NOT a \"catch up to T-IA Connect / Openness Manager\"",
+   "when": "",
+   "env": "none",
+   "bytes": 4313
+  },
+  {
+   "path": "docs/tool-capability-matrix.md",
+   "title": "MCP 工具能力矩阵",
+   "kind": "doc",
+   "summary": "本文件由源码中的 McpServerTool 静态抽取生成，运行时仍以 tools/list 为准。",
+   "when": "",
+   "env": "none",
+   "bytes": 81101
+  },
+  {
+   "path": "docs/verify-low-barrier-features.md",
+   "title": "Low-barrier features — status & how to verify",
+   "kind": "doc",
+   "summary": "Status date: 2026-06-16.",
+   "when": "",
+   "env": "none",
+   "bytes": 1776
+  },
+  {
+   "path": "docs/在线实时读值_使用指南.md",
+   "title": "在线实时读值 · 使用指南（只读，不改 PLC）",
+   "kind": "doc",
+   "summary": "PLC 工程接口（TIA Openness）是\"改项目\"用的，读不到实时值。实时值要走运行时通道直连 CPU：",
+   "when": "",
+   "env": "none",
+   "bytes": 9012
+  },
+  {
+   "path": "docs/工具使用说明与介绍.md",
+   "title": "TIA Portal Openness 工具 —— 使用说明与介绍（v2.0）",
+   "kind": "doc",
+   "summary": "一个驱动西门子 TIA Portal（博途） 做自动化工程的工具：连接博途、建项目、加硬件（PLC / WinCC Unified HMI）、生成 PLC 程序（UDT / 全局 DB / 标签表 / SCL / 梯形图）、生成 HMI 画…",
+   "when": "",
+   "env": "none",
+   "bytes": 6122
+  },
+  {
+   "path": "install-mcp.ps1",
+   "title": "SUMMARY: 单文件安装器：探测本机 TIA（≥V18）→ 选构建/启动器 → 写进已装客户端配置 → 体检；幂等、改前备份",
+   "kind": "script",
+   "summary": "单文件安装器：探测本机 TIA（≥V18）→ 选构建/启动器 → 写进已装客户端配置 → 体检；幂等、改前备份",
+   "when": "新机器或同事的机器要装这套 MCP 时（先 -DryRun 看计划）",
+   "env": "python",
+   "bytes": 19343
+  },
+  {
+   "path": "manifest/package-manifest.json",
+   "title": "package-manifest.json",
+   "kind": "manifest",
+   "summary": "交付包元数据：版本号、能力快照、入口与自检记录",
+   "when": "",
+   "env": "none",
+   "bytes": 9845
+  },
+  {
+   "path": "manifest/tools-list.json",
+   "title": "tools-list.json",
+   "kind": "manifest",
+   "summary": "工具权威清单（由真引擎 tools/list 生成；改工具后必须重生成）",
+   "when": "",
+   "env": "none",
+   "bytes": 141228
+  },
+  {
+   "path": "push_root_plan.json",
+   "title": "push_root_plan.json",
+   "kind": "manifest",
+   "summary": "JSON 数据/配置（106 字节）",
+   "when": "",
+   "env": "none",
+   "bytes": 106
+  },
+  {
+   "path": "scripts/Check-DeadToolReferences.py",
+   "title": "Windows 上的 Python 默认按 cp1252 输出（GitHub Actions 的 windows runner 就是），",
+   "kind": "script",
+   "summary": "死引用闸：工具描述里点名的工具，必须真的注册过。",
+   "when": "",
+   "env": "python",
+   "bytes": 8461
+  },
+  {
+   "path": "scripts/Check-LiteProfile.py",
+   "title": "-*- coding: utf-8 -*-",
+   "kind": "script",
+   "summary": "lite 档必须是一个**能用**的档：只拿到 lite 的模型仍要能走完黄金路径。",
+   "when": "",
+   "env": "python",
+   "bytes": 6853
+  },
+  {
+   "path": "scripts/Check-ManifestConsistency.py",
+   "title": "Windows 上的 Python 默认按 cp1252 输出（GitHub Actions 的 windows runner 就是），",
+   "kind": "script",
+   "summary": "Manifest 一致性闸：两份 manifest 必须彼此自洽。",
+   "when": "",
+   "env": "python",
+   "bytes": 5830
+  },
+  {
+   "path": "scripts/Check-VersionConsistency.py",
+   "title": "-*- coding: utf-8 -*-",
+   "kind": "script",
+   "summary": "版本一致性闸：csproj / package-manifest 里的版本号必须彼此一致。",
+   "when": "",
+   "env": "python",
+   "bytes": 4240
+  },
+  {
+   "path": "scripts/Generate-DocIndex.py",
+   "title": "-*- coding: utf-8 -*-",
+   "kind": "script",
+   "summary": "生成并校验 docs/INDEX.md + docs/index.json：把全部文档/脚本/清单编成可检索索引",
+   "when": "新增或改名任何文档、脚本、清单之后；CI 的 content-index 也会跑 --check",
+   "env": "python",
+   "bytes": 13220
+  },
+  {
+   "path": "scripts/Generate-ToolCapabilityMatrix.ps1",
+   "title": "[McpServerTool] attributes live across the McpServer partial files (McpServer.cs,",
+   "kind": "script",
+   "summary": "Regenerate docs/tool-capability-matrix.md from the [McpServerTool] attributes in McpServer.cs.",
+   "when": "",
+   "env": "none",
+   "bytes": 4727
+  },
+  {
+   "path": "scripts/Generate-ToolsList.py",
+   "title": "Generate-ToolsList.py",
+   "kind": "script",
+   "summary": "Regenerate manifest/tools-list.json from a built MCP engine's real tools/list response.",
+   "when": "",
+   "env": "python",
+   "bytes": 6179
+  },
+  {
+   "path": "scripts/Smoke-ArgDiagnostics.py",
+   "title": "-*- coding: utf-8 -*-",
+   "kind": "script",
+   "summary": "端到端验「参数诊断」接线真的生效（不需要 TIA）。",
+   "when": "",
+   "env": "python",
+   "bytes": 7461
+  },
+  {
+   "path": "scripts/Smoke-ConnectIsolated.py",
+   "title": "-*- coding: utf-8 -*-",
+   "kind": "script",
+   "summary": "ConnectIsolated 的真机冒烟 —— **仅本地手动跑，绝不要放进 CI**。",
+   "when": "",
+   "env": "python",
+   "bytes": 7428
+  },
+  {
+   "path": "scripts/Smoke-ResponseParking.py",
+   "title": "-*- coding: utf-8 -*-",
+   "kind": "script",
+   "summary": "端到端验「大响应寄存」的接线真的生效（不是只编译通过）。",
+   "when": "",
+   "env": "python",
+   "bytes": 6357
+  },
+  {
+   "path": "scripts/Test-MatchPlcName.ps1",
+   "title": "Offline deterministic test of Guard.MatchPlcName (the tolerant softwarePath matcher).",
+   "kind": "script",
+   "summary": "Offline deterministic test of Guard.MatchPlcName (the tolerant softwarePath matcher).",
+   "when": "",
+   "env": "none",
+   "bytes": 3232
+  },
+  {
+   "path": "scripts/Validate-Bundle.ps1",
+   "title": "Validate-Bundle.ps1",
+   "kind": "script",
+   "summary": "Offline validation: required files, JSON parse, blueprint bundle list, tool roster count.",
+   "when": "",
+   "env": "none",
+   "bytes": 5198
+  },
+  {
+   "path": "scripts/prewarm_tia.py",
+   "title": "-*- coding: utf-8 -*-",
+   "kind": "script",
+   "summary": "Keep a headless TIA Portal warm so every MCP session connects in ~1s instead of cold-starting.",
+   "when": "",
+   "env": "python",
+   "bytes": 5398
+  },
+  {
+   "path": "tia-v20.cmd",
+   "title": "tia-v20.cmd",
+   "kind": "script",
+   "summary": "命令行入口：同一个 exe 的 tia 子命令（如 doctor）",
+   "when": "",
+   "env": "python",
+   "bytes": 333
+  },
+  {
+   "path": "tia.cmd",
+   "title": "tia.cmd",
+   "kind": "script",
+   "summary": "命令行入口：同一个 exe 的 tia 子命令（如 doctor）",
+   "when": "",
+   "env": "python",
+   "bytes": 332
+  },
+  {
+   "path": "tools/tiaportal-mcp/build.ps1",
+   "title": "Base directory: $PSScriptRoot works when .ps1 is called via &",
+   "kind": "script",
+   "summary": "TIA MCP build script - outputs UTF-8 log to avoid Chinese garbled text.",
+   "when": "",
+   "env": "tia",
+   "bytes": 2324
+  },
+  {
+   "path": "tools/tiaportal-mcp/detect_tia_version.ps1",
+   "title": "Detect which TIA Portal version to serve.",
+   "kind": "script",
+   "summary": "Detect which TIA Portal version to serve.",
+   "when": "",
+   "env": "tia",
+   "bytes": 785
+  },
+  {
+   "path": "tools/tiaportal-mcp/skill/SKILL.md",
+   "title": "TIA Portal MCP — Single Skill",
+   "kind": "doc",
+   "summary": "This is the operating skill for TIA Portal MCP automation. The",
+   "when": "",
+   "env": "none",
+   "bytes": 64069
+  },
+  {
+   "path": "tools/tiaportal-mcp/tia_mcp_launcher.bat",
+   "title": "tia_mcp_launcher.bat",
+   "kind": "script",
+   "summary": "命令行入口：同一个 exe 的 tia 子命令（如 doctor）",
+   "when": "",
+   "env": "python",
+   "bytes": 2588
+  },
+  {
+   "path": "同事安装_给Agent的一句话.md",
+   "title": "给同事的 agent：一句话安装 TIA Portal MCP",
+   "kind": "entry",
+   "summary": "给同事的安装指令：可整段复制给他人 agent 的一句话、完整版、卸载、配置位置与常见卡点",
+   "when": "别人的机器要装这套 MCP 时（把「一句话版」整段发过去即可）",
+   "env": "none",
+   "bytes": 4425
+  },
+  {
+   "path": "配置MCP-v18.bat",
+   "title": "配置MCP-v18.bat",
+   "kind": "script",
+   "summary": "按 TIA 版本一键把本 MCP 注册进已安装客户端（转调 install-mcp.ps1，改前备份）",
+   "when": "",
+   "env": "python",
+   "bytes": 1401
+  },
+  {
+   "path": "配置MCP-v20.bat",
+   "title": "配置MCP-v20.bat",
+   "kind": "script",
+   "summary": "按 TIA 版本一键把本 MCP 注册进已安装客户端（转调 install-mcp.ps1，改前备份）",
+   "when": "",
+   "env": "python",
+   "bytes": 1176
+  },
+  {
+   "path": "配置MCP.bat",
+   "title": "配置MCP.bat",
+   "kind": "script",
+   "summary": "按 TIA 版本一键把本 MCP 注册进已安装客户端（转调 install-mcp.ps1，改前备份）",
+   "when": "",
+   "env": "python",
+   "bytes": 1207
+  }
+ ]
+}
