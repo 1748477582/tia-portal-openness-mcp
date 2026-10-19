@@ -28,6 +28,40 @@
 - **深度审计结论**：除上述 **28 个工具**（23 个 Unified HMI + 5 个 VCI）外，其余暴露工具在 V18 全部安全可用；V20 专属文档工具（`Export/Import*Documents`）在 V18 构建中仅以引导提示暴露、不可调用。
 - **HMI 自动化路径**：V18 下请走 **Classic / Comfort HMI** 工具族；Unified 需求须使用 V20/V21 构建。
 
+## 安装（给同事 / 新机器）
+
+最快的方式：把下面这句话发给对方 **AI agent**，让它自己装：
+
+```
+帮我装 TIA Portal MCP：下载 https://github.com/1748477582/tia-portal-openness-mcp/archive/refs/heads/master.zip
+解压到 %USERPROFILE%\Downloads\tia-mcp，然后在解压目录里运行
+powershell -ExecutionPolicy Bypass -File install-mcp.ps1
+装完把脚本输出贴给我，并告诉我应该重启哪个客户端。
+```
+
+或自己动手（PowerShell，整包解压后运行，不需要管理员权限）：
+
+```powershell
+# 先看它准备改什么（不写任何文件）
+powershell -ExecutionPolicy Bypass -File install-mcp.ps1 -DryRun
+
+# 正式安装：自动探测 TIA 版本、选对应构建、写进已安装的客户端配置
+powershell -ExecutionPolicy Bypass -File install-mcp.ps1
+
+# 只装给某一个客户端 / 只要约 40 个核心工具 / 卸载
+powershell -ExecutionPolicy Bypass -File install-mcp.ps1 -Client workbuddy
+powershell -ExecutionPolicy Bypass -File install-mcp.ps1 -Lite
+powershell -ExecutionPolicy Bypass -File install-mcp.ps1 -Client cursor -Remove
+```
+
+支持的客户端：**WorkBuddy**（`~/.workbuddy/mcp.json`）、Claude Desktop、Claude Code、Cursor、VS Code——
+默认只处理**本机确实装了**的那些。改配置前自动备份为 `*.bak`，重复执行是幂等的。
+
+需要 **Windows + TIA Portal V18/V20/V21（含 Openness 选项）**；装了多个 TIA 版本时默认用最高版本，
+想指定加 `-TiaMajorVersion 18`。也可以双击 `配置MCP-v18.bat` / `配置MCP-v20.bat` / `配置MCP.bat`（按版本选）。
+
+更细的说明（含常见卡点）见 **`同事安装_给Agent的一句话.md`**。
+
 ## 安全默认值与自省工具（2.5.0 起）
 
 - **`FindTools(query, limit)`**（L0）：按能力词检索**全部**工具名与描述，返回精确工具名、参数签名与**风险标注**

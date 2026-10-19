@@ -26,6 +26,35 @@ This repository maintains **V18 / V20 / V21** builds (three csproj files produci
 - **Audit result**: apart from those **28 tools** (23 Unified HMI + 5 VCI), every exposed tool is safe and usable under V18; V20-only document tools (`Export/Import*Documents`) are exposed in V18 only as guided hints and are not callable.
 - **HMI automation path**: under V18 use the **Classic / Comfort HMI** tool family; Unified requires the V20/V21 build.
 
+## Install (for a colleague / a new machine)
+
+Fastest path — send this one sentence to their **AI agent** and let it install itself:
+
+```
+Help me install the TIA Portal MCP: download https://github.com/1748477582/tia-portal-openness-mcp/archive/refs/heads/master.zip,
+extract it to %USERPROFILE%\Downloads\tia-mcp, then run
+powershell -ExecutionPolicy Bypass -File install-mcp.ps1
+Paste the script output back to me and tell me which client to restart.
+```
+
+Or do it yourself (PowerShell, after extracting the bundle; no administrator rights needed):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File install-mcp.ps1 -DryRun   # show the plan, write nothing
+powershell -ExecutionPolicy Bypass -File install-mcp.ps1           # detect TIA, pick the build, write the configs
+powershell -ExecutionPolicy Bypass -File install-mcp.ps1 -Client workbuddy   # one specific client
+powershell -ExecutionPolicy Bypass -File install-mcp.ps1 -Lite              # ~40 essential tools only
+powershell -ExecutionPolicy Bypass -File install-mcp.ps1 -Client cursor -Remove
+```
+
+Supported hosts: **WorkBuddy** (`~/.workbuddy/mcp.json`), Claude Desktop, Claude Code, Cursor, VS Code —
+by default only the ones actually installed on the machine are touched. Existing configs are backed up
+to `*.bak` first, and repeated runs are idempotent.
+
+Requires **Windows + TIA Portal V18/V20/V21 (with the Openness option)**. With several TIA versions
+installed the highest one wins; pass `-TiaMajorVersion 18` to choose. You can also double-click
+`配置MCP-v18.bat` / `配置MCP-v20.bat` / `配置MCP.bat` if you prefer a file per version.
+
 ## Safe defaults and self-service tool search (since 2.5.0)
 
 - **`FindTools(query, limit)`** (L0): searches the **whole** roster by capability words and returns each match's exact name,
