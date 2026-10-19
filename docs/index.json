@@ -1,6 +1,6 @@
 {
  "generatedBy": "scripts/Generate-DocIndex.py",
- "count": 55,
+ "count": 56,
  "items": [
   {
    "path": ".cursor/rules/tia-mcp.mdc",
@@ -360,6 +360,14 @@
    "kind": "script",
    "summary": "Keep a headless TIA Portal warm so every MCP session connects in ~1s instead of cold-starting.",
    "when": "",
+   "env": "python"
+  },
+  {
+   "path": "switch-version.ps1",
+   "title": "SUMMARY: 切换 MCP 使用的 TIA 版本：列出本机已装版本 → 让用户选 → 改写配置里的 TIA_MCP_VERSION（只改这一项）",
+   "kind": "script",
+   "summary": "切换 MCP 使用的 TIA 版本：列出本机已装版本 → 让用户选 → 改写配置里的 TIA_MCP_VERSION（只改这一项）",
+   "when": "想换一个 TIA 版本工作、或安装时选了\"跟随当前 TIA\"现在想固定下来",
    "env": "python"
   },
   {

@@ -28,9 +28,14 @@ env: none
 ## 1. 换电脑 / 第一次上手：照这四步
 
 ```powershell
-# 1) 装 MCP 到本机客户端（自动探测 TIA 版本、一份配置切版本）
-powershell -ExecutionPolicy Bypass -File install-mcp.ps1 -DryRun     # 先看它要改什么
-powershell -ExecutionPolicy Bypass -File install-mcp.ps1             # 真装
+# 1) 装 MCP：先探测本机装了哪些 TIA → 让你确认 → 让你选版本（不会替你预设）
+powershell -ExecutionPolicy Bypass -File install-mcp.ps1
+
+#   · 非交互/脚本化时必须显式给版本，否则会拒绝（这是故意的：不替你猜）
+powershell -ExecutionPolicy Bypass -File install-mcp.ps1 -TiaMajorVersion 20
+powershell -ExecutionPolicy Bypass -File install-mcp.ps1 -FollowOpenTia
+#   · 只看计划不写文件：
+powershell -ExecutionPolicy Bypass -File install-mcp.ps1 -DryRun -FollowOpenTia
 
 # 2) 自检：引擎与 TIA 是否对得上
 <交付根>\tools\tiaportal-mcp\src\TiaMcpServer\bin-v20\Release\net48\TiaMcpServer.exe doctor
@@ -43,6 +48,15 @@ python scripts\Generate-DocIndex.py --check
 
 # 4) 跑离线测试（不需要 TIA）
 dotnet run --project tools\tiaportal-mcp\tests\TiaMcpServer.OfflineChecks\TiaMcpServer.OfflineChecks.csproj -c Release
+```
+
+**换 TIA 版本**（装完以后随时可换，改一个变量即可）：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File switch-version.ps1              # 交互选
+powershell -ExecutionPolicy Bypass -File switch-version.ps1 -Show       # 只看当前
+powershell -ExecutionPolicy Bypass -File switch-version.ps1 -TiaMajorVersion 18
+powershell -ExecutionPolicy Bypass -File switch-version.ps1 -FollowOpenTia
 ```
 
 全绿 = 环境就绪。任何一步红，先去 `docs/lessons-and-shortcuts.md` 搜报错关键词（那里面全是踩过的坑）。
@@ -136,6 +150,7 @@ dotnet run --project tools\tiaportal-mcp\tests\TiaMcpServer.OfflineChecks\TiaMcp
 |---|---|
 | 给同事/新机器装 | `install-mcp.ps1`（`-DryRun` 先看），说明见 `同事安装_给Agent的一句话.md` |
 | 查某个工具的参数/是否存在 | `FindTools(query)`；或 `docs/tool-capability-matrix.md` |
+| **换 TIA 版本** | `switch-version.ps1`（列出本机版本让你选；只改 `TIA_MCP_VERSION`，不碰其它配置） |
 | 改一个工具 | 硬规则 #4 + `docs/lessons-and-shortcuts.md` §4.5 的完整链路 |
 | 改完推送 | `python tools/tiaportal-mcp/push_repo.py --plan` → `--push --message-file <msg>` → 再 `--plan` 确认零差异 |
 | 真机验证（不碰用户 TIA） | `docs/lessons-and-shortcuts.md` §9 + `_upstream_diff/verify_*.py` 骨架 |

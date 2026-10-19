@@ -64,6 +64,8 @@ param(
     [switch]$Remove,
     [switch]$SkipDoctor,
     [switch]$Direct,
+    [switch]$FollowOpenTia,
+    [switch]$NonInteractive,
     [string]$Source,
     [string]$ConfigPath,
     [int]$TiaMajorVersion = 0
@@ -273,27 +275,79 @@ if ($supported.Count -eq 0) {
     Die "只找到 V$($tooOld -join '/V')，本 MCP 需要 **V18 或更高**（V16/V17 没有 Openness 这条路）。"
 }
 
+# ── 版本：探测 → 用户确认 → 用户选择（不预设、不替用户猜）────────────────────
+function Show-Detected {
+    Say ''
+    Say '  探测到的 TIA Portal：'
+    foreach ($k in ($tia.Keys | Sort-Object)) {
+        if ($k -ge 18) { Say ("    V{0,-2}  {1}   [可用]" -f $k, $tia[$k]) }
+        else           { Say ("    V{0,-2}  {1}   [低于 V18，本 MCP 不支持]" -f $k, $tia[$k]) }
+    }
+    Say ''
+}
+
+$choice = $null      # @{ Mode = 'pin'|'auto'; Ver = n }
+
 if ($TiaMajorVersion -gt 0) {
     if (-not $tia.ContainsKey($TiaMajorVersion)) {
         Die "指定了 V$TiaMajorVersion，但本机装的是 V$((($tia.Keys) | Sort-Object) -join '/V')"
     }
-    $tiaVer = $TiaMajorVersion
-} else {
-    $tiaVer = ($tia.Keys | Sort-Object -Descending)[0]
-}
-Ok "将使用 V$tiaVer"
-$tiaLocation = if ($tia.ContainsKey($tiaVer)) { $tia[$tiaVer] } else { '' }
-if ($supported.Count -gt 1) { Say "     若要指定其它版本，加参数 -TiaMajorVersion 18（可选：$($supported -join ' / ')）" }
+    $choice = @{ Mode = 'pin'; Ver = $TiaMajorVersion }
+} elseif ($FollowOpenTia) {
+    $choice = @{ Mode = 'auto'; Ver = 0 }
+} elseif (-not $Remove) {
+    $interactive = (-not $NonInteractive) -and (-not [Console]::IsInputRedirected)
+    if (-not $interactive) {
+        Die @"
+非交互运行，但没有指定版本 —— 本脚本不会替你猜。
+请加下面参数之一后重跑：
+  -TiaMajorVersion 18|20|21    固定使用该版本
+  -FollowOpenTia               跟随你当前打开的 TIA（不钉版本）
+本机可用：V$($supported -join ' / V')
+"@
+    }
 
-# 单版本机器必须钉住版本。原因：启动器的探测顺序是「env → 当前运行的 TIA → 兜底 V18」，
-# 而兜底写死的是 V18。若本机只装了 V20、又没开 TIA，启动器会去加载 bin-v18 构建，
-# 而 V18 的 PublicAPI 目录根本不存在 —— 表现为"装了却用不了"，且报错不直观。
-if ($TiaMajorVersion -eq 0 -and $supported.Count -eq 1) {
-    $TiaMajorVersion = $supported[0]
-    Ok "本机只装了 V$($supported[0]) —— 已自动钉住，避免启动器在未开 TIA 时兜底到 V18"
-} elseif ($TiaMajorVersion -eq 0 -and $supported.Count -gt 1) {
-    Say '     本机有多个版本：不钉版本，由启动器按"当前打开的 TIA"选择；若它选错，加 -TiaMajorVersion 钉住'
+    Show-Detected
+    $ok = Read-Host '  以上探测是否正确？[Y/n]'
+    if ($ok -match '^[nN]') {
+        Say ''
+        Say '  请把正确的安装目录告诉本脚本，然后重开终端再跑：'
+        Say '    setx TiaPortalLocation "D:/Siemens/Automation/Portal V20"'
+        Say '  （路径指向含 PublicAPI 的那一层，通常是 ...\Siemens\Automation\Portal VXX）'
+        exit 3
+    }
+
+    $menu = @($supported)
+    Say ''
+    Say '  用哪个版本工作？'
+    for ($i = 0; $i -lt $menu.Count; $i++) {
+        Say ("    [{0}] V{1}" -f ($i + 1), $menu[$i])
+    }
+    $autoIdx = $menu.Count + 1
+    Say ("    [{0}] 跟随当前打开的 TIA（不钉版本，之后换版本不用重跑）" -f $autoIdx)
+    $sel = Read-Host ("  请输入序号 [回车默认 1 = V{0}]" -f $menu[0])
+    if ([string]::IsNullOrWhiteSpace($sel)) { $sel = '1' }
+    $n = 0
+    if (-not [int]::TryParse($sel, [ref]$n) -or $n -lt 1 -or $n -gt $autoIdx) {
+        Die "序号无效：$sel（可选 1..$autoIdx）"
+    }
+    if ($n -eq $autoIdx) { $choice = @{ Mode = 'auto'; Ver = 0 } }
+    else { $choice = @{ Mode = 'pin'; Ver = $menu[$n - 1] } }
 }
+
+if ($Remove -and -not $choice) { $choice = @{ Mode = 'auto'; Ver = 0 } }   # 卸载不需要选版本
+
+if ($choice.Mode -eq 'pin') {
+    $tiaVer = $choice.Ver
+    Ok "版本：固定 V$tiaVer"
+} else {
+    $tiaVer = ($supported | Sort-Object -Descending)[0]
+    Ok '版本：跟随当前打开的 TIA（不钉版本）'
+    if ($supported.Count -gt 1) {
+        Say '     ⚠ 未打开 TIA 时启动器会兜底到 V18；若你主要用其它版本，建议重跑并指定该版本'
+    }
+}
+$tiaLocation = if ($tia.ContainsKey($tiaVer)) { $tia[$tiaVer] } else { '' }
 
 Step '定位引擎 exe'
 $root = $null
@@ -321,7 +375,7 @@ if ($Direct) {
     Write-Host '  模式: 直连 exe（-Direct，配置锁死这一份构建）' -ForegroundColor DarkGray
 } elseif ($launcherBat) {
     Ok "启动器: $launcherBat"
-    if ($TiaMajorVersion -gt 0) { Say "     版本: 钉住 V$TiaMajorVersion（env.TIA_MCP_VERSION）" }
+    if ($choice.Mode -eq 'pin') { Say "     版本: 钉住 V$($choice.Ver)（env.TIA_MCP_VERSION）" }
     else { Say '     版本: 不钉，由启动器按你当前打开的 TIA 自动探测' }
 } else {
     Warn '包内没有 tia_mcp_launcher.bat，退回直连 exe 模式'
@@ -358,7 +412,7 @@ if ($DryRun) {
     Die '没有引擎 exe，无法写入配置'
 } else {
     foreach ($t in $targets) {
-        try { Ok (Set-McpEntry -Path $t.path -Style $t.style -Exe $engine.Path -Ver $engine.Version -IsLite $Lite.IsPresent -DoRemove $Remove.IsPresent -UseLauncher ([bool]$useLauncher) -LauncherBat $launcherBat -PinVer $TiaMajorVersion -TiaLocation $tiaLocation) }
+        try { Ok (Set-McpEntry -Path $t.path -Style $t.style -Exe $engine.Path -Ver $engine.Version -IsLite $Lite.IsPresent -DoRemove $Remove.IsPresent -UseLauncher ([bool]$useLauncher) -LauncherBat $launcherBat -PinVer $choice.Ver -TiaLocation $tiaLocation) }
         catch { Warn "写 $($t.name) 失败：$($_.Exception.Message)" }
     }
 }
@@ -375,6 +429,7 @@ if (-not $Remove -and -not $DryRun -and $engine -and -not $SkipDoctor) {
     Say '  2) 让它调用 tia-portal 的 Bootstrap 验证连通性'
     if ($useLauncher) { Say '  换 TIA 版本：改配置里的 env.TIA_MCP_VERSION（18 / 20 / 21），或删掉这一行让它自动探测' }
     else { Say '  换 TIA 版本：重跑本脚本并加 -TiaMajorVersion 18（或 20）' }
+    Say '  也可以随时运行 switch-version.ps1，它会列出本机版本让你选'
     Say ('  3) 有问题先跑：' + $engine.Path + ' doctor')
 }
 

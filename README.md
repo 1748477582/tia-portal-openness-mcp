@@ -52,14 +52,20 @@ powershell -ExecutionPolicy Bypass -File install-mcp.ps1
 或自己动手（PowerShell，整包解压后运行，不需要管理员权限）：
 
 ```powershell
-# 先看它准备改什么（不写任何文件）
-powershell -ExecutionPolicy Bypass -File install-mcp.ps1 -DryRun
-
-# 正式安装：自动探测 TIA 版本、选对应构建、写进已安装的客户端配置
+# 交互安装：先列出本机装了哪些 TIA → 让你确认探测是否正确 → 让你选用哪个版本
 powershell -ExecutionPolicy Bypass -File install-mcp.ps1
 
-# 只装给某一个客户端 / 只要约 40 个核心工具 / 卸载
-powershell -ExecutionPolicy Bypass -File install-mcp.ps1 -Client workbuddy
+# 只看计划（不写文件）；非交互时必须显式给版本，否则脚本拒绝——不替你猜
+powershell -ExecutionPolicy Bypass -File install-mcp.ps1 -DryRun -FollowOpenTia
+
+# 非交互/脚本化：固定某个版本，或跟随当前打开的 TIA
+powershell -ExecutionPolicy Bypass -File install-mcp.ps1 -TiaMajorVersion 20
+powershell -ExecutionPolicy Bypass -File install-mcp.ps1 -FollowOpenTia
+
+# 装完以后随时换版本（只改 TIA_MCP_VERSION，不碰其它配置）
+powershell -ExecutionPolicy Bypass -File switch-version.ps1
+
+# 只要约 40 个核心工具 / 卸载
 powershell -ExecutionPolicy Bypass -File install-mcp.ps1 -Lite
 powershell -ExecutionPolicy Bypass -File install-mcp.ps1 -Client cursor -Remove
 ```
