@@ -54,12 +54,13 @@ dotnet run --project tools\tiaportal-mcp\tests\TiaMcpServer.OfflineChecks\TiaMcp
 | 顺序 | 文件 | 作用 | 什么时候读 |
 |---|---|---|---|
 | 1 | **`AGENTS.md`**（本文） | 入口与硬规则 | 第一次接触 |
-| 2 | **`docs/INDEX.md`** | **全部内容的目录**（文档/脚本/清单各是什么、何时用、需要什么环境） | 想找"有没有现成的" |
-| 3 | **`docs/lessons-and-shortcuts.md`** | 踩过的坑与捷径（症状/根因/做法/证据） | **动手前**，尤其碰 TIA、推送、PowerShell |
-| 4 | `tools/tiaportal-mcp/skill/SKILL.md` | 工具分层、参数陷阱、HMI schema、调用顺序 | 要实际调工具之前 |
-| 5 | `docs/tool-capability-matrix.md` | 232 个工具的能力矩阵（静态索引） | 找具体工具 |
-| 6 | `docs/CLI_quickstart.md` | 同一个 exe 的命令行用法（`tia` 子命令） | 想用命令行而非 MCP |
-| 7 | `CHANGELOG.md` | 每个版本改了什么、有哪些行为变更 | 升级/排查回归 |
+| 2 | **`docs/user-directives.md`** | **用户明确交代过的硬约束**（验证方式、安全、流程、文风、存储） | **每次开工前扫一遍；交付前逐条自查** |
+| 3 | **`docs/INDEX.md`** | **全部内容的目录**（文档/脚本/清单各是什么、何时用、需要什么环境） | 想找"有没有现成的" |
+| 4 | **`docs/lessons-and-shortcuts.md`** | 踩过的坑与捷径（症状/根因/做法/证据） | **动手前**，尤其碰 TIA、推送、脚本 |
+| 5 | `tools/tiaportal-mcp/skill/SKILL.md` | 工具分层、参数陷阱、HMI schema、调用顺序 | 要实际调工具之前 |
+| 6 | `docs/tool-capability-matrix.md` | 232 个工具的能力矩阵（静态索引） | 找具体工具 |
+| 7 | `docs/CLI_quickstart.md` | 同一个 exe 的命令行用法（`tia` 子命令） | 想用命令行而非 MCP |
+| 8 | `CHANGELOG.md` | 每个版本改了什么、有哪些行为变更 | 升级/排查回归 |
 
 **想找"有没有现成脚本/文档"**：先看 `docs/INDEX.md`（自动生成，50 项，带"何时用/环境"），别翻目录。
 
@@ -75,8 +76,9 @@ dotnet run --project tools\tiaportal-mcp\tests\TiaMcpServer.OfflineChecks\TiaMcp
 | 4 | **改工具 = 同步三份**：引擎 `tools/list` = `manifest/tools-list.json` = `docs/tool-capability-matrix.md`（改描述也要） | CI 红；或文档与实际不符 |
 | 5 | **遇到 know-how 加密块先问用户要密码**，不做字典/枚举；不为解保护新增工具 | 越权，且用户明确拒绝过 |
 | 6 | **别用 `git push`**：本机到 github.com:443 不通，推送走 Git Database API（`tools/tiaportal-mcp/push_repo.py`），且必须设 `HTTPS_PROXY` | 推送失败，或误以为"推上去了" |
+| 7 | **用户明确交代过的事是硬约束**：见 `docs/user-directives.md`。核心几条——独立验证用户自述、验证深度如实说、摘要必须与磁盘一致、仓库与文档去 AI 腔、写操作前先确认 | 这几条都违反过，且都付了代价 |
 
-细节、证据、绕法全在 `docs/lessons-and-shortcuts.md`（§0 / §1 / §7 / §12）。
+细节、证据、绕法全在 `docs/lessons-and-shortcuts.md`（§0 / §1 / §7 / §12）；用户要求逐条见 `docs/user-directives.md`。
 
 ---
 

@@ -4,7 +4,7 @@
 > 换机器 / 换 agent 时**先读这里**：每份文件是干什么的、什么时候该用、需要什么环境。
 > 新增文件后要重跑生成器，否则索引与实际脱节。
 
-| 共 49 项 | 环境：`none` 纯本机 · `python` 需 Python · `dotnet` 需 .NET SDK · `tia` 需 TIA Portal |
+| 共 50 项 | 环境：`none` 纯本机 · `python` 需 Python · `dotnet` 需 .NET SDK · `tia` 需 TIA Portal |
 
 ## entry（4）
 
@@ -15,7 +15,7 @@
 | [`README.md`](../README.md) | 项目总览：这套 MCP 是什么、怎么装（含给同事的一句话）、版本说明与安全默认值 | 想知道这个项目能干什么、怎么安装时 | `none` |
 | [`同事安装_给Agent的一句话.md`](../同事安装_给Agent的一句话.md) | 给同事的安装指令：可整段复制给他人 agent 的一句话、完整版、卸载、配置位置与常见卡点 | 别人的机器要装这套 MCP 时（把「一句话版」整段发过去即可） | `none` |
 
-## doc（20）
+## doc（21）
 
 | 文件 | 说明 | 何时用 | 环境 |
 |---|---|---|---|
@@ -35,6 +35,7 @@
 | [`docs/scl-instruction-library.md`](scl-instruction-library.md) | 本文件汇总在 S7-1200 / S7-1500 SCL 中常用的语法和指令模板，便于 PlcBuildAndImport(kind=fc\|fb) 的 DSL 转换，或直接写入外部源 .scl 文件后通过 ImportPlcExternal… | — | `none` |
 | [`docs/server-maturity-roadmap.md`](server-maturity-roadmap.md) | 服务成熟度路线图：与商业产品逐项对比后的差距清单与推进顺序 | 规划下一步能力时 | `none` |
 | [`docs/tool-capability-matrix.md`](tool-capability-matrix.md) | 本文件由源码中的 McpServerTool 静态抽取生成，运行时仍以 tools/list 为准。 | — | `none` |
+| [`docs/user-directives.md`](user-directives.md) | 用户明确交代过的要求（硬约束）：交付验证、安全、流程、文风、存储、本仓库专属规矩，附交付前自查清单 | 每次开工前扫一遍；交付前逐条自查。这些不是建议，是用户明确要求过的 | `none` |
 | [`docs/verify-low-barrier-features.md`](verify-low-barrier-features.md) | Status date: 2026-06-16. | — | `none` |
 | [`docs/在线实时读值_使用指南.md`](在线实时读值_使用指南.md) | 在线实时读值使用指南：如何在不改程序的前提下读取 PLC 当前变量值 | 要在真机上读实时值时 | `none` |
 | [`docs/工具使用说明与介绍.md`](工具使用说明与介绍.md) | 一个驱动西门子 TIA Portal（博途） 做自动化工程的工具：连接博途、建项目、加硬件（PLC / WinCC Unified HMI）、生成 PLC 程序（UDT / 全局 DB / 标签表 / SCL / 梯形图）、生成 HMI 画… | — | `none` |

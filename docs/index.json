@@ -1,6 +1,6 @@
 {
  "generatedBy": "scripts/Generate-DocIndex.py",
- "count": 49,
+ "count": 50,
  "items": [
   {
    "path": "AGENTS.md",
@@ -160,6 +160,14 @@
    "kind": "doc",
    "summary": "本文件由源码中的 McpServerTool 静态抽取生成，运行时仍以 tools/list 为准。",
    "when": "",
+   "env": "none"
+  },
+  {
+   "path": "docs/user-directives.md",
+   "title": "用户明确交代过的事项（硬约束）",
+   "kind": "doc",
+   "summary": "用户明确交代过的要求（硬约束）：交付验证、安全、流程、文风、存储、本仓库专属规矩，附交付前自查清单",
+   "when": "每次开工前扫一遍；交付前逐条自查。这些不是建议，是用户明确要求过的",
    "env": "none"
   },
   {
