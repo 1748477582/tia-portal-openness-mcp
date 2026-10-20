@@ -111,10 +111,17 @@ function Find-TiaPortal {
 function Find-Engine {
     param([string]$Root, [int]$TiaVer)
     if (-not $Root) { return $null }
+    # 两种形态都要认：
+    #   · 本地开发树：tools\...\bin-vXX\Release\net48\TiaMcpServer.exe
+    #   · 仓库/ZIP 分发：runtime\vXX\TiaMcpServer.exe（bin-* 不进仓库，只有 runtime 进）
+    # 只认前者的话，"从 GitHub 一行安装"会找不到引擎——实测踩过。
     $candidates = @(
-        @{ v = 18; rel = 'tools\tiaportal-mcp\src\TiaMcpServer\bin-v18\Release\net48\TiaMcpServer.exe' },
-        @{ v = 20; rel = 'tools\tiaportal-mcp\src\TiaMcpServer\bin-v20\Release\net48\TiaMcpServer.exe' },
-        @{ v = 21; rel = 'tools\tiaportal-mcp\src\TiaMcpServer\bin\Release\net48\TiaMcpServer.exe' }
+        @{ v = 18; rel = 'tools/tiaportal-mcp/src/TiaMcpServer/bin-v18/Release/net48/TiaMcpServer.exe' },
+        @{ v = 20; rel = 'tools/tiaportal-mcp/src/TiaMcpServer/bin-v20/Release/net48/TiaMcpServer.exe' },
+        @{ v = 21; rel = 'tools/tiaportal-mcp/src/TiaMcpServer/bin/Release/net48/TiaMcpServer.exe' },
+        @{ v = 18; rel = 'runtime/v18/TiaMcpServer.exe' },
+        @{ v = 20; rel = 'runtime/v20/TiaMcpServer.exe' },
+        @{ v = 21; rel = 'runtime/v21/TiaMcpServer.exe' }
     )
     foreach ($c in $candidates) {
         if ($TiaVer -gt 0 -and $c.v -ne $TiaVer) { continue }

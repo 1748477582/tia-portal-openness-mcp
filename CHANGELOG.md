@@ -69,6 +69,16 @@ env: none
   内容索引已收录（55 项，`kind=entry`）。
 
 ### 修复
+- 🔴 **从仓库/ZIP 安装会找不到引擎**（一行安装实测发现）：`bin-v18`/`bin-v20` **不进仓库**（推送规则排除），
+  仓库里只有 `runtime/v18|v20|v21/TiaMcpServer.exe`。而 `install-mcp.ps1` 的 `Find-Engine` 只认
+  `tools/.../bin-vXX/...` ⇒ 装完配置写好了、引擎却不存在。现在两种形态都认（先 bin-vXX，再 runtime/vXX）。
+- 🔴 **启动器同样只认 `bin-vXX`**：仓库形态下会指向不存在的路径。现在加 `runtime/vXX` 回退；
+  都找不到时打印**两个查找路径**并退出 3（原来会静默失败）。
+- 🔴 **启动器不读 `TIA_MCP_PORTAL_LOCATION`**：安装器把该变量写进了配置，启动器却只用写死的
+  `C:\...\Portal V18` / `D:\...\Portal V20` ⇒ 装在其它盘符的机器会注入错误的 PATH。现在显式变量优先。
+- **`bootstrap.ps1` 下载通道回退**：`github.com/archive/...` 在本机（企业网/国内网络常见）连不上。
+  现在依次尝试 `codeload.github.com` → `api.github.com/zipball` → `github.com/archive`，并支持 `HTTPS_PROXY`；
+  三个都不通时给出人工下载指引，不再抛一句"无法连接到远程服务器"。
 - 🔴 **安装器不再替用户预设版本**（按用户要求）：原先是"探测后自动取最高版本"（后来还加过"单版本自动钉住"），
   等于替用户做了决定。现在改为 **探测 → 用户确认探测是否正确 → 用户选用哪个版本**；
   **非交互运行且没给版本时直接报错并列出可选项，绝不猜**（`-TiaMajorVersion 18|20|21` 或 `-FollowOpenTia`）。

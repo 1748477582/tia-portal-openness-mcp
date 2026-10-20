@@ -59,8 +59,14 @@ $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
 $Repo   = '1748477582/tia-portal-openness-mcp'
-$ZipUrl = "https://github.com/$Repo/archive/refs/heads/$Ref.zip"
 $RawUrl = "https://raw.githubusercontent.com/$Repo/$Ref/bootstrap.ps1"
+# 下载通道按可用性排序：github.com/archive 在部分企业网/国内网络会被拦（本机实测就是），
+# codeload 与 api zipball 通常仍可用。逐个尝试，全失败再给人工指引。
+$ZipUrls = @(
+    "https://codeload.github.com/$Repo/zip/refs/heads/$Ref",
+    "https://api.github.com/repos/$Repo/zipball/$Ref",
+    "https://github.com/$Repo/archive/refs/heads/$Ref.zip"
+)
 $Dest   = Join-Path $env:USERPROFILE 'tia-mcp'
 
 function Say  { param($m) Write-Host $m }
@@ -141,10 +147,36 @@ if ($Source) {
     Ok "复用已有交付包：$pkg（要强制更新，删掉这个目录再跑）"
 } else {
     Say ''
-    Say "  下载交付包：$ZipUrl"
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
     $zip = Join-Path $env:TEMP 'tia-mcp-bootstrap.zip'
-    Invoke-WebRequest -UseBasicParsing -Uri $ZipUrl -OutFile $zip
+    $proxy = if ($env:HTTPS_PROXY) { $env:HTTPS_PROXY } elseif ($env:HTTP_PROXY) { $env:HTTP_PROXY } else { $null }
+
+    $downloaded = $false
+    foreach ($u in $ZipUrls) {
+        Say "  下载交付包：$u"
+        try {
+            $iwr = @{ UseBasicParsing = $true; Uri = $u; OutFile = $zip; TimeoutSec = 300 }
+            if ($proxy) { $iwr['Proxy'] = $proxy }
+            if (Test-Path $zip) { Remove-Item $zip -Force }
+            Invoke-WebRequest @iwr
+            if ((Get-Item $zip).Length -gt 1024) { $downloaded = $true; break }
+        } catch {
+            Warn ("  这个通道不可用：" + $_.Exception.Message.Split("`n")[0])
+        }
+    }
+    if (-not $downloaded) {
+        Die @"
+下载失败：三个通道都不通。请改用下面任一办法后重跑：
+
+  1) 用浏览器打开（或让同事转发）：
+     https://github.com/$Repo/archive/refs/heads/$Ref.zip
+     解压到 %USERPROFILE%\tia-mcp，然后运行其中的 install-mcp.ps1 -TiaMajorVersion <你的版本>
+
+  2) 若公司网络要走代理，先设好再重跑：
+     set HTTPS_PROXY=http://<代理地址>:<端口>
+"@
+    }
+    Ok ("已下载 {0:N0} 字节" -f (Get-Item $zip).Length)
     $tmp = Join-Path $env:TEMP ('tia-mcp-unzip-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
     Expand-Archive -Path $zip -DestinationPath $tmp -Force
     $inner = Get-ChildItem $tmp -Directory | Select-Object -First 1

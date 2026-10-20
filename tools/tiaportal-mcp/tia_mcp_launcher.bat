@@ -37,10 +37,32 @@ if "%VER%"=="20" (
     set "TIA_BIN=C:\Program Files\Siemens\Automation\Portal V18\Bin"
 )
 
+:: Explicit location wins (install-mcp.ps1 writes TIA_MCP_PORTAL_LOCATION when a version is pinned).
+:: Without this, machines whose TIA lives on another drive get the wrong PATH injected.
+if defined TIA_MCP_PORTAL_LOCATION (
+    set "TIA_LOC=%TIA_MCP_PORTAL_LOCATION%"
+    set "TIA_BIN=%TIA_MCP_PORTAL_LOCATION%\Bin"
+)
+
 :: Prepend the version-specific TIA Bin + common Siemens native paths.
 set "PATH=%TIA_BIN%;C:\Program Files\Common Files\Siemens\Automation\Simatic OAM\bin;C:\Program Files (x86)\Common Files\Siemens\Bin;C:\Program Files (x86)\Common Files\Siemens\CommonArchiving;C:\Program Files (x86)\Common Files\Siemens\ACE\Bin;%PATH%"
 
 :: Launch the version-matched build. All forwarded args + the resolved version.
-"%~dp0src\TiaMcpServer\bin-v%VER%\Release\net48\TiaMcpServer.exe" --tia-major-version %VER% --tia-portal-location "%TIA_LOC%" %*
+:: Two layouts are supported:
+::   tools\...\bin-vXX\Release\net48\...  (local dev tree, what the original delivery ships)
+::   <repo>\runtime\vXX\...              (repo / ZIP distribution: bin-* is not committed)
+set "ENGINE=%~dp0src\TiaMcpServer\bin-v%VER%\Release\net48\TiaMcpServer.exe"
+if exist "%ENGINE%" goto :engine_ready
+set "ENGINE=%~dp0..\..\runtime\v%VER%\TiaMcpServer.exe"
+if exist "%ENGINE%" goto :engine_ready
+echo [launcher] TiaMcpServer.exe not found for V%VER%. Looked in:
+echo [launcher]   %~dp0src\TiaMcpServer\bin-v%VER%\Release\net48\
+echo [launcher]   %~dp0..\..\runtime\v%VER%\
+echo [launcher] Set TIA_MCP_VERSION to a version you have, or re-run install-mcp.ps1.
+endlocal
+exit /b 3
+:engine_ready
+
+"%ENGINE%" --tia-major-version %VER% --tia-portal-location "%TIA_LOC%" %*
 
 endlocal
