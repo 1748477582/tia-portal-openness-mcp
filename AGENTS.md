@@ -27,6 +27,9 @@ env: none
 
 ## 1. 换电脑 / 第一次上手：照这四步
 
+> **如果只是要给别人装**（不是接手开发），用 README 顶部那条**一行命令**即可，不必读本节。
+> 一行命令 = `bootstrap.ps1`：不带版本只探测并给出下一条命令；带 `-Version 20` 直接装。
+
 ```powershell
 # 1) 装 MCP：先探测本机装了哪些 TIA → 让你确认 → 让你选版本（不会替你预设）
 powershell -ExecutionPolicy Bypass -File install-mcp.ps1

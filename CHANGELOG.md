@@ -24,6 +24,11 @@ env: none
 > 下次有代码改动时并入对应版本条目。
 
 ### 新增
+- **`bootstrap.ps1`（一行式安装入口）**：把"复制一条命令就能装"做成真的。典型用法是把这一整行发给对方：
+  `powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-WebRequest -UseBasicParsing '<raw url>/bootstrap.ps1' -OutFile .\tia-bootstrap.ps1; & .\tia-bootstrap.ps1"`
+  - **不带版本**：只探测并列出本机 TIA，然后把"填好版本号的下一行"打印出来 —— **不替你选版本**（与本版新规则一致）。
+  - **带 `-Version 20`** / **`-FollowOpenTia`**：下载交付包到 `%USERPROFILE%\tia-mcp`，转调 `install-mcp.ps1`（`-Lite/-DryRun/-Direct` 均透传）。
+  - 刻意不用 `irm | iex`：那条写法在部分环境被安全策略拦、且无法传参；本条只用 `Invoke-WebRequest` + `&`，可传参、可验证。
 - **`AGENTS.md`（接手入口）**：换电脑 / 换 agent / 换人时的唯一入口。四步上手（装 → doctor → 四条自检 → 离线套件）、
   必读顺序、**六条硬规则**（别关用户 TIA、别跨线程传 RCW、推送前审计新旧方向、改工具同步三份、加密块先问密码、别用 git push）、
   目录地图、**新增内容时的义务**、常见任务入口、以及换机交接清单（哪些必须带走、哪些会丢要重配）。

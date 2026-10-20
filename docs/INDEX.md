@@ -4,7 +4,7 @@
 > 换机器 / 换 agent 时**先读这里**：每份文件是干什么的、什么时候该用、需要什么环境。
 > 新增文件后要重跑生成器，否则索引与实际脱节。
 
-| 共 56 项 | 环境：`none` 纯本机 · `python` 需 Python · `dotnet` 需 .NET SDK · `tia` 需 TIA Portal |
+| 共 57 项 | 环境：`none` 纯本机 · `python` 需 Python · `dotnet` 需 .NET SDK · `tia` 需 TIA Portal |
 
 ## entry（9）
 
@@ -18,7 +18,7 @@
 | [`README.en.md`](../README.en.md) | English overview - what this MCP is, how to install it (incl. a one-liner for a colleague), version notes and safe defaults | English readers, or a non-Chinese colleague needs the overview | `none` |
 | [`README.md`](../README.md) | 项目总览：这套 MCP 是什么、怎么装（含给同事的一句话）、版本说明与安全默认值 | 想知道这个项目能干什么、怎么安装时 | `none` |
 | [`llms.txt`](../llms.txt) | 给 LLM/agent 的机器可读入口（llmstxt 约定）：项目是什么、从哪开始、不能碰什么 | — | `none` |
-| [`同事安装_给Agent的一句话.md`](../同事安装_给Agent的一句话.md) | 给同事的安装指令：可整段复制给他人 agent 的一句话、完整版、卸载、配置位置与常见卡点 | 别人的机器要装这套 MCP 时（把「一句话版」整段发过去即可） | `none` |
+| [`同事安装_给Agent的一句话.md`](../同事安装_给Agent的一句话.md) | 给同事的安装指令：一条可复制的一行命令、给 AI 的自然语言版、换版本与卸载、常见卡点 | 别人的机器要装这套 MCP 时（把「一行安装」整段发过去即可） | `none` |
 
 ## doc（21）
 
@@ -46,10 +46,11 @@
 | [`docs/工具使用说明与介绍.md`](工具使用说明与介绍.md) | 一个驱动西门子 TIA Portal（博途） 做自动化工程的工具：连接博途、建项目、加硬件（PLC / WinCC Unified HMI）、生成 PLC 程序（UDT / 全局 DB / 标签表 / SCL / 梯形图）、生成 HMI 画… | — | `none` |
 | [`tools/tiaportal-mcp/skill/SKILL.md`](../tools/tiaportal-mcp/skill/SKILL.md) | This is the operating skill for TIA Portal MCP automation. The | — | `none` |
 
-## script（23）
+## script（24）
 
 | 文件 | 说明 | 何时用 | 环境 |
 |---|---|---|---|
+| `bootstrap.ps1` | 一行式安装入口：可直接从 GitHub 拉取并调用 install-mcp.ps1；不带版本时只探测并给出下一条命令（不猜） | 别人要把本 MCP 装到自己机器上时，复制 README 里那条一行命令即可 | `python` |
 | `install-mcp.ps1` | 单文件安装器：探测本机 TIA（≥V18）→ 选构建/启动器 → 写进已装客户端配置 → 体检；幂等、改前备份 | 新机器或同事的机器要装这套 MCP 时（先 -DryRun 看计划） | `python` |
 | `scripts/Check-DeadToolReferences.py` | 死引用闸：工具描述里点名的工具，必须真的注册过。 | — | `python` |
 | `scripts/Check-LiteProfile.py` | lite 档闸门：只拿到精简工具集的模型仍必须能走完黄金路径 | 改 lite 名册或核心工具时 | `python` |

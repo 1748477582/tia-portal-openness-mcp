@@ -35,18 +35,40 @@ env: none
 - **深度审计结论**：除上述 **28 个工具**（23 个 Unified HMI + 5 个 VCI）外，其余暴露工具在 V18 全部安全可用；V20 专属文档工具（`Export/Import*Documents`）在 V18 构建中仅以引导提示暴露、不可调用。
 - **HMI 自动化路径**：V18 下请走 **Classic / Comfort HMI** 工具族；Unified 需求须使用 V20/V21 构建。
 
+## 一行安装（复制即用）
+
+把下面**这一行**整段复制给对方（粘给他的 AI，或在 PowerShell 里直接执行）。它会拉取交付包、探测本机 TIA、把配置写好：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/1748477582/tia-portal-openness-mcp/master/bootstrap.ps1' -OutFile .\tia-bootstrap.ps1; & .\tia-bootstrap.ps1"
+```
+
+不带版本时，它**只探测并列出本机装了哪些 TIA**，然后把"填好版本号的下一行"打印出来 —— **不替你选版本**。
+想一步到位，在末尾加上 `-Version 20`（或 `-FollowOpenTia` 跟随当前打开的 TIA）：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/1748477582/tia-portal-openness-mcp/master/bootstrap.ps1' -OutFile .\tia-bootstrap.ps1; & .\tia-bootstrap.ps1 -Version 20"
+```
+
+装完**重启 AI 客户端**；之后想换版本，在安装目录（默认 `%USERPROFILE%\tia-mcp`）运行 `switch-version.ps1`。
+
+> 如果对方的环境下载不了 raw.githubusercontent.com，改用 ZIP 直链：
+> `https://github.com/1748477582/tia-portal-openness-mcp/archive/refs/heads/master.zip`，解压后运行 `install-mcp.ps1`。
+
 ## 安装（给同事 / 新机器）
 
 > **接手这个仓库（换电脑 / 换 agent）先读 `AGENTS.md`**：入口、必读顺序、自检命令、硬规则。
 > 想找"有没有现成的文档/脚本"，查 **`docs/INDEX.md`**（自动生成，50+ 项，带"何时用/需要什么环境"）。
 
-最快的方式：把下面这句话发给对方 **AI agent**，让它自己装：
+最快的方式：**把上面那条一行命令复制给对方**（或粘给他的 AI）。
+
+如果要给对方 AI 一段自然语言指令（而不是一条命令），用这段：
 
 ```
-帮我装 TIA Portal MCP：下载 https://github.com/1748477582/tia-portal-openness-mcp/archive/refs/heads/master.zip
-解压到 %USERPROFILE%\Downloads\tia-mcp，然后在解压目录里运行
-powershell -ExecutionPolicy Bypass -File install-mcp.ps1
-装完把脚本输出贴给我，并告诉我应该重启哪个客户端。
+帮我装 TIA Portal MCP：执行
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/1748477582/tia-portal-openness-mcp/master/bootstrap.ps1' -OutFile .\tia-bootstrap.ps1; & .\tia-bootstrap.ps1"
+它会先列出本机装了哪些 TIA —— 把列表贴给我，我告诉你用哪个版本，然后你再用 -Version <版本> 跑一次。
+装完提醒我重启客户端。
 ```
 
 或自己动手（PowerShell，整包解压后运行，不需要管理员权限）：

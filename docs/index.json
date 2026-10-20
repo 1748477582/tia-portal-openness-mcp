@@ -1,6 +1,6 @@
 {
  "generatedBy": "scripts/Generate-DocIndex.py",
- "count": 56,
+ "count": 57,
  "items": [
   {
    "path": ".cursor/rules/tia-mcp.mdc",
@@ -65,6 +65,14 @@
    "summary": "项目总览：这套 MCP 是什么、怎么装（含给同事的一句话）、版本说明与安全默认值",
    "when": "想知道这个项目能干什么、怎么安装时",
    "env": "none"
+  },
+  {
+   "path": "bootstrap.ps1",
+   "title": "SUMMARY: 一行式安装入口：可直接从 GitHub 拉取并调用 install-mcp.ps1；不带版本时只探测并给出下一条命令（不猜）",
+   "kind": "script",
+   "summary": "一行式安装入口：可直接从 GitHub 拉取并调用 install-mcp.ps1；不带版本时只探测并给出下一条命令（不猜）",
+   "when": "别人要把本 MCP 装到自己机器上时，复制 README 里那条一行命令即可",
+   "env": "python"
   },
   {
    "path": "cursor-mcp.example.json",
@@ -420,10 +428,10 @@
   },
   {
    "path": "同事安装_给Agent的一句话.md",
-   "title": "给同事的 agent：一句话安装 TIA Portal MCP",
+   "title": "给同事：复制一条命令就能装",
    "kind": "entry",
-   "summary": "给同事的安装指令：可整段复制给他人 agent 的一句话、完整版、卸载、配置位置与常见卡点",
-   "when": "别人的机器要装这套 MCP 时（把「一句话版」整段发过去即可）",
+   "summary": "给同事的安装指令：一条可复制的一行命令、给 AI 的自然语言版、换版本与卸载、常见卡点",
+   "when": "别人的机器要装这套 MCP 时（把「一行安装」整段发过去即可）",
    "env": "none"
   },
   {
