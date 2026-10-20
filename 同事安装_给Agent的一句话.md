@@ -1,5 +1,5 @@
 ---
-summary: 给同事的安装指令：前提条件、一条可复制的一行命令、装前自检、换版本与卸载、公司网络注意、离线安装
+summary: 给同事的安装指令：前提条件、一条可复制的一行命令、装前自检、换版本与卸载、离线安装
 kind: entry
 when: 别人的机器要装这套 MCP 时（把「一行安装」整段发过去即可）
 env: none
@@ -62,17 +62,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-WebRequest -UseBa
 | **卸载** | `install-mcp.ps1 -Remove`（只删 `tia-portal`，其它 MCP 配置不动），再删 `%USERPROFILE%\tia-mcp` |
 | 体检 | `...\tia-mcp\tools\tiaportal-mcp\src\TiaMcpServer\bin-vXX\Release\net48\TiaMcpServer.exe doctor` |
 
-## 六、公司网络 / 受管机器（这些不是脚本问题）
+## 六、离线安装（机器完全不能上网时）
 
-| 现象 | 原因 | 处理 |
-|---|---|---|
-| 下载的 `.ps1` 打不开、内容乱码 | 终端 DLP 把脚本加密了（亿赛通一类，按内容/文件名触发） | 换未受管机器下载后拷过来；或让 IT 加白。**别怀疑脚本坏了** |
-| `raw.githubusercontent.com` 超时 | 该域名常被墙（`codeload`/`api`/`github.com` 可能仍通） | 用第二节那种整包写法，不碰 raw |
-| `iex` / `Invoke-Expression` 被拦 | 组策略禁止动态执行 | 本仓库的一行命令**不用** iex，直接下载成文件再执行 |
-| 要走代理 | — | 先 `set HTTPS_PROXY=http://host:port` 再跑；`bootstrap.ps1` 会自动带上 |
-| **完全不能上网** | 内网隔离 | 见下 |
-
-**离线安装**：在能上网的机器下 `https://github.com/1748477582/tia-portal-openness-mcp/archive/refs/heads/master.zip`，
+在能上网的机器下 `https://github.com/1748477582/tia-portal-openness-mcp/archive/refs/heads/master.zip`，
 拷到目标机器解压到 `%USERPROFILE%\tia-mcp`，然后运行 `powershell -ExecutionPolicy Bypass -File install-mcp.ps1 -TiaMajorVersion 20`。
 
 ## 七、各客户端的配置文件位置（脚本自动找，一般不用管）

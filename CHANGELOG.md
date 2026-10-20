@@ -33,8 +33,7 @@ env: none
   执行策略、TIA 版本、磁盘余量、**四条下载通道哪条能通（含耗时）**、会被改动的客户端配置，并给结论。
   把"安装前要注意什么"从文档变成可执行检查。
 - **README / `同事安装_给Agent的一句话.md` 新增「安装前须知」**：前提条件表（系统 / TIA+Openness / .NET / 磁盘 / 网络 / 管理员权限）、
-  **会改动哪些文件**、**回滚办法**、**离线安装**（不能上网时用 U 盘带 ZIP），以及**公司受管机器**的典型现象
-  （DLP 加密下载的脚本、`iex` 被组策略拦、`raw` 被墙、要走代理）——每条都给处置办法。
+  **会改动哪些文件**、**回滚办法**、**离线安装**（不能上网时用 U 盘带 ZIP）。
 - **`bootstrap.ps1`（一行式安装入口）**：把"复制一条命令就能装"做成真的。典型用法是把这一整行发给对方：
   `powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-WebRequest -UseBasicParsing '<raw url>/bootstrap.ps1' -OutFile .\tia-bootstrap.ps1; & .\tia-bootstrap.ps1"`
   - **不带版本**：只探测并列出本机 TIA，然后把"填好版本号的下一行"打印出来 —— **不替你选版本**（与本版新规则一致）。

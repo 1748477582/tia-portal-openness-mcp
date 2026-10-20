@@ -55,15 +55,6 @@ env: none
   WorkBuddy / Claude Desktop / Claude Code / Cursor / VS Code —— 只处理**已存在**的配置文件
 - 若下载：安装目录 `%USERPROFILE%\tia-mcp`
 
-**公司网络 / 受管机器要注意**（都是踩过的坑）
-
-| 现象 | 原因 | 处理 |
-|---|---|---|
-| 脚本下载后打不开、内容乱码 | 终端 DLP 把 `.ps1` 加密（亿赛通一类） | 换未受管机器下载，或让 IT 加白；**不要**怀疑脚本坏了 |
-| `raw.githubusercontent.com` 超时 | 该域名常被墙，而 `codeload`/`api`/`github.com` 可能仍通 | 用下面**不依赖 raw** 的整包写法 |
-| `Invoke-Expression` / `irm \| iex` 被拦 | 组策略禁止动态执行 | 用下面"下载到文件再执行"的写法（本仓库就是这么设计的） |
-| 代理 | 需要 `HTTPS_PROXY` | 先 `set HTTPS_PROXY=http://host:port` 再跑；`bootstrap.ps1` 会自动带上 |
-
 **建议先自检**（只读，不改任何东西；会告诉你缺什么、哪条下载通道能通）：
 
 ```powershell
