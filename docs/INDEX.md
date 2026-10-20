@@ -18,7 +18,7 @@
 | [`README.en.md`](../README.en.md) | English overview - what this MCP is, how to install it (incl. a one-liner for a colleague), version notes and safe defaults | English readers, or a non-Chinese colleague needs the overview | `none` |
 | [`README.md`](../README.md) | 项目总览：这套 MCP 是什么、怎么装（含给同事的一句话）、版本说明与安全默认值 | 想知道这个项目能干什么、怎么安装时 | `none` |
 | [`llms.txt`](../llms.txt) | 给 LLM/agent 的机器可读入口（llmstxt 约定）：项目是什么、从哪开始、不能碰什么 | — | `none` |
-| [`同事安装_给Agent的一句话.md`](../同事安装_给Agent的一句话.md) | 给同事的安装指令：一条可复制的一行命令、给 AI 的自然语言版、换版本与卸载、常见卡点 | 别人的机器要装这套 MCP 时（把「一行安装」整段发过去即可） | `none` |
+| [`同事安装_给Agent的一句话.md`](../同事安装_给Agent的一句话.md) | 给同事的安装指令：前提条件、一条可复制的一行命令、装前自检、换版本与卸载、公司网络注意、离线安装 | 别人的机器要装这套 MCP 时（把「一行安装」整段发过去即可） | `none` |
 
 ## doc（21）
 

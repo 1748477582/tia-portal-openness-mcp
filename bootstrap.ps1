@@ -51,6 +51,7 @@ param(
     [switch]$Lite,
     [switch]$DryRun,
     [switch]$Direct,
+    [switch]$Check,
     [string]$Ref = 'master',
     [string]$Source
 )
@@ -95,6 +96,100 @@ function Find-TiaPortal {
     $found
 }
 
+# ── -Check：安装前自检（不改任何东西）──────────────────────────────────────
+if ($Check) {
+    Say ''
+    Say '  安装前自检（只读，不改任何东西）'
+    Say ''
+
+    # 1) PowerShell 版本
+    $psv = $PSVersionTable.PSVersion
+    $psOk = $psv.Major -ge 5
+    if ($psOk) { Ok  "PowerShell $psv" } else { Warn "PowerShell $psv —— 需要 5.0 或更高" }
+
+    # 2) .NET Framework 4.8（Win10 1903+/Win11 自带）
+    $rel = (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full' -Name Release -ErrorAction SilentlyContinue).Release
+    if ($rel -ge 528040) { Ok "\.NET Framework 4.8（Release=$rel）" }
+    elseif ($rel)        { Warn ".NET Framework 版本偏低（Release=$rel）—— 引擎需要 4.8；Windows 10 1903+ / 11 自带" }
+    else                 { Warn '.NET Framework 4.x 未检测到（罕见；Windows 10/11 应自带 4.8）' }
+
+    # 3) 执行策略
+    $ep = Get-ExecutionPolicy -Scope CurrentUser
+    Say ("  执行策略（CurrentUser）：$ep" + $(if ($ep -in @('Restricted','AllSigned')) { '  ← 安装命令里已带 -ExecutionPolicy Bypass，通常不受影响' } else { '' }))
+
+    # 4) TIA 版本
+    $tia = Find-TiaPortal
+    $supported = @($tia.Keys | Where-Object { $_ -ge 18 } | Sort-Object)
+    if ($supported.Count -gt 0) { Ok ("TIA Portal：V" + ($supported -join ' / V')) }
+    else { Warn '未检测到 V18+ —— 需要 TIA Portal V18/V20/V21（含 Openness 选项）' }
+    foreach ($k in ($tia.Keys | Where-Object { $_ -lt 18 } | Sort-Object)) {
+        Say ("     V$k  $($tia[$k])   [低于 V18，不支持]")
+    }
+
+    # 5) 磁盘空间（包约 17 MB，解压后约 40 MB）
+    $drive = (Get-Item $env:USERPROFILE).PSDrive
+    $freeGB = [math]::Round($drive.Free / 1GB, 1)
+    if ($drive.Free -gt 200MB) { Ok "磁盘剩余：$freeGB GB（安装目录 $env:USERPROFILE\tia-mcp）" }
+    else { Warn "磁盘剩余仅 $freeGB GB —— 建议至少留 200 MB" }
+
+    # 6) 网络可达性（决定用哪条下载通道）
+    Say ''
+    Say '  下载通道可达性（HEAD 探测，10 秒超时）：'
+    $probe = @(
+        @{ n = 'codeload（首选·整包）'; u = "https://codeload.github.com/$Repo/zip/refs/heads/$Ref" },
+        @{ n = 'api（备选·zipball）  '; u = "https://api.github.com/repos/$Repo/zipball/$Ref" },
+        @{ n = 'github（备选·archive）'; u = "https://github.com/$Repo/archive/refs/heads/$Ref.zip" },
+        @{ n = 'raw（一行脚本用）     '; u = $RawUrl }
+    )
+    $reachable = @()
+    foreach ($p in $probe) {
+        $sw = [Diagnostics.Stopwatch]::StartNew()
+        try {
+            Invoke-WebRequest -UseBasicParsing -Method Head -Uri $p.u -TimeoutSec 10 | Out-Null
+            $reachable += $p.n
+            Ok ("{0} {1,5} ms" -f $p.n, $sw.ElapsedMilliseconds)
+        } catch {
+            Warn ("{0} 不可达（{1}）" -f $p.n, $sw.ElapsedMilliseconds + ' ms')
+        }
+    }
+
+    # 7) 已注册的客户端（安装会改这些文件，改前会备份 .bak）
+    Say ''
+    Say '  已注册 tia-portal 的客户端（安装时会更新，改前备份 .bak）：'
+    $home_ = $env:USERPROFILE; $app = $env:APPDATA
+    $cfgs = @(
+        @{ n = 'workbuddy';   p = (Join-Path $home_ '.workbuddy\mcp.json') },
+        @{ n = 'claude';      p = (Join-Path $app 'Claude\claude_desktop_config.json') },
+        @{ n = 'claude-code'; p = (Join-Path $home_ '.claude.json') },
+        @{ n = 'cursor';      p = (Join-Path $home_ '.cursor\mcp.json') },
+        @{ n = 'vscode';      p = (Join-Path $app 'Code\User\mcp.json') }
+    )
+    $any = $false
+    foreach ($c in $cfgs) {
+        if (-not (Test-Path $c.p)) { continue }
+        $has = $false
+        try { $j = Get-Content $c.p -Raw -Encoding UTF8 | ConvertFrom-Json; $has = ($null -ne $j.mcpServers.'tia-portal') } catch { }
+        Say ("    {0,-12} {1}" -f $c.n, $(if ($has) { '已注册（会被更新）' } else { '存在，但未注册 tia-portal' }))
+        $any = $true
+    }
+    if (-not $any) { Say '    （没有找到任何客户端配置——先用客户端打开一次，再安装）' }
+
+    # 8) 结论
+    Say ''
+    if ($psOk -and $supported.Count -gt 0 -and $reachable.Count -gt 0) {
+        Say '  结论：可以安装。下一步（把 20 换成你要用的版本）：'
+        Say ''
+        Say "    powershell -NoProfile -ExecutionPolicy Bypass -Command `"& '$PSCommandPath' -Version 20`""
+        Say ''
+    } else {
+        Say '  结论：有前提条件未满足，见上面 [warn] 行。'
+        if ($supported.Count -eq 0) { Say '    · 先装 TIA Portal V18+（含 Openness 选项），或设 TiaPortalLocation 指向安装目录' }
+        if ($reachable.Count -eq 0) { Say '    · 网络到 GitHub 全不通：请用离线方式（在能上网的机器下 ZIP，拷过来解压后跑 install-mcp.ps1）' }
+        Say ''
+    }
+    exit 0
+}
+
 # ── 没给版本：只探测 + 给出下一条命令（不猜）────────────────────────────────
 if ($Version -eq 0 -and -not $FollowOpenTia) {
     $tia = Find-TiaPortal
@@ -120,10 +215,21 @@ if ($Version -eq 0 -and -not $FollowOpenTia) {
     Say ''
     Say '  下一步：从下面选一条复制执行（把版本换成你要用的那个）'
     Say ''
+    # 若当前就在交付包内（已解压），直接给本地命令——不必再下载，也不依赖 raw 是否可达。
+    $localInstaller = Join-Path $PSScriptRoot 'install-mcp.ps1'
+    $inPackage = Test-Path $localInstaller
     foreach ($v in $supported) {
-        Say ("    V{0}: powershell -NoProfile -ExecutionPolicy Bypass -Command `"Invoke-WebRequest -UseBasicParsing '{1}' -OutFile .\tia-bootstrap.ps1; & .\tia-bootstrap.ps1 -Version {0}`"" -f $v, $RawUrl)
+        if ($inPackage) {
+            Say ("    V{0}: powershell -NoProfile -ExecutionPolicy Bypass -File `"{1}`" -TiaMajorVersion {0}" -f $v, $localInstaller)
+        } else {
+            Say ("    V{0}: powershell -NoProfile -ExecutionPolicy Bypass -Command `"Invoke-WebRequest -UseBasicParsing '{1}' -OutFile .\tia-mcp.zip; Expand-Archive .\tia-mcp.zip -DestinationPath .\tia-mcp-pkg -Force; & .\tia-mcp-pkg\tia-portal-openness-mcp-master\install-mcp.ps1 -TiaMajorVersion {0}`"" -f $v, $ZipUrls[0])
+        }
     }
-    Say ("    跟随当前打开的 TIA: powershell -NoProfile -ExecutionPolicy Bypass -Command `"Invoke-WebRequest -UseBasicParsing '{0}' -OutFile .\tia-bootstrap.ps1; & .\tia-bootstrap.ps1 -FollowOpenTia`"" -f $RawUrl)
+    if ($inPackage) {
+        Say ("    跟随当前打开的 TIA: powershell -NoProfile -ExecutionPolicy Bypass -File `"{0}`" -FollowOpenTia" -f $localInstaller)
+    } else {
+        Say ("    跟随当前打开的 TIA: powershell -NoProfile -ExecutionPolicy Bypass -Command `"Invoke-WebRequest -UseBasicParsing '{0}' -OutFile .\tia-mcp.zip; Expand-Archive .\tia-mcp.zip -DestinationPath .\tia-mcp-pkg -Force; & .\tia-mcp-pkg\tia-portal-openness-mcp-master\install-mcp.ps1 -FollowOpenTia`"" -f $ZipUrls[0])
+    }
     Say ''
     Say '  （装完想换版本：在安装目录里运行 switch-version.ps1）'
     Say ''

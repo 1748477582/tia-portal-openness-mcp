@@ -35,25 +35,75 @@ env: none
 - **深度审计结论**：除上述 **28 个工具**（23 个 Unified HMI + 5 个 VCI）外，其余暴露工具在 V18 全部安全可用；V20 专属文档工具（`Export/Import*Documents`）在 V18 构建中仅以引导提示暴露、不可调用。
 - **HMI 自动化路径**：V18 下请走 **Classic / Comfort HMI** 工具族；Unified 需求须使用 V20/V21 构建。
 
+## 安装前须知
+
+**前提条件**
+
+| 项 | 要求 | 没有会怎样 |
+|---|---|---|
+| 操作系统 | Windows 10 1903+ / 11（x64） | 引擎是 .NET Framework 4.8 |
+| **TIA Portal** | **V18 / V20 / V21，安装时勾选 Openness** | 探测不到；V16/V17 **不支持**（没有 Openness 这条路） |
+| .NET Framework | 4.8（系统自带，`Release ≥ 528040`） | 引擎无法启动 |
+| PowerShell | 5.0+ | 脚本语法不支持 |
+| 磁盘 | 安装目录约 40 MB（包 17 MB） | 解压失败 |
+| 网络 | 能访问 `codeload.github.com` 或 `api.github.com`；**或**用离线包 | 下载失败 |
+| 管理员权限 | **安装不需要**；只有 `doctor --fix` 补 Openness 用户组时需要 | 连不上 TIA 时补权限 |
+
+**会改动什么**（均可回滚）
+
+- 写 5 个客户端的 MCP 配置（**只改 `mcpServers["tia-portal"]` 一项**，其它条目与顶层键不动，改前备份 `*.bak`）：
+  WorkBuddy / Claude Desktop / Claude Code / Cursor / VS Code —— 只处理**已存在**的配置文件
+- 若下载：安装目录 `%USERPROFILE%\tia-mcp`
+
+**公司网络 / 受管机器要注意**（都是踩过的坑）
+
+| 现象 | 原因 | 处理 |
+|---|---|---|
+| 脚本下载后打不开、内容乱码 | 终端 DLP 把 `.ps1` 加密（亿赛通一类） | 换未受管机器下载，或让 IT 加白；**不要**怀疑脚本坏了 |
+| `raw.githubusercontent.com` 超时 | 该域名常被墙，而 `codeload`/`api`/`github.com` 可能仍通 | 用下面**不依赖 raw** 的整包写法 |
+| `Invoke-Expression` / `irm \| iex` 被拦 | 组策略禁止动态执行 | 用下面"下载到文件再执行"的写法（本仓库就是这么设计的） |
+| 代理 | 需要 `HTTPS_PROXY` | 先 `set HTTPS_PROXY=http://host:port` 再跑；`bootstrap.ps1` 会自动带上 |
+
+**建议先自检**（只读，不改任何东西；会告诉你缺什么、哪条下载通道能通）：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-WebRequest -UseBasicParsing 'https://codeload.github.com/1748477582/tia-portal-openness-mcp/zip/refs/heads/master' -OutFile .\tia-mcp.zip; Expand-Archive .\tia-mcp.zip -DestinationPath .\tia-mcp-pkg -Force; & .\tia-mcp-pkg\tia-portal-openness-mcp-master\bootstrap.ps1 -Check"
+```
+
+**回滚**
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\install-mcp.ps1 -Remove   # 只删 tia-portal 条目
+```
+
+再删掉 `%USERPROFILE%\tia-mcp` 即可完全还原（配置侧还有 `.bak`）。
+
+**离线安装**（机器完全不能上网时）
+
+1. 在能上网的机器打开 `https://github.com/1748477582/tia-portal-openness-mcp/archive/refs/heads/master.zip` 下载
+2. 拷到目标机器，解压到 `%USERPROFILE%\tia-mcp`
+3. 在解压目录运行 `powershell -ExecutionPolicy Bypass -File install-mcp.ps1 -TiaMajorVersion 20`
+
+---
+
 ## 一行安装（复制即用）
 
-把下面**这一行**整段复制给对方（粘给他的 AI，或在 PowerShell 里直接执行）。它会拉取交付包、探测本机 TIA、把配置写好：
+**推荐写法**：整包下载 → 解压 → 调安装器。**不依赖 `raw.githubusercontent.com`**（很多网络封它），也**不用 `iex`**
+（企业组策略常禁）。把下面**整段**复制给对方，粘给他的 AI 或直接在 PowerShell 里执行：
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/1748477582/tia-portal-openness-mcp/master/bootstrap.ps1' -OutFile .\tia-bootstrap.ps1; & .\tia-bootstrap.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-WebRequest -UseBasicParsing 'https://codeload.github.com/1748477582/tia-portal-openness-mcp/zip/refs/heads/master' -OutFile .\tia-mcp.zip; Expand-Archive .\tia-mcp.zip -DestinationPath .\tia-mcp-pkg -Force; & .\tia-mcp-pkg\tia-portal-openness-mcp-master\install-mcp.ps1 -TiaMajorVersion 20"
 ```
 
-不带版本时，它**只探测并列出本机装了哪些 TIA**，然后把"填好版本号的下一行"打印出来 —— **不替你选版本**。
-想一步到位，在末尾加上 `-Version 20`（或 `-FollowOpenTia` 跟随当前打开的 TIA）：
+把末尾的 `20` 换成要用的版本（18 / 20 / 21）。**去掉 `-TiaMajorVersion 20`** 则会在终端里让你确认探测结果并选版本
+——脚本不会替你选。
 
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/1748477582/tia-portal-openness-mcp/master/bootstrap.ps1' -OutFile .\tia-bootstrap.ps1; & .\tia-bootstrap.ps1 -Version 20"
-```
+> 若对方网络能访问 `raw.githubusercontent.com`，也可以用更短的一行（`bootstrap.ps1` 会自动挑可用通道）：
+> ```powershell
+> powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/1748477582/tia-portal-openness-mcp/master/bootstrap.ps1' -OutFile .\tia-bootstrap.ps1; & .\tia-bootstrap.ps1"
+> ```
 
 装完**重启 AI 客户端**；之后想换版本，在安装目录（默认 `%USERPROFILE%\tia-mcp`）运行 `switch-version.ps1`。
-
-> 如果对方的环境下载不了 raw.githubusercontent.com，改用 ZIP 直链：
-> `https://github.com/1748477582/tia-portal-openness-mcp/archive/refs/heads/master.zip`，解压后运行 `install-mcp.ps1`。
 
 ## 安装（给同事 / 新机器）
 
