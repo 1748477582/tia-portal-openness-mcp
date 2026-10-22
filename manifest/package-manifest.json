@@ -1,7 +1,7 @@
-{
+﻿{
   "schemaVersion": "2026-05-25",
-  "bundleVersion": "2.5.0",
-  "packageName": "TIA_MCP_Delivery_v2.5.0_20261009",
+  "bundleVersion": "2.5.1",
+  "packageName": "TIA_MCP_Delivery_v2.5.1_20261022",
   "packageType": "tia-portal-mcp-complete-offline-delivery-bundle",
   "generatedAt": "2026-05-31T20:30:00+08:00",
   "refreshedAt": "2026-10-09T10:54:34.512416+08:00",
