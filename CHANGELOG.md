@@ -18,7 +18,7 @@ env: none
 
 ---
 
-## [2.5.2] — 2026-10-22
+## [2.5.3] — 2026-10-22
 
 > 代码改动 + 安装入口 + 文档。工具集不变（232 / V18 204）。
 > 本版重点：移动失败不再丢对象、下载不再擅自取消用户测试、就绪检查不再假绿。
@@ -79,6 +79,15 @@ env: none
   内容索引已收录（55 项，`kind=entry`）。
 
 ### 修复
+- **`SetWatchTableModifyValue` 写不进去也报"已设置"**：`Address`、`ModifyValue` 用的是 `TrySetProperty`
+  （返回 bool），`ModifyTrigger` 用的 `SetEnumPropertyByName`（原来返回 void 且 `catch {}` 吞掉一切），
+  三处返回值全被忽略。现在 `SetEnumPropertyByName` 改为返回 bool，三个结果逐个检查，任一失败就抛出
+  并列出是哪一项、以及合法的 trigger 取值。
+- **`ImportBlocksFromDirectory` 空结果记成成功**：`Import` 返回 null/空（被 `overwrite=false` 拒掉、
+  或 XML 里没有块）时，原来把文件名塞进 `imported`。现在记进 `Failed`，并区分"TIA 因 overwrite=false 拒了"
+  和"XML 里没有块"两种原因。
+- 修掉 `ImportBlocksFromDirectory` 里一条过时注释（还写着"下面仍用 Override 语义"，实际已是 `ImportOptions.None`）。
+
 - 🔴 **恢复范围太窄，删除后任何异常都会丢块**（实机故障注入测出）：`block.Delete()` 原来写在恢复用的
   `try` **外面**，导入失败能恢复，但"删除成功之后、导入之前的其它异常"（反射异常、意外错误）会直接
   逃逸——块已删、临时导出又被 `finally` 清掉，块凭空消失。现在 `Delete` 与导入同处一个 `try`，

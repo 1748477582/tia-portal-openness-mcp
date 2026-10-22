@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using Siemens.Engineering;
 using Siemens.Engineering.Cax;
 using Siemens.Engineering.Compiler;
@@ -807,7 +807,8 @@ namespace TiaMcpServer.Siemens
                             }
                             catch
                             {
-                                // best effort only; if Find fails, we still import with Override semantics below
+                                // Find 只是提前拦截；真正防覆盖的是下面的 ImportOptions.None，
+                                // 由 TIA 自己拒绝替换（Find 看不到别的组、也只按文件名匹配）。
                             }
                         }
 
@@ -826,7 +827,15 @@ namespace TiaMcpServer.Siemens
                         }
                         else
                         {
-                            imported.Add(name);
+                            // 空结果 = 什么都没导进去（例如被 overwrite=false 拒掉、或 XML 里没有块）。
+                            // 以前这里把文件名塞进 imported，等于把"没做"报成"做成了"。
+                            failed.Add(new ImportFailure
+                            {
+                                Path = file,
+                                Error = overwrite
+                                    ? $"Import returned no blocks for '{name}' — nothing was imported (check the XML content)."
+                                    : $"Import returned no blocks for '{name}' — TIA refused to replace an existing block (overwrite=false)."
+                            });
                         }
                     }
                     catch (Exception ex)

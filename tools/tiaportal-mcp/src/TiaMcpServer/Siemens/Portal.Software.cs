@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using Siemens.Engineering;
 using Siemens.Engineering.Cax;
 using Siemens.Engineering.Compiler;
@@ -419,9 +419,22 @@ namespace TiaMcpServer.Siemens
                 var entry = FindOrCreateTableEntry(table, "Entries", address);
                 if (entry == null) return new ResponseMessage { Message = $"Could not create entry for address '{address}'." };
 
-                TrySetProperty(entry, "Address", address);
-                TrySetProperty(entry, "ModifyValue", modifyValue);
-                SetEnumPropertyByName(entry, "ModifyTrigger", trigger);
+                // 这三处原来都不看返回值，写不进去也报"已设置"。现在逐个检查，失败就明确报出来。
+                var okAddress = TrySetProperty(entry, "Address", address);
+                var okValue = TrySetProperty(entry, "ModifyValue", modifyValue);
+                var okTrigger = SetEnumPropertyByName(entry, "ModifyTrigger", trigger);
+
+                var problems = new List<string>();
+                if (!okAddress) problems.Add("Address");
+                if (!okValue) problems.Add($"ModifyValue='{modifyValue}'");
+                if (!okTrigger) problems.Add($"ModifyTrigger='{trigger}'");
+                if (problems.Count > 0)
+                {
+                    throw new PortalException(PortalErrorCode.OpennessError,
+                        $"Watch table '{tableName}': could not set {string.Join(", ", problems)} on entry '{address}' — "
+                        + "the entry was NOT written. Check the address format and the trigger name "
+                        + "(Permanent | PermanentAtStart | OnceOnlyAtStart | PermanentAtEnd | OnceOnlyAtEnd | OnceOnlyAtStop).");
+                }
 
                 return new ResponseMessage
                 {
@@ -563,16 +576,19 @@ namespace TiaMcpServer.Siemens
             catch { return null; }
         }
 
-        private static void SetEnumPropertyByName(object target, string propertyName, string valueName)
+        /// <summary>Set an enum-valued property by member name. Returns false when the property is missing,
+        /// not an enum, the name is not a member, or the set threw — callers must not report success then.</summary>
+        private static bool SetEnumPropertyByName(object target, string propertyName, string valueName)
         {
             try
             {
                 var prop = target.GetType().GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance);
-                if (prop == null || !prop.PropertyType.IsEnum) return;
+                if (prop == null || !prop.PropertyType.IsEnum) return false;
                 var enumValue = Enum.Parse(prop.PropertyType, valueName, ignoreCase: true);
                 prop.SetValue(target, enumValue);
+                return true;
             }
-            catch { }
+            catch { return false; }
         }
 
         // ── Watch Table Current Values (read-only) ────────────────────────────
