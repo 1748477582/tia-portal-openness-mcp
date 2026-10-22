@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using Siemens.Engineering;
 using Siemens.Engineering.Cax;
 using Siemens.Engineering.Compiler;
@@ -50,7 +50,8 @@ namespace TiaMcpServer.Siemens
             bool startAfterDownload = true,
             bool stopBeforeDownload = true,
             string? password = null,
-            string? pgPcInterface = null)
+            string? pgPcInterface = null,
+            bool abortActiveTests = false)
         {
             return _sta.Run(() =>
             {
@@ -101,7 +102,7 @@ namespace TiaMcpServer.Siemens
                         capture_keepActualValues,
                         capture_startAfterDownload,
                         capture_stopBeforeDownload,
-                        capture_consistentBlocksOnly);
+                        capture_consistentBlocksOnly, abortActiveTests);
                 };
 
                 DownloadConfigurationDelegate postDelegate = (config) => { };
@@ -328,8 +329,16 @@ namespace TiaMcpServer.Siemens
                 var compilable = plcSoftware.GetService<ICompilable>();
                 if (compilable != null)
                 {
-                    // We skip an actual compile here; check block consistency heuristically
-                    isConsistent = true; // Assume consistent unless caller has run CompileSoftware
+                    // 逐块读 IsConsistent。原来这里是写死的 true——未编译的工程也会被报"就绪"，
+                    // 到下载时才失败（上游 2.7.4 修的正是这条）。
+                    var inconsistent = new List<string>();
+                    CollectInconsistentBlocks(plcSoftware.BlockGroup, inconsistent);
+                    if (inconsistent.Count > 0)
+                    {
+                        isConsistent = false;
+                        issues.Add($"{inconsistent.Count} block(s) are not consistent — run CompileSoftware first: "
+                                   + string.Join(", ", inconsistent.Take(8)) + (inconsistent.Count > 8 ? " …" : ""));
+                    }
                 }
             }
             catch { }
@@ -349,12 +358,35 @@ namespace TiaMcpServer.Siemens
             });
         }
 
+
+        /// <summary>Collect names of blocks whose IsConsistent is false (recurses into groups).</summary>
+        private static void CollectInconsistentBlocks(PlcBlockGroup group, List<string> acc, int limit = 200)
+        {
+            if (group == null || acc.Count >= limit) return;
+            try
+            {
+                foreach (var b in group.Blocks)
+                {
+                    if (acc.Count >= limit) return;
+                    bool ok;
+                    try { ok = b.IsConsistent; } catch { continue; }
+                    if (!ok) acc.Add(b.Name);
+                }
+            }
+            catch { }
+            try
+            {
+                foreach (var g in group.Groups) CollectInconsistentBlocks(g, acc, limit);
+            }
+            catch { }
+        }
         private void ApplyDefaultDownloadConfig(
             DownloadConfiguration config,
             bool keepActualValues,
             bool startAfterDownload,
             bool stopBeforeDownload,
-            bool consistentBlocksOnly)
+            bool consistentBlocksOnly,
+            bool abortActiveTests)
         {
             _sta.Run(() =>
             {
@@ -417,9 +449,15 @@ namespace TiaMcpServer.Siemens
                     break;
 
                 case "DifferentTargetConfiguration":
+                    DownloadConfigSetSelection(config, "AcceptAll");
+                    break;
+
                 case "ActiveTestCanBeAborted":
                 case "ActiveTestCanPreventDownload":
-                    DownloadConfigSetSelection(config, "AcceptAll");
+                    // 默认不取消用户正在跑的测试/调试（上游 2.7.4 的对齐）：
+                    // 手册里 ActiveTestCanBeAborted=AcceptAll 会在装载时取消测试与调试功能。
+                    // 要取消必须显式 abortActiveTests=true。
+                    DownloadConfigSetSelection(config, abortActiveTests ? "AcceptAll" : "RejectAll");
                     break;
             }
             });

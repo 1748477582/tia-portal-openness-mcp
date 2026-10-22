@@ -668,7 +668,8 @@ namespace TiaMcpServer.ModelContextProtocol
             [Description("startAfterDownload: true=automatically set CPU to RUN after download (default), false=leave CPU in STOP")] bool startAfterDownload = true,
             [Description("stopBeforeDownload: true=automatically stop CPU before download (required for most downloads), false=attempt online download without stopping")] bool stopBeforeDownload = true,
             [Description("password: optional CPU access password. Required when the CPU has download protection configured. Leave empty for unprotected CPUs.")] string password = "",
-            [Description("pgPcInterface: optional PG/PC interface name filter, e.g. 'PLCSIM' to download to PLCSIM (Advanced) Softbus instead of a physical NIC. Empty = first available interface.")] string pgPcInterface = "")
+            [Description("pgPcInterface: optional PG/PC interface name filter, e.g. 'PLCSIM' to download to PLCSIM (Advanced) Softbus instead of a physical NIC. Empty = first available interface.")] string pgPcInterface = "",
+            [Description("abortActiveTests: false (default) = do NOT cancel test/debug functions that are still active on the CPU; if one blocks the download the call fails with a clear message. true = allow the download to abort running tests/debug (AcceptAll).")] bool abortActiveTests = false)
         {
             try
             {
@@ -679,7 +680,8 @@ namespace TiaMcpServer.ModelContextProtocol
                     startAfterDownload,
                     stopBeforeDownload,
                     string.IsNullOrWhiteSpace(password) ? null : password,
-                    string.IsNullOrWhiteSpace(pgPcInterface) ? null : pgPcInterface);
+                    string.IsNullOrWhiteSpace(pgPcInterface) ? null : pgPcInterface,
+                    abortActiveTests);
 
                 if (result.Ok == false && result.Errors != null && result.Errors.Length > 0)
                     throw new McpException(

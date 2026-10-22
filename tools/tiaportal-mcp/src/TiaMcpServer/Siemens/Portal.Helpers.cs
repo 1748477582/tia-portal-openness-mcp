@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using Siemens.Engineering;
 using Siemens.Engineering.Cax;
 using Siemens.Engineering.Compiler;
@@ -1203,6 +1203,113 @@ namespace TiaMcpServer.Siemens
             return currentGroup;
         }
 
+        /// <summary>
+        /// export -> delete -> import round-trip shared by MoveBlockToGroup / MoveBlocksToGroup
+        /// (Openness cannot reparent a block). On import failure the block is first restored to its
+        /// ORIGINAL group; if even that fails the exported copy is KEPT and its path is reported.
+        /// Never delete the only copy — that is how a failed move used to lose the block outright.
+        /// </summary>
+        private string RunBlockMoveRoundTrip(PlcBlock block, PlcBlockGroup targetGroup, string blockName, string targetGroupPath)
+        {
+            var originalGroup = block.Parent as PlcBlockGroup;
+            var tempDir = Path.Combine(Path.GetTempPath(), "tia_mcp_move", Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempDir);
+            var xmlPath = Path.Combine(tempDir, blockName + ".xml");
+            var usedDocs = false;
+            var keepFiles = false;
+
+            try
+            {
+                try
+                {
+#if !TIA_V18
+                    var exp = block.ExportAsDocuments(new DirectoryInfo(tempDir), blockName);
+                    usedDocs = exp != null && exp.State == DocumentResultState.Success;
+#endif
+                }
+                catch (EngineeringNotSupportedException)
+                {
+                    usedDocs = false; // mixed-language / STL -> SimaticML XML fallback
+                }
+
+                if (!usedDocs)
+                {
+                    block.Export(new FileInfo(xmlPath), ExportOptions.None);
+                }
+
+                block.Delete();
+
+                try
+                {
+#if !TIA_V18
+                    if (usedDocs)
+                    {
+                        var res = targetGroup.Blocks.ImportFromDocuments(new DirectoryInfo(tempDir), blockName, ImportDocumentOptions.Override);
+                        if (res == null || res.State != DocumentResultState.Success)
+                        {
+                            throw new PortalException(PortalErrorCode.ImportFailed,
+                                $"Re-import of '{blockName}' into '{targetGroupPath}' failed (documents)");
+                        }
+                        return "documents(.s7dcl)";
+                    }
+#endif
+                    var imp = targetGroup.Blocks.Import(new FileInfo(xmlPath), ImportOptions.Override);
+                    if (imp == null || imp.Count == 0)
+                    {
+                        throw new PortalException(PortalErrorCode.ImportFailed,
+                            $"Re-import of '{blockName}' into '{targetGroupPath}' failed (xml)");
+                    }
+                    return "xml(SimaticML)";
+                }
+                catch (Exception importEx)
+                {
+                    if (TryRestoreBlockIntoGroup(originalGroup, tempDir, xmlPath, blockName, usedDocs))
+                    {
+                        throw new PortalException(PortalErrorCode.ImportFailed,
+                            $"Moving '{blockName}' to '{targetGroupPath}' failed; the block was put back into its original group.",
+                            null, importEx);
+                    }
+
+                    keepFiles = true;
+                    var recovery = usedDocs ? Path.Combine(tempDir, blockName + ".s7dcl") : xmlPath;
+                    throw new PortalException(PortalErrorCode.ImportFailed,
+                        $"Moving '{blockName}' to '{targetGroupPath}' failed AND restoring it failed. " +
+                        $"The exported copy was kept: '{recovery}'. Recover it with ImportBlock(filePath='{recovery}').",
+                        null, importEx);
+                }
+            }
+            finally
+            {
+                if (!keepFiles)
+                {
+                    try { if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true); } catch { /* best-effort cleanup */ }
+                }
+            }
+        }
+
+        /// <summary>Best-effort restore of a block into its original group. Returns true when it is back.</summary>
+        private bool TryRestoreBlockIntoGroup(PlcBlockGroup originalGroup, string tempDir, string xmlPath, string blockName, bool usedDocs)
+        {
+            if (originalGroup == null) return false;
+            try
+            {
+#if !TIA_V18
+                if (usedDocs)
+                {
+                    var r = originalGroup.Blocks.ImportFromDocuments(new DirectoryInfo(tempDir), blockName, ImportDocumentOptions.Override);
+                    if (r != null && r.State == DocumentResultState.Success) return true;
+                }
+#endif
+                if (File.Exists(xmlPath))
+                {
+                    var imp = originalGroup.Blocks.Import(new FileInfo(xmlPath), ImportOptions.Override);
+                    if (imp != null && imp.Count > 0) return true;
+                }
+            }
+            catch { /* restore is best-effort; the caller decides what to report */ }
+            return false;
+        }
+
         // Move an existing block (found anywhere by exact name) into targetGroupPath.
         // Implemented as export -> Delete -> import-into-group because Openness cannot
         // reparent a block. Prefers SIMATIC SD documents (.s7dcl, keeps comments);
@@ -1249,58 +1356,10 @@ namespace TiaMcpServer.Siemens
                             return $"Block '{blockName}' already in group '{targetGroupPath}' (no move needed)";
                         }
 
-                        // 3) export -> delete -> import into target group (no native reparent)
-                        var tempDir = Path.Combine(Path.GetTempPath(), "tia_mcp_move", Guid.NewGuid().ToString("N"));
-                        Directory.CreateDirectory(tempDir);
-                        string method;
-                        try
-                        {
-                            bool usedDocs;
-                            try
-                            {
-            #if !TIA_V18
-                                var exp = block.ExportAsDocuments(new DirectoryInfo(tempDir), blockName);
-                                usedDocs = exp != null && exp.State == DocumentResultState.Success;
-            #else
-                                usedDocs = false;
-            #endif
-                            }
-                            catch (EngineeringNotSupportedException)
-                            {
-                                usedDocs = false; // mixed-language / STL -> fall back to XML
-                            }
-
-                            if (usedDocs)
-                            {
-                                block.Delete();
-            #if !TIA_V18
-                                var res = targetGroup.Blocks.ImportFromDocuments(new DirectoryInfo(tempDir), blockName, ImportDocumentOptions.Override);
-                                if (res == null || res.State != DocumentResultState.Success)
-                                {
-                                    throw new PortalException(PortalErrorCode.ImportFailed,
-                                        $"Re-import of '{blockName}' into '{targetGroupPath}' failed (documents)");
-                                }
-            #endif
-                                method = "documents(.s7dcl)";
-                            }
-                            else
-                            {
-                                var xml = Path.Combine(tempDir, blockName + ".xml");
-                                block.Export(new FileInfo(xml), ExportOptions.None);
-                                block.Delete();
-                                var imp = targetGroup.Blocks.Import(new FileInfo(xml), ImportOptions.Override);
-                                if (imp == null || imp.Count == 0)
-                                {
-                                    throw new PortalException(PortalErrorCode.ImportFailed,
-                                        $"Re-import of '{blockName}' into '{targetGroupPath}' failed (xml)");
-                                }
-                                method = "xml(SimaticML)";
-                            }
-                        }
-                        finally
-                        {
-                            try { if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true); } catch { /* best-effort cleanup */ }
-                        }
+                        // 3) export -> delete -> import into target group (no native reparent).
+                        // Failure recovery lives in RunBlockMoveRoundTrip: restore to the original group first,
+                        // and if that fails keep the export instead of deleting the only copy.
+                        var method = RunBlockMoveRoundTrip(block, targetGroup, blockName, targetGroupPath);
 
                         // 4) verify the block is now under the target group
                         var verifyGroup = GetPlcBlockGroupByPath(softwarePath, targetGroupPath);
@@ -1418,61 +1477,7 @@ namespace TiaMcpServer.Siemens
         // Core single-block round-trip (shared with MoveBlockToGroup semantics).
         private string MoveSingleBlockToGroupCore(PlcBlock block, PlcBlockGroup targetGroup, string blockName, string targetGroupPath)
         {
-            return _sta.Run(() =>
-            {
-                        var tempDir = Path.Combine(Path.GetTempPath(), "tia_mcp_move", Guid.NewGuid().ToString("N"));
-                        Directory.CreateDirectory(tempDir);
-                        string method;
-                        try
-                        {
-                            bool usedDocs;
-                            try
-                            {
-            #if !TIA_V18
-                                var exp = block.ExportAsDocuments(new DirectoryInfo(tempDir), blockName);
-                                usedDocs = exp != null && exp.State == DocumentResultState.Success;
-            #else
-                                usedDocs = false;
-            #endif
-                            }
-                            catch (EngineeringNotSupportedException)
-                            {
-                                usedDocs = false; // mixed-language / STL -> fall back to XML
-                            }
-
-                            if (usedDocs)
-                            {
-                                block.Delete();
-            #if !TIA_V18
-                                var res = targetGroup.Blocks.ImportFromDocuments(new DirectoryInfo(tempDir), blockName, ImportDocumentOptions.Override);
-                                if (res == null || res.State != DocumentResultState.Success)
-                                {
-                                    throw new PortalException(PortalErrorCode.ImportFailed,
-                                        $"Re-import of '{blockName}' into '{targetGroupPath}' failed (documents)");
-                                }
-            #endif
-                                method = "documents(.s7dcl)";
-                            }
-                            else
-                            {
-                                var xml = Path.Combine(tempDir, blockName + ".xml");
-                                block.Export(new FileInfo(xml), ExportOptions.None);
-                                block.Delete();
-                                var imp = targetGroup.Blocks.Import(new FileInfo(xml), ImportOptions.Override);
-                                if (imp == null || imp.Count == 0)
-                                {
-                                    throw new PortalException(PortalErrorCode.ImportFailed,
-                                        $"Re-import of '{blockName}' into '{targetGroupPath}' failed (xml)");
-                                }
-                                method = "xml(SimaticML)";
-                            }
-                        }
-                        finally
-                        {
-                            try { if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true); } catch { /* best-effort cleanup */ }
-                        }
-                        return method;
-            });
+            return _sta.Run(() => RunBlockMoveRoundTrip(block, targetGroup, blockName, targetGroupPath));
         }
 
         // Move every (optionally name-filtered / type-filtered) block into targetGroupPath.
@@ -1620,6 +1625,7 @@ namespace TiaMcpServer.Siemens
                 var tempDir = Path.Combine(Path.GetTempPath(), "tia_mcp_move_type", Guid.NewGuid().ToString("N"));
                 Directory.CreateDirectory(tempDir);
                 var xml = Path.Combine(tempDir, type.Name + ".xml");
+                var ok = false;
                 try
                 {
                     if (!TryExportEngineeringObject(type, xml, out var exportErr))
@@ -1634,18 +1640,21 @@ namespace TiaMcpServer.Siemens
                             $"Re-import of type '{type.Name}' into '{targetGroupPath}' failed");
 
                     moved.Add(type.Name);
+                    ok = true;
                 }
                 catch (PortalException pex)
                 {
-                    failed.Add($"{type.Name}: {pex.Message}");
+                    failed.Add($"{type.Name}: {pex.Message} (export kept: {xml})");
                 }
                 catch (Exception ex)
                 {
-                    failed.Add($"{type.Name}: {ex.Message}");
+                    failed.Add($"{type.Name}: {ex.Message} (export kept: {xml})");
                 }
                 finally
                 {
-                    try { if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true); } catch { }
+                    // 失败时保留导出文件：先删后导的往返一旦导入失败，这份就是唯一副本。
+                    if (ok) { try { if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true); } catch { } }
+                    else { _logger?.LogWarning($"Type move failed; export kept at {xml}"); }
                 }
             }
 
@@ -1739,6 +1748,7 @@ namespace TiaMcpServer.Siemens
                 var tempDir = Path.Combine(Path.GetTempPath(), "tia_mcp_move_screen", Guid.NewGuid().ToString("N"));
                 Directory.CreateDirectory(tempDir);
                 var xml = Path.Combine(tempDir, MakeSafeFileName(screenName) + ".xml");
+                var ok = false;
                 try
                 {
                     if (!TryExportEngineeringObject(screen, xml, out var exportErr))
@@ -1751,18 +1761,20 @@ namespace TiaMcpServer.Siemens
                         throw new PortalException(PortalErrorCode.ImportFailed, importErr ?? "screen re-import failed");
 
                     moved.Add(screenName);
+                    ok = true;
                 }
                 catch (PortalException pex)
                 {
-                    failed.Add($"{screenName}: {pex.Message}");
+                    failed.Add($"{screenName}: {pex.Message} (export kept: {xml})");
                 }
                 catch (Exception ex)
                 {
-                    failed.Add($"{screenName}: {ex.Message}");
+                    failed.Add($"{screenName}: {ex.Message} (export kept: {xml})");
                 }
                 finally
                 {
-                    try { if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true); } catch { }
+                    if (ok) { try { if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true); } catch { } }
+                    else { _logger?.LogWarning($"Screen move failed; export kept at {xml}"); }
                 }
             }
 
@@ -1866,6 +1878,7 @@ namespace TiaMcpServer.Siemens
             var tempDir = Path.Combine(Path.GetTempPath(), "tia_mcp_move_type", Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(tempDir);
             var xml = Path.Combine(tempDir, typeName + ".xml");
+            var ok = false;
             try
             {
                 if (!TryExportEngineeringObject(type, xml, out var exportErr))
@@ -1875,11 +1888,13 @@ namespace TiaMcpServer.Siemens
                 var imp = targetGroup.Types.Import(new FileInfo(xml), ImportOptions.Override);
                 if (imp == null || imp.Count == 0)
                     throw new PortalException(PortalErrorCode.ImportFailed, $"Re-import of type '{typeName}' into '{targetGroupPath}' failed");
+                ok = true;
                 return "xml(SimaticML)";
             }
             finally
             {
-                try { if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true); } catch { }
+                if (ok) { try { if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true); } catch { } }
+                else { _logger?.LogWarning($"Type move failed; export kept at {xml}"); }
             }
             });
         }
@@ -1891,6 +1906,7 @@ namespace TiaMcpServer.Siemens
             var tempDir = Path.Combine(Path.GetTempPath(), "tia_mcp_move_screen", Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(tempDir);
             var xml = Path.Combine(tempDir, MakeSafeFileName(screenName) + ".xml");
+            var ok = false;
             try
             {
                 if (!TryExportEngineeringObject(screen, xml, out var exportErr))
@@ -1899,11 +1915,13 @@ namespace TiaMcpServer.Siemens
                     throw new PortalException(PortalErrorCode.OpennessError, "screen delete failed after export");
                 if (!TryImportEngineeringObjectIntoCollection(screensCol, xml, out _, out var importErr))
                     throw new PortalException(PortalErrorCode.ImportFailed, importErr ?? "screen re-import failed");
+                ok = true;
                 return "xml(SimaticML)";
             }
             finally
             {
-                try { if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true); } catch { }
+                if (ok) { try { if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true); } catch { } }
+                else { _logger?.LogWarning($"Screen move failed; export kept at {xml}"); }
             }
             });
         }

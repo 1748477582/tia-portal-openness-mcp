@@ -1,4 +1,4 @@
----
+﻿---
 summary: 版本变更记录：每版的新增 / 变更（含行为变更）/ 修复 / 移除，以及工具总数
 kind: doc
 when: 升级前、排查回归、确认某个行为从哪一版开始变
@@ -79,6 +79,18 @@ env: none
   内容索引已收录（55 项，`kind=entry`）。
 
 ### 修复
+- 🔴 **移动块/类型/画面失败会丢对象**（对照上游 2.7.4 查出）：`MoveBlockToGroup` / `MoveBlocksToGroup` /
+  类型与画面的移动都是「导出 → 删除 → 导入」往返，因为 Openness 不支持重挂父级；而 `finally` 里
+  **把临时目录（唯一一份导出）删掉了**。导入一旦失败，对象已删、副本也没了 ⇒ **永久丢失**。
+  现在抽出统一的 `RunBlockMoveRoundTrip`：导入失败**先放回原组**；放不回就**保留导出文件**并把恢复路径
+  （含建议的 `ImportBlock(filePath=...)`）写进错误消息。类型/画面四处同样改为"失败保留导出"，失败项在
+  返回文本里带上 `(export kept: …)`。
+- 🔴 **`CheckDownloadReadiness` 的 `IsConsistent` 是写死的 `true`**：未编译的工程也会被判"可下载"，
+  等到真正下载才失败。现在逐块读 `IsConsistent`（递归所有块组），未编译的块列进 `Issues`（最多列 8 个）。
+- **`DownloadToPlc` 默认不再取消用户的活动测试/调试**：原来对 `ActiveTestCanBeAborted` /
+  `ActiveTestCanPreventDownload` 一律答 `AcceptAll`，会在装载时**取消正在跑的测试与调试功能**。
+  新增参数 `abortActiveTests`（**默认 false**），要取消必须显式打开；不打开时答 `RejectAll`，
+  下载被活动测试挡住就明确失败，而不是悄悄把测试停掉。
 - 🔴 **从仓库/ZIP 安装会找不到引擎**（一行安装实测发现）：`bin-v18`/`bin-v20` **不进仓库**（推送规则排除），
   仓库里只有 `runtime/v18|v20|v21/TiaMcpServer.exe`。而 `install-mcp.ps1` 的 `Find-Engine` 只认
   `tools/.../bin-vXX/...` ⇒ 装完配置写好了、引擎却不存在。现在两种形态都认（先 bin-vXX，再 runtime/vXX）。
