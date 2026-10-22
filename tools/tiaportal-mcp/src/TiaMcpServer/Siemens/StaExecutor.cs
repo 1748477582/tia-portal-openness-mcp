@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Runtime.ExceptionServices;
 using System.Security;
 using System.Threading;
@@ -139,8 +139,15 @@ namespace TiaMcpServer.Siemens
             {
                 ExceptionDispatchInfo.Capture(ex).Throw();
             }
+            // 只留类型名等于把诊断信息扔掉：现场只能看到"某个 Openness 异常"，看不到到底哪一句失败、
+            // 内层说了什么。这里把类型、消息、以及一层内层异常都带出去。
+            var detail = $"{ex.GetType().Name}: {ex.Message}";
+            if (ex.InnerException != null)
+            {
+                detail += $" | inner: {ex.InnerException.GetType().Name}: {ex.InnerException.Message}";
+            }
             throw new PortalException(PortalErrorCode.OpennessError,
-                $"Openness operation failed on the STA thread: {ex.GetType().FullName}");
+                $"Openness operation failed on the STA thread: {detail}", null, ex);
         }
 
         /// <summary>True when the caller is already executing on the PortalSta thread.</summary>

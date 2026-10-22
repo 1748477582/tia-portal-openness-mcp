@@ -1237,10 +1237,20 @@ namespace TiaMcpServer.Siemens
                     block.Export(new FileInfo(xmlPath), ExportOptions.None);
                 }
 
-                block.Delete();
-
+                // 注意：删除必须放在 try 里面。只要"删除"这一步已经执行，之后任何异常
+                // （导入失败、反射异常、意外错误）都必须走恢复，否则块就凭空消失了。
                 try
                 {
+                    block.Delete();
+
+                    // 故障注入（仅测试）：把"删除成功 + 之后失败"这条路径跑起来，
+                    // 验证恢复逻辑是否真的能救回块。生产环境不要设这个变量。
+                    if (Environment.GetEnvironmentVariable("TIA_MCP_FAULT_MOVE_IMPORT") == "1")
+                    {
+                        throw new InvalidOperationException(
+                            "FAULT INJECTION (TIA_MCP_FAULT_MOVE_IMPORT=1): simulated failure after delete.");
+                    }
+
 #if !TIA_V18
                     if (usedDocs)
                     {
