@@ -112,8 +112,9 @@ powershell -ExecutionPolicy Bypass -File switch-version.ps1 -FollowOpenTia
 1. 提交信息用 **Conventional Commits**：`<type>(<scope>): <subject>`，type 只用
    `feat/fix/docs/refactor/test/perf/build/ci/chore/revert`；body 写"症状 → 根因 → 证据"。
 2. 版本号 **SemVer**；`feat` 升 MINOR，其余升 PATCH，破坏性升 MAJOR。三处 csproj + manifest 必须一致。
-3. CHANGELOG **每版不超过 5 条、一行一条，只写功能增改**；实现细节不进 CHANGELOG。
-   结尾必须有**一行验证结论**（实测通过 / 仅编译 / 未做）。**"编译通过"不许写成"已验证"**。
+3. CHANGELOG **只写本仓库的功能增改**（新增/变更/修复），每版 ≤5 条、一行一条。
+   **文档、规范、验证过程、重构都不进 CHANGELOG**；验证结论写在提交信息 body 最后一行。
+   **"编译通过"不许写成"已验证"**。
 4. 发布 = 闸门全绿 → 推代码 → 打 `vX.Y.Z` tag → Release 正文直接取 CHANGELOG 该版本段。
    Release 分类由 `.github/release.yml` 按 label 决定，**提 PR/Issue 必须打 label**。
 5. 推送前用 `_full_diff.py` 看清单，确认没有私货（token、本机路径、`_*.log`、`push_*.py`）；
