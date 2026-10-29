@@ -1,4 +1,4 @@
-# TIA Portal Openness MCP
+﻿# TIA Portal Openness MCP
 
 [中文](README.md) · [English](README.en.md) · [文档索引](docs/INDEX.md) · [变更记录](CHANGELOG.md)
 
@@ -184,7 +184,8 @@ python scripts\tia_project_audit.py --skeleton s.json --hierarchy h.json --out r
 
 ## 贡献
 
-问题与建议走 GitHub Issues。改动请保持：
+见 [CONTRIBUTING.md](CONTRIBUTING.md) 与 [docs/git-release-conventions.md](docs/git-release-conventions.md)。
+改动请保持：
 工具数变更同步 `manifest/tools-list.json` 与 `docs/tool-capability-matrix.md`；
 提交前跑 `python scripts/Check-VersionConsistency.py`、`Check-ManifestConsistency.py`、`Check-DeadToolReferences.py`
 与离线套件（当前 228 passed）。

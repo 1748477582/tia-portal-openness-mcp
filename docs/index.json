@@ -1,6 +1,6 @@
 {
  "generatedBy": "scripts/Generate-DocIndex.py",
- "count": 59,
+ "count": 61,
  "items": [
   {
    "path": ".cursor/rules/tia-mcp.mdc",
@@ -48,6 +48,14 @@
    "kind": "entry",
    "summary": "给 Claude 系 agent 的入口指针（薄壳）：只指向 AGENTS.md，不重复内容",
    "when": "Claude Code / Claude 系客户端自动读取本文件时",
+   "env": "none"
+  },
+  {
+   "path": "CONTRIBUTING.md",
+   "title": "参与与提交",
+   "kind": "doc",
+   "summary": "本文件只讲怎么提。要理解代码结构，先读 。",
+   "when": "",
    "env": "none"
   },
   {
@@ -119,6 +127,14 @@
    "title": "完整项目生成运行手册",
    "kind": "doc",
    "summary": "本手册描述从空项目生成 PLC + WinCC Unified 工程的完整流程。所有文件均在交付包内。",
+   "when": "",
+   "env": "none"
+  },
+  {
+   "path": "docs/git-release-conventions.md",
+   "title": "提交、版本与发布规范",
+   "kind": "doc",
+   "summary": "格式固定为 Conventional Commits：",
    "when": "",
    "env": "none"
   },

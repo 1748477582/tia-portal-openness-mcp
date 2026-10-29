@@ -1,4 +1,4 @@
----
+﻿---
 summary: 任何 agent / 任何人接手本仓库时的唯一入口：这是什么、先读什么、怎么自检、硬规则、加东西时的义务
 kind: entry
 when: 第一次接触本仓库（换电脑、换 agent、换人）时最先读这一份
@@ -104,6 +104,21 @@ powershell -ExecutionPolicy Bypass -File switch-version.ps1 -FollowOpenTia
 细节、证据、绕法全在 `docs/lessons-and-shortcuts.md`（§0 / §1 / §7 / §12）；用户要求逐条见 `docs/user-directives.md`。
 
 ---
+
+## 3.5 提交、版本与发布（**必须照做**）
+
+完整规则见 `docs/git-release-conventions.md`，这里只列不可省的六条：
+
+1. 提交信息用 **Conventional Commits**：`<type>(<scope>): <subject>`，type 只用
+   `feat/fix/docs/refactor/test/perf/build/ci/chore/revert`；body 写"症状 → 根因 → 证据"。
+2. 版本号 **SemVer**；`feat` 升 MINOR，其余升 PATCH，破坏性升 MAJOR。三处 csproj + manifest 必须一致。
+3. CHANGELOG 每个版本必须有 **`### 验证状态（如实）`** 小节：哪些有运行证据、哪些只有编译、哪些没做。
+   **"编译通过"不许写成"已验证"**。
+4. 发布 = 闸门全绿 → 推代码 → 打 `vX.Y.Z` tag → Release 正文直接取 CHANGELOG 该版本段。
+   Release 分类由 `.github/release.yml` 按 label 决定，**提 PR/Issue 必须打 label**。
+5. 推送前用 `_full_diff.py` 看清单，确认没有私货（token、本机路径、`_*.log`、`push_*.py`）；
+   csproj 是远端超集，**只能外科手术改版本行**。
+6. 禁止 force push `master`、禁止改写已发布历史。
 
 ## 4. 目录地图
 

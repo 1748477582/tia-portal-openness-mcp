@@ -4,7 +4,7 @@
 > 换机器 / 换 agent 时**先读这里**：每份文件是干什么的、什么时候该用、需要什么环境。
 > 新增文件后要重跑生成器，否则索引与实际脱节。
 
-| 共 59 项 | 环境：`none` 纯本机 · `python` 需 Python · `dotnet` 需 .NET SDK · `tia` 需 TIA Portal |
+| 共 61 项 | 环境：`none` 纯本机 · `python` 需 Python · `dotnet` 需 .NET SDK · `tia` 需 TIA Portal |
 
 ## entry（7）
 
@@ -18,11 +18,12 @@
 | [`llms.txt`](../llms.txt) | 给 LLM/agent 的机器可读入口（llmstxt 约定）：项目是什么、从哪开始、不能碰什么 | — | `none` |
 | [`同事安装_给Agent的一句话.md`](../同事安装_给Agent的一句话.md) | 给同事的安装指令：前提条件、一条可复制的一行命令、装前自检、换版本与卸载、离线安装 | 别人的机器要装这套 MCP 时（把「一行安装」整段发过去即可） | `none` |
 
-## doc（23）
+## doc（25）
 
 | 文件 | 说明 | 何时用 | 环境 |
 |---|---|---|---|
 | [`CHANGELOG.md`](../CHANGELOG.md) | 版本变更记录：每版的新增 / 变更（含行为变更）/ 修复 / 移除，以及工具总数 | 升级前、排查回归、确认某个行为从哪一版开始变 | `none` |
+| [`CONTRIBUTING.md`](../CONTRIBUTING.md) | 本文件只讲怎么提。要理解代码结构，先读 。 | — | `none` |
 | [`README.en.md`](../README.en.md) | An MCP server built on Siemens Openness. It lets MCP clients and AI agents (WorkBuddy, Claude Desktop, | — | `none` |
 | [`README.md`](../README.md) | 基于 Siemens Openness 的 MCP 服务端，让 AI 客户端（WorkBuddy / Claude Desktop / Cursor / VS Code 等） | — | `none` |
 | [`docs/AI_spec_prompt.md`](AI_spec_prompt.md) | 把下面这段（连同 tia schema 的输出）贴给任意 AI（Claude / GPT / Gemini / 国产模型均可）， | — | `none` |
@@ -30,6 +31,7 @@
 | [`docs/HMI_Unified_画面生成规范与模板.md`](HMI_Unified_画面生成规范与模板.md) | 本规范用于生成 WinCC Unified 画面、标签、按钮动作和动态化绑定。模板文件位于 templates/hmi/，均为可读、可修改、可直接应用的 designJson。 | — | `none` |
 | [`docs/basic-plc-template-library.md`](basic-plc-template-library.md) | 本说明用于配合 templates/plc/ 生成通用 PLC 程序结构。模板覆盖 SCL、LAD 调用网络、变量表、UDT、全局 DB、FC、FB 和 HMI 接口 DB。 | — | `none` |
 | [`docs/full-project-generation-runbook.md`](full-project-generation-runbook.md) | 本手册描述从空项目生成 PLC + WinCC Unified 工程的完整流程。所有文件均在交付包内。 | — | `none` |
+| [`docs/git-release-conventions.md`](git-release-conventions.md) | 格式固定为 Conventional Commits： | — | `none` |
 | [`docs/hmi-connection-driver-matrix.md`](hmi-connection-driver-matrix.md) | 本文件给出 EnsureUnifiedHmiConnection 与 TIA 内创建 HMI 连接时，通讯驱动（CommunicationDriver） 的取值规则。驱动错配会导致 HMI 变量整列红字、运行时无值或连接处显示「未连接」。 | — | `none` |
 | [`docs/hmi-plc-tag-binding-and-addressing.md`](hmi-plc-tag-binding-and-addressing.md) | 本包统一以 绝对地址 方式建立 WinCC Unified 与 PLC 的变量互连。原因： | — | `none` |
 | [`docs/lad-instruction-library.md`](lad-instruction-library.md) | 本文件汇总在 LAD（梯形图）网络中常见的指令、引脚、操作数与连接方式，配合 tools/tiaportal-mcp/skill/SKILL.md 中已验证的 Part Name 注册表使用。所有示例均为通用语法，不绑定特定工艺。 | — | `none` |
