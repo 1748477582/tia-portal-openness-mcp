@@ -1,6 +1,6 @@
 {
  "generatedBy": "scripts/Generate-DocIndex.py",
- "count": 57,
+ "count": 59,
  "items": [
   {
    "path": ".cursor/rules/tia-mcp.mdc",
@@ -323,6 +323,14 @@
    "env": "python"
   },
   {
+   "path": "scripts/Set-TiaVersion.ps1",
+   "title": "Set-TiaVersion.ps1",
+   "kind": "script",
+   "summary": "Set-TiaVersion.ps1",
+   "when": "",
+   "env": "tia"
+  },
+  {
    "path": "scripts/Smoke-ArgDiagnostics.py",
    "title": "-*- coding: utf-8 -*-",
    "kind": "script",
@@ -371,6 +379,14 @@
    "env": "python"
   },
   {
+   "path": "scripts/tia_project_audit.py",
+   "title": "-*- coding: utf-8 -*-",
+   "kind": "script",
+   "summary": "TIA 工程体检（只读）v0.2 —— 采集 + 分析 + 出报告。",
+   "when": "",
+   "env": "python"
+  },
+  {
    "path": "switch-version.ps1",
    "title": "SUMMARY: 切换 MCP 使用的 TIA 版本：列出本机已装版本 → 让用户选 → 改写配置里的 TIA_MCP_VERSION（只改这一项）",
    "kind": "script",
@@ -404,9 +420,9 @@
   },
   {
    "path": "tools/tiaportal-mcp/detect_tia_version.ps1",
-   "title": "Detect which TIA Portal version to serve.",
+   "title": "TIA Portal installation discovery for tia_mcp_launcher.bat",
    "kind": "script",
-   "summary": "Detect which TIA Portal version to serve.",
+   "summary": "TIA Portal installation discovery for tia_mcp_launcher.bat",
    "when": "",
    "env": "tia"
   },

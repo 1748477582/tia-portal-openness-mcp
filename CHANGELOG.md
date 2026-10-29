@@ -18,6 +18,309 @@ env: none
 
 ---
 
+## [2.6.2] — 2026-10-28
+
+> 代码改动。工具集不变（232 / V18 204）；Prompt 33。
+> 本版重点：**"改程序必须有窗口"变成结构性硬门**（用户要求）。
+
+### 新增
+
+- **写操作硬门**（`McpServer.WindowPolicy.cs`）
+  在工具注册的唯一入口 `WrapTools` 上再加一层：命中写工具名单 **且** 当前是引擎自建的**无窗口实例**，
+  直接拒绝，并告诉调用方"先 Disconnect，再用 `ConnectIsolated(withUserInterface=true)` 重连"。
+  - 名单 **65 个**工具：块/类型/变量表/技术对象/外部源导入删除、编号与移动、硬件组态与网络、
+    驱动参数、HMI 画面/变量/连接、报警。**含 `PlcBuildAndImport`**（建块主工具）。
+  - 刻意**不含**：导出与落盘（`SaveExport`/`Export*`）、本机文件（`WritePlcSclSourceFile`）、
+    工程存档与另存（`ArchiveProject`/`SaveAsProject`）、在线操作（`GoOnline`/`GoOffline`/`DownloadToPlc`）、
+    在线改值、Windows 组与版本控制工作区、`CreateProject`（新工程无既有内容可毁）。
+  - 挂接用户自己的 TIA（`attached`）时用户本来就看得见 → 放行。
+  - 放行/拒绝判据：`Portal.IsHeadlessInstance = (ConnectMode ∈ {isolated, new-instance}) && !IsolatedWithUserInterface`
+
+### 验证（实测，2026-10-29 08:31）
+
+| 用例 | 结果 |
+|---|---|
+| 无窗口实例上调 `PlcBuildAndImport` | **被拒**，`isError=true`，正文可读：`会改动程序内容…请先 Disconnect，再用 ConnectIsolated(withUserInterface=true) 重连` |
+| 有窗口实例上调同一调用 | **成功**建块 `MCP_WINDOW_GUARD`，随后删块 + `SaveProject`，工程无残留 |
+
+- 离线校验：名单 65 条、零死条目、无读类误纳。
+- 修一处实现缺陷：最初用 `throw new McpException(...)`，经 SDK 转成结果时**正文被丢掉**（客户端只看到"出错了"）。
+  改为返回带 `TextContentBlock` 的错误结果后，正文完整到达客户端。
+
+---
+
+## [2.6.1] — 2026-10-28
+
+> 代码 + 脚本改动。工具集不变（232 / V18 204）；Prompt 30 → 33。
+> 本版重点：**导出自己证明磁盘事实** + **三条跨工具工作流** + **命名规范类规则默认不打扰**。
+
+### 新增
+
+- **`ExportBlocks` 回报磁盘事实**（此前只回报"引擎认为导出成功"）
+  meta 新增 `filesWritten` / `emptyFiles` / `unparsableFiles` / `totalBytes` / `diskVerified`，
+  并给出 `emptyFileNames` / `unparsableFileNames`（各最多 20 条）。
+  **`success` 现在由磁盘决定**：新文件为 0，或存在空文件/不可解析 XML → `success=false`，
+  message 里直写 `disk shows N new file(s)` 或 `treat this export as FAILED`。
+  实现只统计"本次新增"的文件（导出前快照差集），不会把目录里的旧文件算进来。
+  - 实测：3 个块 → `filesWritten=5`（含 2 个实例 DB），`totalBytes=32997`，
+    与目录实际 `.xml` 数量一致；message 为 `... disk shows 5 new file(s), 32997 bytes.`
+
+- **三条跨工具工作流 Prompt**（MCP Prompt，只给 AI 用，不是新工具）
+  - `Workflow_AuditProject`：身份门 → 树 → 软件目录 → 块层级 → 一致性 → 类型 → 导出对账 → 离线规则 → 报告结构
+  - `Workflow_ExportForReview`：先锁范围 → 一致性前置 → 导出 → **强制磁盘对账** → 大响应取法 → 交给离线脚本
+  - `Workflow_EditBlock`：影响面分析 → 一致性/保护校验 → 导出源 → 改 → 回导 → 编译 → 复核 → 保存
+  每条都带 `GATE`（不满足就停）与 `STOP RULES`（不许做什么）。实测 `prompts/list` 33 条、正文 1692 字符。
+
+### 变更
+
+- **命名规范类规则默认不检查**：R4（组命名前缀）/ R9（块名前缀与类型）/ R10（块名特殊字符）
+  收进 `--naming-check` 开关，默认不报——命名属用户自身程序框架，不该由工具当体检标准。
+  报告里新增一段"默认不检查"说明。实测默认条目 14 → 12；加开关后 R9 重现。
+
+---
+
+## [2.6.0] — 2026-10-28
+
+> 脚本改动（工程体检）。工具集不变（232 / V18 204）。
+> 本版重点：**块级体检闭环**——新增孤儿块判定，并把"结论的适用范围"写进报告。
+
+### 新增
+
+- **R13 疑似孤儿块（无调用者）**：`tia_project_audit.py --blocks <导出目录>`
+  从 `ExportBlocks` 产出的 SimaticML 里读 `<CallInfo BlockType="FB" Name="...">`，建"谁调用谁"的图；
+  **没有任何调用者的 FB/FC** 报 P2（仅用户块，OB 是入口不算）。
+  规则自带限制声明：可能被 HMI / OPC / 间接引用，或调用者不在本次导出范围内 ⇒ **启发式，不能单独作为删除依据**。
+- **R13b 调用图覆盖率**：报告里写明"本次扫描了多少块"，避免把局部结论当成全量结论。
+
+- 规则质量：`scan_block_dir` 不再静默吞掉读文件异常（读不了的文件标 `error` 计入），
+  `--blocks` 给了但解析不出任何块时**直接报错退出**，不再"安静地判成没有孤儿"。
+
+### 实测（导出子集，机制验证）
+
+| 用例 | 期望 | 结果 |
+|---|---|---|
+| 构造样本：A 调 B、C 无人调用 | 孤儿 = A、C | **PASS**（B 正确地不算孤儿）|
+| 真实子集（`OP_00_Main` / `OP_03_Manual` / `UN_00_Main` 三个 FB） | 三者均无本集合内调用者 → 全列 | **PASS**，并给出覆盖率声明 |
+
+### 已知代价（实测，非估算）
+
+- `ExportBlocks` 吞吐：**约 6.4 KB/块、3–5 秒/块**（本机 V20，`项目1.ap20`）。
+  363 块全量导出 ≈ **2.3 MB 文件、18–30 分钟**。属一次性批处理，不适合交互式调用。
+
+### 仍未做
+
+- 未使用变量、变量表规范、AF/ISA-88 分层符合度。
+
+---
+
+## [2.5.9] — 2026-10-28
+
+> 脚本改动（工程体检）。工具集不变（232 / V18 204）。
+> 本版重点：**块级规则第一次真正跑起来**，并补上"两个数据源对账"。
+
+### 新增
+
+- **`tia_project_audit.py` 新增 R0 / R0b 对账**（喂 `--hierarchy` 时生效）
+  - R0：骨架 `blockCount` 与层级实际遍历到的块数必须一致，否则 **P1** ——
+    两个数据源描述的不是同一批对象时，后面所有结论都不成立。
+  - R0b：按类型对账（`DB` = `InstanceDB` + `GlobalDB`），任一类型数量不符 → **P1**。
+  - 反例测试：把骨架 `blockCount` 从 363 改成 300 → R0 如期报 P1；真实数据下 R0 沉默。
+
+### 修复
+
+- **R10 误报**：原先对**系统 OB**（`Time error interrupt` / `Programming error` / `02_Cyclic interrupt`）
+  也报"块名含空格"，但这些名称由 TIA 生成、不可修改。
+  现只检查用户自建块（`FB` / `FC` / `GlobalDB` / `InstanceDB`）。
+- **R9 影响描述不准**：原文写"名字写 FB_ 实际是 FC"，实际命中是 DB（`FB_AcycComDrive_DB` 为 InstanceDB）。
+
+### 证据（真实工程 `项目1.ap20`，363 块）
+
+| 规则 | 结果 |
+|---|---|
+| R7 未编译块 | 沉默（实测 `isConsistent=false` 为 **0** 个，正确）|
+| R8 know-how 保护块 | **P2：27 个**（例：`MC-Servo`、`MC-Interpolator`、`EM01_CM03_AllAxisCtrlMain`…）|
+| R9 前缀与类型不符 | **P2：2 个**（`FB_AcycComDrive_DB`=InstanceDB，`DB_Test`=GlobalDB）|
+| R10 块名含空格 | 修正后**沉默**（原报的 3 个全是系统 OB）|
+| R11 空组 / R12 语言分布 | INFO（SCL 283 / LAD 19 / DB 59 / ProDiag 2）|
+
+> 说明：块级规则（R7–R12）此前已写好但从未执行——历次体检只喂了骨架、没喂层级。
+> 本版起 `--hierarchy` 一并提供即可产出块级结论。
+
+---
+
+## [2.5.8] — 2026-10-28
+
+> 代码 + 文档改动。工具集不变（232 / V18 204）。
+> 本版重点：**把"描述与事实不符"的四处对齐**，其中一处是真实缺陷（含 `/` 的设备名解析不出来）。
+
+### 修复
+
+- **设备名含 `/` 时 `device/software` 路径永远解析不了**（真实缺陷）
+  实测工程 `test1.ap18` 的设备名是 `S7-1500/ET200MP station_1`，而 `softwarePath` 用 `/` 切段，
+  于是 `S7-1500/ET200MP station_1/IS-CPU-A` 必然失败，只有裸软件名 `IS-CPU-A` 能用。
+  - 现在：整路径解析失败时，**回退到最后一个片段**再做一次设备/组遍历（软件容器挂在同名 DeviceItem 上，
+    扁平搜索能找到），并写一条警告日志说明原因。
+  - 验收：同一路径修复前 `unresolved`，修复后 `success=true` 且块数正常。
+
+### 变更（描述修正，行为未变）
+
+- `ExportBlock` 的 `exportPath`：原文"path where to export the block"会被当成文件路径，
+  实际是**目录**（文件写到 `<exportPath>/<BlockName>.xml`）。描述已改，并写明传文件名会创建同名目录。
+- `PlcBuildAndImport` 的 `softwarePath`：描述原称"Required only when dryRun=false"，但 schema 实际一直必填。
+  已改为如实说明（dryRun 时也要填）。
+- `PlcBuildAndImport` 的 `json`：明确它是 **JSON 字符串**（不是对象），并给出 globaldb 的完整示例——
+  传对象会直接失败且报错不可读。
+
+### 证据
+
+| 项 | 结果 |
+|---|---|
+| 含 `/` 设备名（`S7-1500/ET200MP station_1/IS-CPU-A`） | 修复前 unresolved → 修复后 **OK** |
+| 裸软件名（`IS-CPU-A`） | 仍 OK（无回归） |
+| 离线套件 | 228 passed / 0 failed |
+| 三道闸门 | 全 PASS |
+
+---
+
+## [2.5.7] — 2026-10-28
+
+> 代码 + 脚本改动。工具集不变（232 / V18 204）。
+> 本版重点：**多版本连接导向**——按工程文件的版本自动落到对应引擎；版本不符时明确指路。
+
+### 新增
+
+- **`scripts/Register-TiaConnectors.ps1`**：为本机每个"已安装且本工具支持"的版本各生成一条 MCP 连接器条目
+  （`tia-portal-v18` / `tia-portal-v20` …），env 里钉住 `TIA_MCP_VERSION` 与 `TIA_MCP_PORTAL_LOCATION`；
+  默认只预演，`-Apply` 才写入并生成时间戳备份。原 `tia-portal`（自动探测）保持不变。
+  - 之所以要"每版本一条"：引擎在进程启动时绑定一个 TIA 版本的 Openness 程序集，**跑起来后无法切换版本**；
+    而单实例锁名为 `TiaMcpServer.SingleAttach.V<major>`，**按版本加锁**，所以 V18 与 V20 可同时存活，
+    同版本两个引擎才会互斥。
+- **工程版本识别与指路**：`OpenProject` 读工程扩展名（`.ap18`/`.als20`…），与当前引擎版本比较：
+  - **工程版本 > 引擎版本 → 直接拒绝**，并指明该用哪条连接器，例如
+    `REFUSED: '项目1.ap20' is a V20 project, but this engine is V18 ... Use the connector 'tia-portal-v20'`；
+  - 工程版本 < 引擎版本 → 允许（用户已确认升级可接受），日志记录"将被升级"。
+
+### 修复
+
+- **`OpenProject` 会先关掉当前工程，而 `CloseProject` 不检查归属**——这条绕过了 2.5.4 的保护，
+  能关掉用户挂接的工程。现在：
+  - `CloseProject` 在 `_ownsProject == false`（挂接而来）时**拒绝**并说明"请在 TIA 里自己关"；
+  - `OpenProject` 的预关闭只在**自己打开的**工程上执行。
+
+### 证据（本机实测）
+
+| 用例 | 结果 |
+|---|---|
+| `Register-TiaConnectors.ps1` 预演 | 识别 V20@D:、V18@C:，生成 2 条条目与路由表 |
+| `-Apply` 写入 | 备份 `mcp.json.bak-20261028-101938`，原 `tia-portal` 保留，新增 2 条 |
+| V20 路由链路 | serverInfo 2.5.7，tools=**232** |
+| V18 路由链路 | serverInfo 2.5.7，tools=**204**（V18 隐藏 28 个 Unified HMI/VCI 工具） |
+| V18 引擎开 `.ap20` 工程 | **REFUSED**，消息含 `V20 project` 与 `tia-portal-v20` |
+
+### 已知未做
+
+- 导出仍只回报"工具成功"，不回报磁盘事实（`filesWritten`/空文件/不可解析）。
+- 跨工具工作流 Prompt（10 步 + 停层门）未做。
+
+---
+
+## [2.5.6] — 2026-10-28
+
+> 代码改动。工具集不变（232 / V18 204）。
+> 本版重点：**断开连接时说清那个 TIA 到底关了没有、是谁的**。
+
+### 修复
+
+- **`Disconnect` 之后 TIA 进程残留且无任何交代**
+  `Dispose()` 返回早于操作系统真正收尾，实测断开 4 秒后进程仍在；响应里也只写"Disconnected"，
+  既不说明实例是否还在，也不给 PID。
+  - 现在按用户规则（2026-10-28 原话："断开实例只关掉工具自己打开的程序…如果是需要工具正在修改
+    当然得观看，这种情况只有用户主动关闭程序即可"）分流：
+    **headless（只读）实例 → 关闭，并最多等 10 秒确认真的退出**；
+    **可见（修改）实例 → 保留**，由用户手动关窗口。
+  - `ConnectIsolated` 启动实例时记录 PID（前后进程表差集，绝不误认别人的 TIA）。
+  - `Disconnect` 的响应新增 `instanceKept` / `instancePid` / `instanceStillRunning`，消息随情形改写。
+
+### 证据（本机实测）
+
+| 用例 | 期望 | 实测 |
+|---|---|---|
+| `ConnectIsolated(false)` → `Disconnect` | kept=false，进程消失 | kept=false，pid=9288，stillRunning=false，进程已退出 |
+| `ConnectIsolated(true)` → `Disconnect` | kept=true，进程保留 | kept=true，pid=19696，stillRunning=true，窗口仍在 |
+
+### 已知未做
+
+- 导出仍只回报"工具成功"，不回报磁盘上到底生成了什么（`filesWritten`/空文件/不可解析）。
+- 引擎侧版本不符仍抛 `FileNotFoundException` 堆栈；工程扩展名与引擎版本的方向校验也尚未加。
+
+---
+
+## [2.5.5] — 2026-10-28
+
+> 脚本改动（启动器 + 版本探测）。工具集不变（232 / V18 204）。
+> 本版重点：**新机器不再"路径找不到"、不再静默退成 V18、多版本不再猜**。
+
+### 修复
+
+- **新机器安装后"连接博图安装路径出错"且默认 V18**
+  三处叠加造成：① `tia_mcp_launcher.bat` 把安装根写死（V20 → `D:\...`，其余 → `C:\...`）；
+  ② 探测不到就 `set VER=18` 静默降级；③ `detect_tia_version.ps1` 只看环境变量和**正在运行的** TIA，从不扫盘。
+  - 探测重写：扫描**所有固定盘**的 `Program Files` / `Program Files (x86)` / `Siemens\Automation` 下的 `Portal V*`；
+    判"已安装"只认磁盘实物——`Portal V<XX>\bin\Siemens.Automation.Portal.exe`
+    **且** `PublicAPI\V<XX>\Siemens.Engineering.dll`，且 `<XX>` 与目录名一致。
+  - **注册表不再作为证据**。实测：`HKLM\...\Openness` 列 16/17/18/19/20，磁盘只有 V18/V20；
+    原因是每次安装会附带多版 Openness 客户端（`Portal V20\PublicAPI` 内含 V17–V20），且不完整卸载会留残留。
+  - 选择规则（按用户 2026-10-28 要求）：唯一可用 → 用它；有运行中的 TIA → 用它；
+    设了 `TIA_MCP_VERSION` → 尊重，但不可用即报错；**多个可用且无提示 → `status=ambiguous`，不猜**。
+  - 启动器删除硬编码路径与 V18 兜底，改为按状态给出可操作提示并以 3/4/5/6 退出；
+    新增 `TIA_MCP_LAUNCHER_ECHO_ONLY=1` 仅打印解析结果不启动引擎（供安装/验收脚本使用）。
+
+### 证据（本机实测）
+
+| 场景 | 期望 | 实测 |
+|---|---|---|
+| 多版本共存、未钉版本 | 不猜，列出候选，exit 6 | `ambiguous`，列出 `20@D:\...`、`18@C:\...`，exit 6 |
+| 钉住 V20 | exit 0 并给出 portal/engine | exit 0，portal=D:\...V20，engine=bin-v20 |
+| 钉住 V20 + 路径不存在 | 报错不静默替换，exit 5 | `bad-location`，exit 5 |
+| 钉住 V19（未装/无构建） | exit 4 并列出可用项 | `pinned-unusable`，exit 4 |
+| 经 launcher 全链路 | initialize 成功、232 工具 | serverInfo 2.5.5，tools=232 |
+
+### 已知未做（下一版）
+
+- 引擎侧：构建版本与请求版本不符时仍抛 `FileNotFoundException` 堆栈，未改成人话（L3）。
+- `OpenProject` 仍默认 `Projects.OpenWithUpgrade`，用高版本打开低版本工程会**走升级通道**（L3）。
+- 多版本并发（两个连接器条目各自钉版本）未做。
+
+---
+
+## [2.5.4] — 2026-10-27
+
+> 代码改动。工具集不变（232 / V18 204）。
+> 本版重点：**空结果不再冒充事实**；`OpenProject` 不再关闭"只是挂接"的用户工程。
+
+### 修复
+
+- **`GetProjectSkeleton` 不再把"没解析到"报成"空工程"**
+  `GetBlocks` 把三种不同实情——① 未绑定工程、② `softwarePath` 解析不到、③ 真的 0 块——压成同一个空列表，
+  工具却照回 `success=true, blockCount=0`。
+  **事实**：本次排查中，同一个工程两次调用分别得到 `0 块` 与 `363 块`，且 0 块那次的响应是 `success=true`，
+  下游体检报告因此变成"全部正常"。
+  **推断**（未完全证实）：触发路径是 `Attach` 后 `OpenProject` 走了"关闭→重开"，使 `_project` 处于中间态。
+  现在 0 块时先取绑定诊断：未解析则回 `success=false` + `unresolvedReason` + `diag_*`
+  （`projectBound` / `portalBound` / `connectMode` / `softwareResolved` / `requestedSoftwarePath`），
+  Message 明写 `this is NOT an empty project`。真的空工程仍回 `success=true`。
+
+- **`OpenProject` 拒绝关闭非本服务打开的工程**
+  `_ownsProject=false`（Attach 挂接）时，若目标工程与当前绑定工程不同，直接返回 `false` 并在
+  `LastConnectError` 给出可操作说明，不再 `Close()` 用户工程去重开（与 2026-09-17 同类风险）。
+  同一工程重复调用 `OpenProject` 现在幂等复用，不再"关闭→重开"。
+
+### 新增
+
+- `Portal.GetBindingDiagnostics(softwarePath)`：STA 安全、只读，回答"块读取为什么是空的"，不改动 `GetBlocks` 既有契约。
+
+---
+
 ## [2.5.3] — 2026-10-22
 
 > 代码改动 + 安装入口 + 文档。工具集不变（232 / V18 204）。

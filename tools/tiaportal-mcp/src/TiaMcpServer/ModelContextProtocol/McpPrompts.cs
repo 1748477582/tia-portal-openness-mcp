@@ -1,4 +1,4 @@
-using ModelContextProtocol.Server;
+﻿using ModelContextProtocol.Server;
 using System.ComponentModel;
 
 namespace TiaMcpServer.ModelContextProtocol
@@ -481,6 +481,70 @@ Steps:
 4. Review findings; fix any failures before shipping.
 
 Use these tools in order.";
+        }
+
+        // ──────────────────────────────────────────────────────────────────────
+        // Task workflows (cross-tool SOPs with stop-gates).
+        // Pick one of these instead of improvising a tool sequence: fewer probe
+        // calls, fewer skipped steps, and every claim carries its coverage.
+        // ──────────────────────────────────────────────────────────────────────
+
+        [McpServerPrompt(Name = "Workflow_AuditProject"),
+         Description("Read-only project audit SOP (identity gates, block facts, consistency, offline rules, report shape). Use when the user asks 'what needs fixing in this project'.")]
+        public static string WorkflowAuditProject()
+        {
+            return @"PROJECT AUDIT WORKFLOW (read-only). Follow the gates in order; do not skip a gate.
+
+GATE 0 — identity (stop if any fails):
+1. ConnectIsolated(withUserInterface=false) — audit is read-only, no window.
+2. OpenProject(path). If it returns a version refusal, STOP; switch the engine version, then retry once.
+3. GetState — record the project name. If it shows '-', nothing is bound: STOP.
+
+STEP 1 — locate the PLC: GetProjectTree. Pick the device whose software is the target; the softwarePath is what every later call needs.
+STEP 2 — inventory: GetSoftwareTree(softwarePath).
+STEP 3 — block facts: GetBlocksWithHierarchy(softwarePath). Large replies are parked (meta.truncated + meta.exportId): fetch the whole payload with SaveExport(exportId, outputPath, raw=true), not raw=false (raw=false writes display text, not JSON).
+STEP 4 — consistency: blocks with isConsistent=false are P1 — report them and exclude them from any export plan.
+STEP 5 — types: GetTypes(softwarePath) when the audit covers data types.
+STEP 6 — optional export: ExportBlocks(...) and then RECONCILE meta.filesWritten / emptyFiles / unparsableFiles / totalBytes against the directory. success=false means engine and disk disagree — say so.
+STEP 7 — offline rules: scripts/tia_project_audit.py --skeleton S --hierarchy H [--blocks DIR]. Add --naming-check only when the user asks for naming conventions.
+STEP 8 — report in this order: 需完善 > 已改动的优点 > 风险与牺牲 > 回归原因; every item carries 证据/影响/建议; state what was NOT covered.
+
+STOP RULES: never invent a softwarePath (ask for GetProjectTree output instead); never call a block orphaned without stating export coverage; never modify the project in this workflow.";
+        }
+
+        [McpServerPrompt(Name = "Workflow_ExportForReview"),
+         Description("Export blocks/types for offline analysis and PROVE what landed on disk (files, empty files, unparsable XML, bytes). Use before any offline parsing.")]
+        public static string WorkflowExportForReview()
+        {
+            return @"EXPORT-FOR-REVIEW WORKFLOW. The engine claiming success is not evidence; the disk is.
+
+GATE 0: ConnectIsolated(false) -> OpenProject -> GetState (project must be bound).
+STEP 1 — freeze the scope: decide the block list/regex BEFORE exporting and write it down.
+STEP 2 — consistency: inconsistent blocks (isConsistent=false) are skipped by export. Either compile first (CompileAndDiagnosePlc) or exclude them deliberately — do not discover this from missing files later.
+STEP 3 — export: ExportBlocks / ExportTypes. Use preservePath=true only when the group structure matters.
+STEP 4 — reconcile (mandatory): read meta.filesWritten, emptyFiles, unparsableFiles, totalBytes and compare with the directory listing. If success=false, report the export as FAILED even though the call returned normally.
+STEP 5 — big payloads: SaveExport(exportId, outputPath, raw=true) then parse the saved JSON and read the payload field. GetExport(exportId, offset) pages the parked text when you must stay in-conversation.
+STEP 6 — hand the directory to scripts/tia_project_audit.py --blocks DIR for call-graph / orphan analysis.
+
+STOP RULES: file count mismatch -> stop and report; never parse a file you have not confirmed is non-empty; never export into the user's project folder.";
+        }
+
+        [McpServerPrompt(Name = "Workflow_EditBlock"),
+         Description("Safe single-block edit SOP: impact analysis first, then export-source, edit, re-import, compile, verify. Use for any change to an existing block.")]
+        public static string WorkflowEditBlock()
+        {
+            return @"EDIT-ONE-BLOCK WORKFLOW. Blast radius first, write second.
+
+GATE 0 — impact: AnalyzeBlockImpact(softwarePath, blockName) BEFORE touching anything. Callers listed there are the blast radius; tell the user about them.
+GATE 1 — readiness: GetBlockInfo — isConsistent must be true (export refuses otherwise). If the block is know-how protected, STOP and ask its owner for the password; never attempt to brute force it.
+STEP 1 — backup: ExportBlockSourceUtf8 to a fresh directory; keep the original XML untouched.
+STEP 2 — modify: edit that file (UTF-8 with BOM), or use ImportBlockInterface when only interface variables change.
+STEP 3 — re-import: RegenerateBlockFromSource.
+STEP 4 — compile: CompileSoftware / CompileAndDiagnosePlc. Any error is a stop; do not save a project that does not compile.
+STEP 5 — verify: GetBlockInfo again and DescribeBlockLogic to confirm the logic you intended is what is actually there.
+STEP 6 — persist: SaveProject only when the user asks; then CloseProject / Disconnect per the instance policy.
+
+STOP RULES: never edit a protected block without the password; never save to an unrelated project; never skip the compile step.";
         }
     }
 }

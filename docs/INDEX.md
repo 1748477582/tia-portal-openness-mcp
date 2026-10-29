@@ -4,7 +4,7 @@
 > 换机器 / 换 agent 时**先读这里**：每份文件是干什么的、什么时候该用、需要什么环境。
 > 新增文件后要重跑生成器，否则索引与实际脱节。
 
-| 共 57 项 | 环境：`none` 纯本机 · `python` 需 Python · `dotnet` 需 .NET SDK · `tia` 需 TIA Portal |
+| 共 59 项 | 环境：`none` 纯本机 · `python` 需 Python · `dotnet` 需 .NET SDK · `tia` 需 TIA Portal |
 
 ## entry（9）
 
@@ -46,7 +46,7 @@
 | [`docs/工具使用说明与介绍.md`](工具使用说明与介绍.md) | 一个驱动西门子 TIA Portal（博途） 做自动化工程的工具：连接博途、建项目、加硬件（PLC / WinCC Unified HMI）、生成 PLC 程序（UDT / 全局 DB / 标签表 / SCL / 梯形图）、生成 HMI 画… | — | `none` |
 | [`tools/tiaportal-mcp/skill/SKILL.md`](../tools/tiaportal-mcp/skill/SKILL.md) | This is the operating skill for TIA Portal MCP automation. The | — | `none` |
 
-## script（24）
+## script（26）
 
 | 文件 | 说明 | 何时用 | 环境 |
 |---|---|---|---|
@@ -59,17 +59,19 @@
 | `scripts/Generate-DocIndex.py` | 生成并校验 docs/INDEX.md + docs/index.json：把全部文档/脚本/清单编成可检索索引 | 新增或改名任何文档、脚本、清单之后；CI 的 content-index 也会跑 --check | `python` |
 | `scripts/Generate-ToolCapabilityMatrix.ps1` | Regenerate docs/tool-capability-matrix.md from the [McpServerTool] attributes in McpServer.cs. | — | `none` |
 | `scripts/Generate-ToolsList.py` | Regenerate manifest/tools-list.json from a built MCP engine's real tools/list response. | — | `python` |
+| `scripts/Set-TiaVersion.ps1` | Set-TiaVersion.ps1 | — | `tia` |
 | `scripts/Smoke-ArgDiagnostics.py` | 端到端验「参数诊断」接线真的生效（不需要 TIA）。 | — | `python` |
 | `scripts/Smoke-ConnectIsolated.py` | ConnectIsolated 的真机冒烟 —— **仅本地手动跑，绝不要放进 CI**。 | — | `python` |
 | `scripts/Smoke-ResponseParking.py` | 端到端验「大响应寄存」的接线真的生效（不是只编译通过）。 | — | `python` |
 | `scripts/Test-MatchPlcName.ps1` | Offline deterministic test of Guard.MatchPlcName (the tolerant softwarePath matcher). | — | `none` |
 | `scripts/Validate-Bundle.ps1` | Offline validation: required files, JSON parse, blueprint bundle list, tool roster count. | — | `none` |
 | `scripts/prewarm_tia.py` | Keep a headless TIA Portal warm so every MCP session connects in ~1s instead of cold-starting. | — | `python` |
+| `scripts/tia_project_audit.py` | TIA 工程体检（只读）v0.2 —— 采集 + 分析 + 出报告。 | — | `python` |
 | `switch-version.ps1` | 切换 MCP 使用的 TIA 版本：列出本机已装版本 → 让用户选 → 改写配置里的 TIA_MCP_VERSION（只改这一项） | 想换一个 TIA 版本工作、或安装时选了"跟随当前 TIA"现在想固定下来 | `python` |
 | `tia-v20.cmd` | 命令行入口：同一个 exe 的 tia 子命令（如 doctor） | — | `python` |
 | `tia.cmd` | 命令行入口：同一个 exe 的 tia 子命令（如 doctor） | — | `python` |
 | `tools/tiaportal-mcp/build.ps1` | TIA MCP build script - outputs UTF-8 log to avoid Chinese garbled text. | — | `tia` |
-| `tools/tiaportal-mcp/detect_tia_version.ps1` | Detect which TIA Portal version to serve. | — | `tia` |
+| `tools/tiaportal-mcp/detect_tia_version.ps1` | TIA Portal installation discovery for tia_mcp_launcher.bat | — | `tia` |
 | `tools/tiaportal-mcp/tia_mcp_launcher.bat` | 命令行入口：同一个 exe 的 tia 子命令（如 doctor） | — | `python` |
 | `配置MCP-v18.bat` | 按 TIA 版本一键把本 MCP 注册进已安装客户端（转调 install-mcp.ps1，改前备份） | — | `python` |
 | `配置MCP-v20.bat` | 按 TIA 版本一键把本 MCP 注册进已安装客户端（转调 install-mcp.ps1，改前备份） | — | `python` |

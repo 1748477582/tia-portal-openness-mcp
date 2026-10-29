@@ -90,6 +90,53 @@ namespace TiaMcpServer.ModelContextProtocol
                 var counts = new JsonObject();
                 foreach (var kv in countDict) counts[kv.Key] = kv.Value;
 
+                // TRUTH GATE: an empty block list is ambiguous — no project bound / softwarePath
+                // unresolved / genuinely zero blocks. GetBlocks collapses all three into [], which is
+                // how a 363-block project came back as "0 blocks, success=true" and the audit produced
+                // an empty report that looked like a clean bill of health. Never assert success here
+                // unless the software path actually resolved.
+                if (blocks.Count == 0)
+                {
+                    var diag = Portal.GetBindingDiagnostics(softwarePath);
+                    diag.TryGetValue("softwareResolved", out var resolvedObj);
+                    bool resolved = resolvedObj is bool rb && rb;
+
+                    if (!resolved)
+                    {
+                        diag.TryGetValue("unresolvedReason", out var reasonObj);
+                        string reason = reasonObj?.ToString() ?? "unknown reason";
+
+                        var badMeta = new JsonObject
+                        {
+                            ["blockCount"] = 0,
+                            ["counts"] = counts,
+                            ["topLevelBlocks"] = topLevel,
+                            ["topLevelGroups"] = groups,
+                            ["timestamp"] = DateTime.Now,
+                            ["success"] = false,
+                            ["unresolvedReason"] = reason
+                        };
+
+                        foreach (var kv in diag)
+                        {
+                            var node = kv.Value switch
+                            {
+                                bool bv => JsonValue.Create(bv),
+                                string sv => JsonValue.Create(sv),
+                                null => null,
+                                _ => JsonValue.Create(kv.Value.ToString())
+                            };
+                            badMeta["diag_" + kv.Key] = node;
+                        }
+
+                        return new ResponseMessage
+                        {
+                            Message = $"SKELETON UNRESOLVED for '{softwarePath}' — this is NOT an empty project. {reason}",
+                            Meta = badMeta
+                        };
+                    }
+                }
+
                 return new ResponseMessage
                 {
                     Message = $"Skeleton for '{softwarePath}': {blocks.Count} blocks.",

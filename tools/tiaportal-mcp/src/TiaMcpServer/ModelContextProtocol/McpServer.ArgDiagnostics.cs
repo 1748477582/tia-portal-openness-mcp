@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Threading;
@@ -31,7 +31,7 @@ namespace TiaMcpServer.ModelContextProtocol
         /// 就是后加的注册点静默丢掉另一半的由来。
         /// 诊断放最外层是因为它必须在参数绑定之前拦住调用（副作用一点都不许发生）。</summary>
         public static IList<McpServerTool> WrapTools(IList<McpServerTool> tools) =>
-            WrapWithArgDiagnostics(WrapWithResponseGuard(tools));
+            WrapWithArgDiagnostics(WrapWithWindowPolicy(WrapWithResponseGuard(tools)));
 
         /// <summary>逐个包装，让参数错误能自己把话说清楚。</summary>
         public static IList<McpServerTool> WrapWithArgDiagnostics(IList<McpServerTool> tools)

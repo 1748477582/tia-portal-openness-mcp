@@ -200,9 +200,9 @@ namespace TiaMcpServer.ModelContextProtocol
 
         [McpServerTool(Name = "PlcBuildAndImport"), Description("[L1][PLC-Software] MAIN tool for creating new PLC blocks from natural language. Build one PLC artifact (UDT/tag table/GlobalDB/FC/FB) from structured JSON, then optionally import and compile. Use dryRun=true first to validate. Workflow: describe block in JSON → dryRun → review → dryRun=false to import. Replaces the multi-step Build*Xml + ImportBlock sequence.")]
         public static ResponsePlcProgramImport PlcBuildAndImport(
-            [Description("softwarePath: PLC software path, e.g. 'PLC_1'. Required only when dryRun=false.")] string softwarePath,
+            [Description("softwarePath: target PLC software, e.g. 'PLC_1'. REQUIRED in this schema even for dryRun (the generated XML is classified against it); it is not used to build the XML itself.")] string softwarePath,
             [Description("kind: udt|tagtable|globaldb|fc|fb")] string kind,
-            [Description("json: structured JSON matching the corresponding BuildPlc* tool.")] string json,
+            [Description("json: a JSON **string** (escaped text), not an object. Example: '{\"dbName\":\"MyDB\",\"dbNumber\":9999,\"staticMembers\":[{\"name\":\"Flag\",\"datatype\":\"Bool\"}]}'. Structure must match the corresponding BuildPlc* tool.")] string json,
             [Description("typeGroupPath: PLC data type group path for kind=udt.")] string typeGroupPath = "",
             [Description("tagFolderPath: PLC tag table group path for kind=tagtable.")] string tagFolderPath = "",
             [Description("blockGroupPath: PLC block group path for kind=globaldb|fc.")] string blockGroupPath = "",

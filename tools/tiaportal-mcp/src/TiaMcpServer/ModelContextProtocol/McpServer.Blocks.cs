@@ -126,7 +126,7 @@ throw McpError.WithRecovery(ex, $"Unexpected error retrieving block hierarchy fo
         public static ResponseExportBlock ExportBlock(
             [Description("softwarePath: defines the path in the project structure to the plc software")] string softwarePath,
             [Description("blockPath: full path to the block in the project structure, e.g. 'Group/Subgroup/Name' (single names are ambiguous)")] string blockPath,
-            [Description("exportPath: defines the path where to export the block")] string exportPath,
+            [Description("exportPath: a DIRECTORY, not a file path. The block is written to '<exportPath>/<BlockName>.xml' (with preservePath=true the project group structure is recreated underneath). Passing a file-like name creates a directory with that name.")] string exportPath,
             [Description("preservePath: preserves the path/structure of the plc software")] bool preservePath = false)
         {
             try
@@ -824,6 +824,10 @@ throw McpError.WithRecovery(ex, $"Unexpected error repairing/reimporting block '
                     });
                 }
 
+                // TRUTH GATE: 记录导出前的文件快照。导出只说明"引擎认为写成功了"，
+                // 到底磁盘上多了什么、是不是空文件、XML 能不能解析，必须自己回读。
+                var diskBefore = SnapshotExportDir(exportPath);
+
                 // Export blocks asynchronously
                 var exportedBlocks = await Task.Run(() => Portal.ExportBlocks(softwarePath, exportPath, regexName, preservePath));
 
@@ -872,18 +876,39 @@ throw McpError.WithRecovery(ex, $"Unexpected error repairing/reimporting block '
                     var duration = (DateTime.Now - startTime).TotalSeconds;
                     Logger?.LogInformation($"Export completed: {processedCount} blocks exported in {duration:F2} seconds");
 
+                    var disk = VerifyExportDir(exportPath, diskBefore);
+                    bool diskOk = disk.Written > 0 && disk.Empty.Count == 0 && disk.Unparsable.Count == 0;
+                    string diskNote = disk.Written == 0
+                        ? " BUT the target directory gained no files — treat this export as FAILED."
+                        : (disk.Empty.Count + disk.Unparsable.Count > 0
+                            ? $" WARNING: {disk.Empty.Count} empty and {disk.Unparsable.Count} unparsable file(s) on disk."
+                            : "");
+
+                    var emptyArr = new JsonArray();
+                    foreach (var n in disk.Empty.Take(20)) emptyArr.Add(JsonValue.Create(n));
+                    var badArr = new JsonArray();
+                    foreach (var n in disk.Unparsable.Take(20)) badArr.Add(JsonValue.Create(n));
+
                     return new ResponseExportBlocks
                     {
-                        Message = $"Export completed: {processedCount} blocks with regex '{regexName}' exported from '{softwarePath}' to '{exportPath}'",
+                        Message = $"Export completed: {processedCount} blocks with regex '{regexName}' exported from '{softwarePath}' to '{exportPath}' — "
+                                + $"disk shows {disk.Written} new file(s), {disk.TotalBytes} bytes.{diskNote}",
                         Items = exportedBlocks,
                         Inconsistent = inconsistentInfos,
                         Meta = new JsonObject
                         {
                             ["timestamp"] = DateTime.Now,
-                            ["success"] = true,
+                            ["success"] = diskOk,
                             ["totalBlocks"] = totalBlocks,
                             ["exportedBlocks"] = processedCount,
                             ["inconsistentBlocks"] = inconsistentInfos.Count,
+                            ["filesWritten"] = disk.Written,
+                            ["emptyFiles"] = disk.Empty.Count,
+                            ["unparsableFiles"] = disk.Unparsable.Count,
+                            ["totalBytes"] = disk.TotalBytes,
+                            ["emptyFileNames"] = emptyArr,
+                            ["unparsableFileNames"] = badArr,
+                            ["diskVerified"] = true,
                             ["duration"] = duration
                         }
                     };
@@ -961,6 +986,47 @@ throw McpError.WithRecovery(ex, $"Unexpected error exporting blocks to temp: {ex
             {
 throw McpError.WithRecovery(ex, $"Unexpected error analyzing block impact for '{blockName}' in '{softwarePath}': {ex.Message}");
             }
+        }
+
+        private static HashSet<string> SnapshotExportDir(string dir)
+        {
+            var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            try
+            {
+                if (Directory.Exists(dir))
+                    foreach (var f in Directory.GetFiles(dir, "*", SearchOption.AllDirectories))
+                        set.Add(f);
+            }
+            catch { }
+            return set;
+        }
+
+        private static (int Written, List<string> Empty, List<string> Unparsable, long TotalBytes)
+            VerifyExportDir(string dir, HashSet<string> before)
+        {
+            var written = 0;
+            var empty = new List<string>();
+            var bad = new List<string>();
+            long bytes = 0;
+            try
+            {
+                if (!Directory.Exists(dir)) return (0, empty, bad, 0);
+                foreach (var f in Directory.GetFiles(dir, "*", SearchOption.AllDirectories))
+                {
+                    if (before.Contains(f)) continue;      // 只统计本次新增，避免把旧文件算进来
+                    written++;
+                    var fi = new FileInfo(f);
+                    bytes += fi.Length;
+                    if (fi.Length == 0) { empty.Add(Path.GetFileName(f)); continue; }
+                    if (f.EndsWith(".xml", StringComparison.OrdinalIgnoreCase))
+                    {
+                        try { System.Xml.Linq.XDocument.Load(f); }
+                        catch { bad.Add(Path.GetFileName(f)); }
+                    }
+                }
+            }
+            catch { }
+            return (written, empty, bad, bytes);
         }
 
         [McpServerTool(Name = "ExportBlockSourceUtf8"), Description("[L2][PLC-Software] V18-SAFE editable export of ONE block. Exports the block via Openness, then re-writes the file as UTF-8 WITH BOM (encoding-safe — kills the classic Chinese-comment mojibake). Output is SimaticML XML (NOT .s7dcl text — that needs V20+). This is the V18 'export → edit → re-import' path: edit the file, then call RegenerateBlockFromSource to re-import. To add interface variables without rewriting logic, use ImportBlockInterface. Use this (not ExportBlock) when you intend to MODIFY the block's source. Requires: Connect + OpenProject + block consistent (compile first if IsConsistent=false; offline mode only — export fails while online). blockPath must be fully qualified 'Group/Subgroup/Name' from GetSoftwareTree.")]

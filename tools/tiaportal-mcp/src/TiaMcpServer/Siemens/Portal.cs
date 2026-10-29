@@ -98,6 +98,63 @@ namespace TiaMcpServer.Siemens
         public bool FallbackHeadless { get; private set; }
 
         /// <summary>
+        /// True when the last <see cref="ConnectIsolated"/> launched its own instance WITH a GUI window.
+        /// Reported back in ConnectIsolated's meta so a caller can prove "the window you see is mine"
+        /// instead of having to guess. Per the 2026-10-27 user rule: reads run headless, writes visibly.
+        /// </summary>
+        public bool IsolatedWithUserInterface { get; private set; }
+
+        /// <summary>
+        /// PID of the TIA process this server started via ConnectIsolated. Best-effort: obtained by
+        /// diffing the process list around the constructor. Reported back on Disconnect so a caller
+        /// knows exactly which PID is still alive instead of having to guess or scan.
+        /// </summary>
+        public int? IsolatedProcessId { get; private set; }
+
+        /// <summary>
+        /// True when Disconnect deliberately left a VISIBLE isolated instance running.
+        /// USER RULE (2026-10-28, verbatim): "断开实例只关掉工具自己打开的程序…如果是需要工具正在修改
+        /// 当然得观看，这种情况只有用户主动关闭程序即可。"
+        /// ⇒ headless (read-only) instances are disposed; visible (modify) instances are kept.
+        /// </summary>
+        public bool IsolatedInstanceKept { get; private set; }
+
+        /// <summary>
+        /// True when the current portal is an engine-started instance WITHOUT a window.
+        /// Writes are refused in this state (user rule: "改程序所有内容都显示窗口").
+        /// An ATTACHED portal is the user's own visible TIA, so it is never "headless" here.
+        /// </summary>
+        public bool IsHeadlessInstance =>
+            (ConnectMode == "isolated" || ConnectMode == "new-instance") && !IsolatedWithUserInterface;
+
+        /// <summary>
+        /// Version encoded in the project file extension that was last requested (.ap18 -> 18,
+        /// .als20 -> 20). Used by the connection-routing gate and reported back to the caller.
+        /// </summary>
+        public int? OpenedProjectFileVersion { get; private set; }
+
+        /// <summary>True when the currently bound project was opened by this server (not attached).</summary>
+        public bool OwnsProject => _ownsProject;
+
+        /// <summary>
+        /// Parses the TIA version out of a project/multi-user-session path (.ap20 / .als20).
+        /// Returns null when the extension carries no version (or the path is not a project).
+        /// </summary>
+        private static int? GetProjectFileMajorVersion(string path)
+        {
+            try
+            {
+                var ext = Path.GetExtension(path);
+                if (string.IsNullOrEmpty(ext)) return null;
+                var m = System.Text.RegularExpressions.Regex.Match(ext, @"^\.a(?:p|ls)(\d{2})$",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                if (m.Success && int.TryParse(m.Groups[1].Value, out var v)) return v;
+            }
+            catch { }
+            return null;
+        }
+
+        /// <summary>
         /// Projects that the freshly started fallback instance had AUTO-OPENED (TIA reloads the last
         /// project this Windows user worked on) and that we then closed, without saving.
         /// Reported by Connect so the caller can see that something unexpected was loaded and dropped.
@@ -804,29 +861,44 @@ namespace TiaMcpServer.Siemens
         /// and this path creates its own, so there is nothing to share. Headless by default;
         /// --with-ui makes the isolated instance visible.
         /// </summary>
-        public bool ConnectIsolated()
+        /// <param name="withUserInterface">
+        /// Per-call override of <see cref="Engineering.LaunchWithUserInterface"/> (which is fixed at
+        /// engine launch by --with-ui). null = use the engine default.
+        /// <para>
+        /// USER RULE (2026-10-27, verbatim): "如果只需要工具读取程序结构和内容这种，只需要它在后台就行，
+        /// 如果是我需要它协助我修改和操作程序，就必须得打开GUI界面。"
+        /// Reads ⇒ headless; writes/operations ⇒ visible. Note this is an OVERSIGHT requirement, not a
+        /// technical one: block import/compile works headless. Only HMI screen EDITING genuinely needs a UI.
+        /// </para>
+        /// </param>
+        public bool ConnectIsolated(bool? withUserInterface = null)
         {
             return _sta.Run(() =>
             {
                 if (_portal != null || _project != null || _session != null)
                     throw new PortalException(PortalErrorCode.InvalidState,
                         "ConnectIsolated: this MCP session already has a TIA connection. "
-                        + "Start a fresh MCP process before calling ConnectIsolated.");
+                        + "Call Disconnect first, then ConnectIsolated with the mode you need.");
 
                 LastConnectError = null;
                 _logger?.LogInformation("ConnectIsolated: starting a brand-new TIA Portal instance (no attach).");
                 try
                 {
-                    var launchMode = Engineering.LaunchWithUserInterface
+                    bool useUi = withUserInterface ?? Engineering.LaunchWithUserInterface;
+                    var launchMode = useUi
                         ? TiaPortalMode.WithUserInterface
                         : TiaPortalMode.WithoutUserInterface;
-                    _logger?.LogInformation($"ConnectIsolated: new instance ({launchMode}).");
+                    _logger?.LogInformation($"ConnectIsolated: new instance ({launchMode}, requestedUi={withUserInterface?.ToString() ?? "engine-default"}).");
+                    var pidsBefore = SnapshotPortalPids();
                     _portal = new TiaPortal(launchMode);
+                    IsolatedProcessId = NewPortalPidSince(pidsBefore);
+                    IsolatedInstanceKept = false;
                     _ownsPortal = true;    // we started it, so we may dispose it
                     _ownsProject = false;  // no project yet
                     _project = null;
                     _session = null;
                     ConnectMode = "isolated";
+                    IsolatedWithUserInterface = useUi;
                     BoundProjectName = null;
                     return true;
                 }
@@ -836,6 +908,72 @@ namespace TiaMcpServer.Siemens
                         $"ConnectIsolated failed: {FormatExceptionDetail(ex)}", inner: ex);
                 }
             });
+        }
+
+        // ---- process identity of the instance we start (best-effort, never throws) -------------
+        private static HashSet<int> SnapshotPortalPids()
+        {
+            var set = new HashSet<int>();
+            try
+            {
+                foreach (var p in System.Diagnostics.Process.GetProcessesByName("Siemens.Automation.Portal"))
+                {
+                    set.Add(p.Id);
+                }
+            }
+            catch { /* process enumeration is diagnostic only */ }
+            return set;
+        }
+
+        private static int? NewPortalPidSince(HashSet<int> before)
+        {
+            try
+            {
+                foreach (var p in System.Diagnostics.Process.GetProcessesByName("Siemens.Automation.Portal"))
+                {
+                    if (!before.Contains(p.Id)) return p.Id;
+                }
+            }
+            catch { }
+            return null;
+        }
+
+        /// <summary>
+        /// Blocks until the given TIA process is gone, or the timeout elapses.
+        /// Dispose() returns before the OS has finished tearing the process down, which is why a
+        /// "closed" instance used to stay visible in Task Manager for a while.
+        /// </summary>
+        private static bool WaitForPortalExit(int? pid, int timeoutMs)
+        {
+            if (pid == null) return true;
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            while (sw.ElapsedMilliseconds < timeoutMs)
+            {
+                try
+                {
+                    using var p = System.Diagnostics.Process.GetProcessById(pid.Value);
+                    if (p.HasExited) return true;
+                }
+                catch (ArgumentException)
+                {
+                    return true;   // GetProcessById throws when the process is already gone
+                }
+                catch { }
+                System.Threading.Thread.Sleep(250);
+            }
+            return false;
+        }
+
+        /// <summary>True when the isolated instance we started is still running.</summary>
+        public bool IsIsolatedInstanceAlive()
+        {
+            if (IsolatedProcessId == null) return false;
+            try
+            {
+                using var p = System.Diagnostics.Process.GetProcessById(IsolatedProcessId.Value);
+                return !p.HasExited;
+            }
+            catch { return false; }
         }
 
         public List<string> ListPortalProcessProjects()
@@ -948,13 +1086,33 @@ namespace TiaMcpServer.Siemens
                 }
                 _project = null;
                 _session = null;
-                // OWNERSHIP RULE: only dispose the TIA instance we started. When we merely ATTACHED
-                // to the user's TIA, _portal?.Dispose() would tear down their running session and
-                // crash TIA (especially fatal when a sibling idle instance auto-disconnects while the
-                // other is mid-generation). Leave an attached portal alive for the user.
+                // OWNERSHIP RULE: only ever touch a TIA instance this server started. When we merely
+                // ATTACHED to the user's TIA, _portal?.Dispose() would tear down their running session
+                // and crash TIA (especially fatal when a sibling idle instance auto-disconnects while
+                // the other is mid-generation). Leave an attached portal alive for the user.
+                //
+                // USER RULE (2026-10-28): headless (read-only) instances are closed on disconnect;
+                // a VISIBLE (modify) instance is kept alive so the user can keep watching/inspecting,
+                // and the user closes it manually. Reported back via IsolatedInstanceKept.
                 if (_ownsPortal)
                 {
-                    _portal?.Dispose();
+                    if (IsolatedWithUserInterface)
+                    {
+                        IsolatedInstanceKept = true;
+                        _logger?.LogInformation(
+                            $"Visible isolated instance kept alive on disconnect (pid={IsolatedProcessId?.ToString() ?? "unknown"}); the user closes it manually.");
+                    }
+                    else
+                    {
+                        _portal?.Dispose();
+                        // Dispose() returns before the OS finishes; wait so "disconnected" really means gone.
+                        bool exited = WaitForPortalExit(IsolatedProcessId, 10000);
+                        if (!exited)
+                        {
+                            _logger?.LogWarning(
+                                $"Headless instance pid={IsolatedProcessId} still alive 10s after Dispose(); reporting it instead of pretending it closed.");
+                        }
+                    }
                 }
                 else
                 {
@@ -1140,6 +1298,61 @@ namespace TiaMcpServer.Siemens
         #region project
 
         /// <summary>
+        /// Read-only, STA-safe diagnostics answering "why did a block read come back empty?".
+        /// <para>
+        /// Truth vs hygiene: <see cref="GetBlocks"/> collapses THREE different realities into the
+        /// same empty list — (a) no project bound, (b) softwarePath unresolved, (c) genuinely
+        /// zero blocks. GetProjectSkeleton then reported <c>success=true, blockCount=0</c> for a
+        /// project that actually holds 363 blocks, so a caller could not tell "empty" from
+        /// "not resolved". This method exposes the distinction without changing GetBlocks' contract.
+        /// </para>
+        /// </summary>
+        public Dictionary<string, object?> GetBindingDiagnostics(string softwarePath)
+        {
+            return _sta.Run(() =>
+            {
+            var d = new Dictionary<string, object?>(StringComparer.Ordinal)
+            {
+                ["projectBound"] = _project != null,
+                ["portalBound"] = _portal != null,
+                ["connectMode"] = ConnectMode,
+                ["requestedSoftwarePath"] = softwarePath
+            };
+
+            string? projectName = null;
+            try { projectName = _project?.Name; } catch { /* dead RCW */ }
+            d["projectName"] = projectName;
+
+            bool softwareResolved = false;
+            string? reason = null;
+
+            if (_project == null)
+            {
+                reason = "no project bound: call Connect then OpenProject/AttachToOpenProject first";
+            }
+            else
+            {
+                try
+                {
+                    var container = GetSoftwareContainer(softwarePath);
+                    softwareResolved = container?.Software != null;
+                    if (!softwareResolved)
+                        reason = $"softwarePath '{softwarePath}' did not resolve to a software container "
+                               + "(check the path with GetProjectTree/GetSoftwareTree; sample: 'PLC_1')";
+                }
+                catch (Exception ex)
+                {
+                    reason = $"software resolution threw: {ex.GetType().Name}: {ex.Message}";
+                }
+            }
+
+            d["softwareResolved"] = softwareResolved;
+            d["unresolvedReason"] = reason;
+            return d;
+            });
+        }
+
+        /// <summary>
         /// Openness compliance: INTERNAL STA helper — returns live ProjectBase RCWs bound to the STA
         /// apartment. Do NOT call from the tool layer (cross-apartment RCW access corrupts). Use
         /// <see cref="GetProjectsInfo"/> for tool-layer JSON DTOs. Kept internal solely for the Acx
@@ -1210,6 +1423,11 @@ namespace TiaMcpServer.Siemens
 
         public bool OpenProject(string projectPath)
         {
+            // Openness compliance / SAFETY: OpenProject must never close a project that this server
+            // only ATTACHED to. Attached projects belong to the user's own TIA session (possibly with
+            // unsaved edits), and closing them is the same class of incident as the 2026-09-17
+            // "killed the user's TIA" event. Capture the previous ownership BEFORE flipping the flag.
+            bool wasOwned = _ownsProject;
             _ownsProject = true;   // opened by this server
             return _sta.Run(() =>
             {
@@ -1222,6 +1440,42 @@ namespace TiaMcpServer.Siemens
                 catch (PortalException ex)
                 {
                     LastConnectError = $"Portal is null and reconnect failed: {ex.Message}";
+                    _ownsProject = wasOwned;
+                    return false;
+                }
+            }
+
+            // Idempotency + safety guard: if the requested project is ALREADY the bound project,
+            // there is nothing to open. Return without closing/reopening (that churn was producing
+            // "attached -> Close() -> reopen -> _project == null -> 0 blocks").
+            var requestedName = string.IsNullOrWhiteSpace(projectPath)
+                ? null
+                : System.IO.Path.GetFileNameWithoutExtension(projectPath);
+
+            if (_project != null && !string.IsNullOrEmpty(requestedName))
+            {
+                string? boundName = null;
+                try { boundName = _project.Name; } catch { /* dead RCW: fall through to the guard below */ }
+
+                if (!string.IsNullOrEmpty(boundName)
+                    && string.Equals(boundName, requestedName, StringComparison.OrdinalIgnoreCase))
+                {
+                    _logger?.LogInformation($"OpenProject: '{requestedName}' is already bound; reusing it.");
+                    _ownsProject = wasOwned;   // keep the original ownership semantics
+                    LastConnectError = null;
+                    return true;
+                }
+
+                if (!wasOwned)
+                {
+                    // A DIFFERENT project is open, and we only attached to it -> refuse instead of closing it.
+                    LastConnectError =
+                        $"REFUSED: the server is only attached to project '{boundName}' in the user's TIA session " +
+                        $"and will not close it to open '{requestedName}'. " +
+                        $"Close '{boundName}' in TIA Portal first, or call AttachToOpenProject('{requestedName}') " +
+                        $"after opening it manually.";
+                    _ownsProject = wasOwned;
+                    _logger?.LogWarning(LastConnectError);
                     return false;
                 }
             }
@@ -1253,6 +1507,29 @@ namespace TiaMcpServer.Siemens
                     LastConnectError = $"Project file not found: {projectPath}";
                     return false;
                 }
+
+                // CONNECTION ROUTING GATE: the project extension encodes the version that can open it
+                // (.ap18/.als18 -> V18, .ap20 -> V20). This engine is bound to ONE version per process,
+                // so a mismatch can never be fixed here - say exactly what to change and where.
+                var fileVer = GetProjectFileMajorVersion(projectPath);
+                var engineVer = Engineering.TiaMajorVersion;
+                if (fileVer.HasValue && engineVer > 0 && fileVer.Value > engineVer)
+                {
+                    OpenedProjectFileVersion = fileVer.Value;
+                    LastConnectError =
+                        $"REFUSED: '{Path.GetFileName(projectPath)}' is a V{fileVer.Value} project, but this server runs the V{engineVer} engine. "
+                        + $"A TIA engine is bound to one version per process and cannot open a newer project. "
+                        + $"Fix: set env TIA_MCP_VERSION={fileVer.Value} on the 'tia-portal' entry in the MCP config "
+                        + $"(and optionally TIA_MCP_PORTAL_LOCATION to the Portal V{fileVer.Value} folder), then reconnect and open it again.";
+                    _logger?.LogWarning(LastConnectError);
+                    return false;
+                }
+                // Newer engine + older project: allowed (the user accepts upgrades), but the project
+                // WILL be upgraded on save and the original file stays on disk next to the new one.
+                OpenedProjectFileVersion = fileVer;
+                _logger?.LogInformation(
+                    $"OpenProject: project V{fileVer?.ToString() ?? "?"} with engine V{engineVer}"
+                    + (fileVer.HasValue && engineVer > fileVer.Value ? " — will be UPGRADED." : "."));
 
                 var projects = GetProjects();
                 var projectName = Path.GetFileNameWithoutExtension(projectPath);
@@ -1483,6 +1760,17 @@ namespace TiaMcpServer.Siemens
             return _sta.Run(() =>
             {
             _logger?.LogInformation("Closing project...");
+
+            // OWNERSHIP RULE (user rule 2026-10-28: "断开实例只关掉工具自己打开的程序"):
+            // a project we merely ATTACHED to belongs to the user's session. Closing it can discard
+            // their unsaved work — refuse and tell them instead of doing it silently.
+            if (!_ownsProject)
+            {
+                _logger?.LogWarning("CloseProject refused: the bound project was ATTACHED (opened by the user), not opened by this server.");
+                throw new PortalException(PortalErrorCode.InvalidState,
+                    "REFUSED: this project was opened by you (attached), not by the server. "
+                    + "Close it in TIA Portal yourself if you want it closed — the server never closes a user project.");
+            }
 
             if (IsProjectNull())
             {

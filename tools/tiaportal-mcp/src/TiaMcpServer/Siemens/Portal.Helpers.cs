@@ -735,6 +735,43 @@ namespace TiaMcpServer.Siemens
                     }
                 }
 
+                // FALLBACK: a device name may itself contain '/', e.g. "S7-1500/ET200MP station_1".
+                // The path is split on '/', so "device/software" can never be addressed in that case
+                // (observed on a real project: only the bare software name resolved). Retry with the
+                // LAST segment alone — the software-bearing DeviceItem carries that name and the flat
+                // search inside GetSoftwareContainerInDevices finds it.
+                if (pathSegments.Length > 1)
+                {
+                    var lastSegment = pathSegments[pathSegments.Length - 1];
+                    if (!string.IsNullOrWhiteSpace(lastSegment))
+                    {
+                        if (_project.Devices != null)
+                        {
+                            softwareContainer = GetSoftwareContainerInDevices(_project.Devices, new[] { lastSegment }, 0);
+                            if (softwareContainer != null)
+                            {
+                                WarmUpSoftware(softwareContainer);
+                                _logger?.LogWarning(
+                                    $"softwarePath '{softwarePath}' did not resolve as a full path; fell back to the last segment '{lastSegment}'. "
+                                    + "Device names containing '/' break the 'device/software' form — pass the software name alone.");
+                                return softwareContainer;
+                            }
+                        }
+
+                        if (_project.DeviceGroups != null)
+                        {
+                            softwareContainer = GetSoftwareContainerInGroups(_project.DeviceGroups, new[] { lastSegment }, 0);
+                            if (softwareContainer != null)
+                            {
+                                WarmUpSoftware(softwareContainer);
+                                _logger?.LogWarning(
+                                    $"softwarePath '{softwarePath}' resolved via the last segment '{lastSegment}' (device name contains '/').");
+                                return softwareContainer;
+                            }
+                        }
+                    }
+                }
+
                 return null;
             });
         }

@@ -259,6 +259,32 @@ NuGet `21.0.1765349347` 是**指针包**。**上游 V21 代码一字未改。**
 
 ---
 
+### 8.8 空列表 ≠ 空工程：0 条结果必须能自证来源（2026-10-27）
+
+- **症状**：`GetProjectSkeleton` 对一本实测 **363 块**的工程回了 `blockCount=0, success=true`；
+  下游只读体检报告随之变成"全部正常"，P1 问题被清零。
+- **根因**：`GetBlocks → GetBlockRcwList` 把**三种不同实情**压成同一个空列表：
+  ① 未绑定工程（`IsProjectNull()` 直接 `return list`）；② `softwarePath` 解析不到容器；
+  ③ 真的 0 块。上层拿不到任何区分信号。
+- **做法**：0 条时**先取绑定诊断**再下结论。新增 `Portal.GetBindingDiagnostics(softwarePath)`
+  （STA 安全、只读）返回 `projectBound` / `portalBound` / `connectMode` / `softwareResolved` / `unresolvedReason`；
+  未解析则回 `success=false` + `unresolvedReason` + `diag_*`，Message 明写 `this is NOT an empty project`。
+- **判据**：**"空"和"没查到"是两条不同的真相**。凡是可能返回空集合的读工具，都要能回答"为什么是空的"；
+  否则 AI 会把"没查到"当成"工程干净"，这比报错更危险。
+- **证据**：`_verify_skeleton_truth.py`（工作区，一次性探针）实跑——2.5.3 回 `success=true, blockCount=0`；
+  2.5.4 回 `success=false` + 原因 + 6 个 `diag_*` 字段。
+
+### 8.9 `OpenProject` 不得关闭"只是挂接"的工程（2026-10-27）
+
+- **症状**：先 `AttachToOpenProject` 再 `OpenProject(同一个工程)` ⇒ 工程被 `Close()` 后重开，
+  中间态 `_project == null`，后续读块得到 0（就是 8.8 的触发路径之一）。
+- **做法**：进入 `OpenProject` 时**先记下原 `_ownsProject`**（原来第 2 行就把标志置 true，事后无法分辨）；
+  目标工程与当前绑定工程同名 ⇒ **幂等返回 true，不关不重开**；
+  不同名且 `wasOwned == false` ⇒ **拒绝**并在 `LastConnectError` 给出可操作说明，绝不 `Close()` 用户工程。
+- 这一条属于 §0 同类风险：**"关掉用户工程"和"关掉用户 TIA"是一个量级的事故**。
+
+---
+
 ## 9. 实机验证（isolated harness）
 
 1. **调工具必须走 `tools/call` 协议**（2026-09-29）：直接调方法会绕过注册/序列化，结论不可信。

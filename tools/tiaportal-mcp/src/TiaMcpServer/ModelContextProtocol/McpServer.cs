@@ -136,21 +136,27 @@ namespace TiaMcpServer.ModelContextProtocol
             }
         }
 
-        [McpServerTool(Name = "ConnectIsolated"), Description("[L1][Portal] Start a BRAND-NEW TIA Portal instance (headless by default; --with-ui makes it visible) instead of attaching to a running one. USE THIS when the user is working in the TIA Portal UI: plain Connect attaches to their instance and OpenProject then (correctly) refuses to touch their already-open project, so the whole server is unusable until they close it. It never attaches to, modifies or closes any TIA window or project the user already has open — so it also can NOT drive the project the user has open; for that use Connect. Must be the FIRST connection action in a fresh MCP process. Afterwards use OpenProject or CreateProject as usual, then CloseProject and Disconnect.")]
-        public static ResponseConnect ConnectIsolated()
+        [McpServerTool(Name = "ConnectIsolated"), Description("[L1][Portal] Start a BRAND-NEW TIA Portal instance instead of attaching to a running one. Two modes per the user's rule (2026-10-27): withUserInterface=false (default, HEADLESS, no window) for READ-ONLY work (structure/blocks/tags/export); withUserInterface=true (VISIBLE window) whenever the tool will MODIFY or OPERATE the user's program, so the user can watch what is being changed. It never attaches to, modifies or closes any TIA window or project the user already has open — so it also can NOT drive the project the user has open. Must be the FIRST connection action in a fresh MCP process (call Disconnect first if already connected). Afterwards use OpenProject or CreateProject as usual, then CloseProject and Disconnect.")]
+        public static ResponseConnect ConnectIsolated(
+            [Description("withUserInterface: false (default) = headless/no window, for read-only tasks; true = visible TIA window, required when modifying/operating the user's program and mandatory for HMI screen editing.")] bool withUserInterface = false)
         {
-            Logger?.LogInformation("ConnectIsolated: starting an isolated TIA Portal instance...");
+            Logger?.LogInformation($"ConnectIsolated: starting an isolated TIA Portal instance (withUserInterface={withUserInterface})...");
             try
             {
-                Portal.ConnectIsolated();
+                Portal.ConnectIsolated(withUserInterface ? true : (bool?)null);
+                bool visible = Portal.IsolatedWithUserInterface;
                 return new ResponseConnect
                 {
-                    Message = "Connected to an isolated (new) TIA-Portal instance; the user's running instance was not touched.",
+                    Message = visible
+                        ? "Connected to an isolated TIA-Portal instance WITH a visible window (for modify/operate tasks). The user's own instance was not touched."
+                        : "Connected to an isolated TIA-Portal instance (headless — no window; for read-only tasks). The user's own instance was not touched.",
                     Meta = new JsonObject
                     {
                         ["timestamp"] = DateTime.Now,
                         ["success"] = true,
-                        ["isolated"] = true
+                        ["isolated"] = true,
+                        ["withUserInterface"] = visible,
+                        ["windowVisible"] = visible
                     }
                 };
             }
@@ -205,7 +211,7 @@ namespace TiaMcpServer.ModelContextProtocol
             }
         }
 
-        [McpServerTool(Name = "Disconnect"), Description("[L1][Portal] Disconnect from TIA Portal and release the Openness handle. Call after all project work is done. By default the open project/session is auto-saved before disconnecting (no data loss). Set saveBeforeClose=false only to discard unsaved changes.")]
+        [McpServerTool(Name = "Disconnect"), Description("[L1][Portal] Disconnect from TIA Portal and release the Openness handle. Call after all project work is done. By default the open project/session is auto-saved before disconnecting (no data loss). Set saveBeforeClose=false only to discard unsaved changes. Instance policy (user rule): a HEADLESS instance started by ConnectIsolated is closed; a VISIBLE one is KEPT OPEN so the user can keep watching — close it manually when done. The response tells you which happened via instanceKept / instancePid / instanceStillRunning.")]
         public static ResponseDisconnect Disconnect(
             [Description("saveBeforeClose: if true (default), the open project/session is saved before disconnecting. Set false to discard unsaved changes.")] bool saveBeforeClose = true)
         {
@@ -213,13 +219,38 @@ namespace TiaMcpServer.ModelContextProtocol
             {
                 if (Portal.DisconnectPortal(saveBeforeClose))
                 {
+                    bool kept = Portal.IsolatedInstanceKept;
+                    int? pid = Portal.IsolatedProcessId;
+                    bool stillRunning = Portal.IsIsolatedInstanceAlive();
+
+                    string msg;
+                    if (kept)
+                    {
+                        msg = "Disconnected, but the TIA instance this server opened is KEPT OPEN"
+                            + (pid.HasValue ? $" (pid={pid})" : "")
+                            + " so you can keep inspecting it — close that window manually when you are done.";
+                    }
+                    else if (stillRunning)
+                    {
+                        msg = "Disconnected; the TIA instance"
+                            + (pid.HasValue ? $" (pid={pid})" : "")
+                            + " is still shutting down and should exit within a few seconds.";
+                    }
+                    else
+                    {
+                        msg = "Disconnected from TIA-Portal";
+                    }
+
                     return new ResponseDisconnect
                     {
-                        Message = "Disconnected from TIA-Portal",
+                        Message = msg,
                         Meta = new JsonObject
                         {
                             ["timestamp"] = DateTime.Now,
-                            ["success"] = true
+                            ["success"] = true,
+                            ["instanceKept"] = kept,
+                            ["instancePid"] = pid.HasValue ? (JsonNode?)JsonValue.Create(pid.Value) : null,
+                            ["instanceStillRunning"] = stillRunning
                         }
                     };
                 }

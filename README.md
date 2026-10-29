@@ -1,289 +1,203 @@
----
-summary: 项目总览：这套 MCP 是什么、怎么装（含给同事的一句话）、版本说明与安全默认值
-kind: entry
-when: 想知道这个项目能干什么、怎么安装时
-env: none
----
+# TIA Portal Openness MCP（V18 / V20 / V21）
 
-# TIA Portal Openness MCP — 多版本（V18 / V20 / V21）
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+![TIA Portal](https://img.shields.io/badge/TIA%20Portal-V18%20%2F%20V20%20%2F%20V21-blue)
+![Tools](https://img.shields.io/badge/tools-232%20(V20)%20%2F%20204%20(V18)-green)
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) ![TIA Portal](https://img.shields.io/badge/TIA%20Portal-V18%20%2F%20V20%20%2F%20V21-blue.svg) ![MCP Tools](https://img.shields.io/badge/MCP%20Tools-232-green.svg)
-
-> 本项目为 **TIA Portal Openness MCP**，以 MIT 许可证发布，独立维护，支持 **TIA Portal V18 / V20 / V21** 三个版本构建。
-
-在 **Windows + TIA Portal V18 / V20 / V21** 下，通过 **MCP（stdio）** 驱动博途：建项目、加硬件、生成 PLC（Tag/UDT/DB/SCL/LAD）、生成 **Classic / Comfort / Unified HMI** 画面与标签、编译诊断、保存。包内含 **已编译运行时**、Skill、模板、能力矩阵、手册。**不要求**另行克隆源码仓库——下载本仓库根目录的 zip 解压即用。
-
-## 快速上手（3 步）
-
-> 照这 3 步，把 MCP 客户端连上你的 TIA Portal V18。
-
-1. **准备**：装好 **TIA Portal V18** + **.NET Framework 4.8**；把当前 Windows 用户加入本地组 **`Siemens TIA Openness`**，注销重登一次。
-2. **下载解压**：在本仓库页面点 **`Code` → `Download ZIP`**（或 `git clone`），解压到任意目录。
-3. **挂载 MCP**：在 MCP 客户端（WorkBuddy / Cursor / VS Code / Claude Desktop 等）配置里，把 `command` 指向解压目录内的
-   `tools\tiaportal-mcp\src\TiaMcpServer\bin-v18\Release\net48\TiaMcpServer.exe`，
-   `args` 传 `["--tia-major-version","18","--logging","0"]`，信任该连接器并重启客户端。连接器将暴露 **204 个 V18 安全工具**。
+让 AI 通过 **MCP（stdio）** 直接操作博途工程：读结构、导出块、生成 PLC 代码、改硬件组态、做工程体检。
+仓库自带**已编译运行时**，下载解压即用，不需要自己编译。
 
 ---
 
-## 版本说明（V18 / V20 / V21）
+## 1. 它能做什么
 
-本仓库同时维护 **V18 / V20 / V21** 三个构建（三个 csproj，输出同名 `TiaMcpServer.exe`，按输出目录 `bin-v18` / `bin-v20` / `bin` 区分）。其中 **V18 构建**做了如下兼容性处理：
+| 类别 | 典型能力 |
+|---|---|
+| **读** | 工程树、软件目录、块层级、块接口、标签表、UDT、交叉引用、调用链、在线值 |
+| **导出** | 单块 / 批量块 / 类型 → SimaticML XML；**回报磁盘事实**（文件数、空文件、不可解析、字节数） |
+| **写** | 建/删/移动块、改编号、导入 UDT / 变量表 / 技术对象、外部源导入、SCL 重生成 |
+| **硬件** | 加设备、插模块、改 IO 地址、配 PROFINET 子网、驱动参数与报文 |
+| **HMI** | Classic / Comfort / Unified 画面、变量、连接、按钮动作 |
+| **诊断** | 编译并收集消息、断链与地址一致性检查、不一致块清单 |
+| **体检** | 离线规则引擎（见 §5），可进 CI |
 
-- **WinCC Unified HMI 在 V18 不可用**：V18 的 Openness 全安装不含 `Siemens.Engineering.HmiUnified` 程序集。相关 **23 个 Unified HMI 工具**已用 `#if !TIA_V18` 条件编译守卫在 V18 构建中隐藏（方法体保留，仅不注册为 MCP 工具，从 `tools/list` 中消失）。
-- **暴露工具数**：连接器实测 **204 个 V18 安全工具**（基线 232 − 28 个守卫工具）；V20/V21 构建暴露完整工具集。
-- **VersionControl（VCI）在 V18 不可用**：V18 的 `Siemens.Engineering` 程序集不含 `MappedObject` / `ExportObject` / `ConnectObject` / `GetSupportedFileFormats`，VCI 为 **V20+ 能力**，其 **5 个工具**同样以 `#if !TIA_V18` 在 V18 构建中隐藏。
-- **深度审计结论**：除上述 **28 个工具**（23 个 Unified HMI + 5 个 VCI）外，其余暴露工具在 V18 全部安全可用；V20 专属文档工具（`Export/Import*Documents`）在 V18 构建中仅以引导提示暴露、不可调用。
-- **HMI 自动化路径**：V18 下请走 **Classic / Comfort HMI** 工具族；Unified 需求须使用 V20/V21 构建。
+工具分层：`L0` 引导 7 个 · `L1` 常用 57 个 · `L2` 专用 168 个。
+V20 构建暴露 **232** 个；V18 构建隐藏 28 个 V18 不具备的能力（23 个 Unified HMI + 5 个 VersionControl），暴露 **204** 个。
 
-## 安装前须知
+---
 
-**前提条件**
+## 2. 60 秒接入
 
-| 项 | 要求 | 没有会怎样 |
+**前提**：Windows x64 + **TIA Portal V18/V20/V21（安装时勾选 Openness）** + .NET Framework 4.8，
+当前 Windows 用户属于本地组 `Siemens TIA Openness`（改完需注销重登）。
+
+### 方式 A：一行安装（推荐）
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\install-mcp.ps1
+```
+
+脚本会**先扫描本机的 TIA 安装**（所有固定盘，不猜默认版本），列出来让你确认，再写 MCP 配置。
+
+### 方式 B：手动挂载
+
+在 MCP 客户端配置里指向解压目录中的启动器：
+
+```json
+{
+  "mcpServers": {
+    "tia-portal": {
+      "command": "cmd",
+      "args": ["/c", "<解压目录>\\tools\\tiaportal-mcp\\tia_mcp_launcher.bat"],
+      "env": { "TIA_MCP_ATTACH_TIMEOUT_MS": "8000" }
+    }
+  }
+}
+```
+
+**只挂一条**。版本由启动器/路由器按你要打开的工程自动决定（见 §3）。
+
+---
+
+## 3. 三个关键设计
+
+### 3.1 一条连接器，按工程版本自动选引擎
+
+一个 TIA 版本的 Openness 程序集只能加载进一个进程，所以：
+
+- `tia_mcp_launcher.bat`：**扫描所有固定盘**找已安装的 TIA，判定只认磁盘实物
+  （`Portal V<XX>\bin\Siemens.Automation.Portal.exe` **且** `PublicAPI\V<XX>\Siemens.Engineering.dll`）。
+  **不信任注册表**——安装不完整会留残留键；`Portal V20\PublicAPI` 里本来就带 V17–V20 的多版客户端 DLL。
+- `tia_router.py`：对外是**一个** MCP 服务端，内部按需拉起 V18/V20 子引擎。
+  `OpenProject` 读工程扩展名（`.ap18` / `.ap20`）→ 自动切到对应引擎；切换前**先保存关闭**当前工程，
+  存不了就中止切换，不会硬关。
+- 多版本共存时**不猜**：没有明确目标就报 `ambiguous` 并列出候选，让你定一次后写进配置。
+
+### 3.2 只读无窗口，改程序必须有窗口
+
+- `ConnectIsolated(withUserInterface=false)`：无窗口，用于读结构、读块、导出、体检。
+- `ConnectIsolated(withUserInterface=true)`：打开可见 TIA 窗口，用于任何改动。
+- **写操作硬门**：65 个写工具在无窗口实例上会被直接拒绝，并告诉你「先 Disconnect，再用
+  `withUserInterface=true` 重连」。工具不会在你看不见的窗口里改程序。
+- 只关**工具自己打开**的实例与工程；挂接来的用户工程永远不动。
+
+### 3.3 工具说成功不算数，磁盘说才算
+
+导出、编译、写入这类操作都会**回读实际结果**：导出的 `meta` 里带
+`filesWritten / emptyFiles / unparsableFiles / totalBytes / diskVerified`，
+新文件为 0 或有坏文件时 `success=false`，消息里直写 `disk shows N new file(s)` 或 `treat this export as FAILED`。
+
+---
+
+## 4. 三条工作流（给 AI 用，不是新工具）
+
+挂载后可直接选用（MCP Prompt），它们把顺序、停层门和「不许做什么」写死：
+
+| Prompt | 用途 |
+|---|---|
+| `Workflow_AuditProject` | 只读体检：身份核对 → 树 → 目录 → 块层级 → 一致性 → 类型 → 导出对账 → 离线规则 → 报告 |
+| `Workflow_ExportForReview` | 导出并**证明**磁盘产物，再交给离线解析 |
+| `Workflow_EditBlock` | 影响面分析 → 备份 → 改 → 回导 → 编译 → 复核 → 保存 |
+
+---
+
+## 5. 工程体检（离线，可进 CI）
+
+```powershell
+# 采集（连 TIA，只读）
+python scripts\tia_project_audit.py --collect --project "<工程.apXX>" --software <PLC名> --out report.md
+
+# 只吃已采集数据（不连 TIA）
+python scripts\tia_project_audit.py --skeleton s.json --hierarchy h.json --out report.md
+```
+
+规则（默认开启，均为**事实判定**，不含命名风格）：
+
+| 规则 | 说明 |
+|---|---|
+| R0 / R0b | 骨架与层级**数据源对账**（块数、按类型计数），不一致即 P1 |
+| R1 / R3 / R5 | 根目录散块、编号体系未分区、编号空间稀疏 |
+| R7 | 未编译块（`isConsistent=false`）——导出与下载都会被拒 |
+| R8 | know-how 保护块（读不到内部逻辑，需人工解锁） |
+| R11 / R12 | 空组、编程语言分布 |
+| R13 / R13b | 疑似孤儿块（无调用者，启发式）+ **调用图覆盖率声明** |
+
+命名规范类（组名前缀、块名前缀、块名特殊字符）**默认不检查**——命名属于你自身程序框架，
+加 `--naming-check` 才会报。
+
+---
+
+## 6. 版本与工具数
+
+| 构建 | 输出目录 | TIA | 工具数 | 说明 |
+|---|---|---|---|---|
+| V18 | `bin-v18` | V18 | 204 | 隐藏 28 个 V18 不具备的能力 |
+| V20 | `bin-v20` | V20 | 232 | 完整工具集 |
+| V21 | `bin` | V21 | 232 | 上游原版构建 |
+
+不支持 V16 / V17 / V19：这些版本没有可用的 Openness 通道（或本仓库未提供构建）。
+探测到不支持的版本时，工具会**明说**，不会静默降级。
+
+---
+
+## 7. 与同类工具的定位差异
+
+同类开源项目里最活跃的是 [Czarnak/tia-portal-mcp](https://github.com/Czarnak/tia-portal-mcp)
+（**v4.2.0**，2026-10-25 发布；.NET 10；TIA V21；据其 v3.0.0 讨论为 14 个读写工具 / 4 个只读工具）。
+
+| 维度 | 本项目（2.6.2） | Czarnak/tia-portal-mcp（v4.2.0） |
 |---|---|---|
-| 操作系统 | Windows 10 1903+ / 11（x64） | 引擎是 .NET Framework 4.8 |
-| **TIA Portal** | **V18 / V20 / V21，安装时勾选 Openness** | 探测不到；V16/V17 **不支持**（没有 Openness 这条路） |
-| .NET Framework | 4.8（系统自带，`Release ≥ 528040`） | 引擎无法启动 |
-| PowerShell | 5.0+ | 脚本语法不支持 |
-| 磁盘 | 安装目录约 40 MB（包 17 MB） | 解压失败 |
-| 网络 | 能访问 `codeload.github.com` 或 `api.github.com`；**或**用离线包 | 下载失败 |
-| 管理员权限 | **安装不需要**；只有 `doctor --fix` 补 Openness 用户组时需要 | 连不上 TIA 时补权限 |
+| 工具粒度 | **多而细**（232 个，可组合） | **少而复合**（十余个，preview→apply） |
+| TIA 版本 | V18 / V20 / V21 三构建，**按工程自动路由** | V21 单一版本 |
+| 运行时 | .NET Framework 4.8（Win 自带） | .NET 10（需装运行时或用自包含包） |
+| 写保护 | **窗口硬门**（无窗口实例直接拒写）+ 只关自建实例 | 访问模式（read-only 隐藏写工具）+ 预览令牌 + 审计 JSONL |
+| 体检 | 自带离线规则引擎（对账/未编译/保护/孤儿…） | 无独立体检脚本 |
+| 分发 | 仓库自带运行时，解压即用 | 自包含 zip / NuGet 全局工具 |
 
-**会改动什么**（均可回滚）
-
-- 写 5 个客户端的 MCP 配置（**只改 `mcpServers["tia-portal"]` 一项**，其它条目与顶层键不动，改前备份 `*.bak`）：
-  WorkBuddy / Claude Desktop / Claude Code / Cursor / VS Code —— 只处理**已存在**的配置文件
-- 若下载：安装目录 `%USERPROFILE%\tia-mcp`
-
-**建议先自检**（只读，不改任何东西；会告诉你缺什么、哪条下载通道能通）：
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-WebRequest -UseBasicParsing 'https://codeload.github.com/1748477582/tia-portal-openness-mcp/zip/refs/heads/master' -OutFile .\tia-mcp.zip; Expand-Archive .\tia-mcp.zip -DestinationPath .\tia-mcp-pkg -Force; & .\tia-mcp-pkg\tia-portal-openness-mcp-master\bootstrap.ps1 -Check"
-```
-
-**回滚**
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\install-mcp.ps1 -Remove   # 只删 tia-portal 条目
-```
-
-再删掉 `%USERPROFILE%\tia-mcp` 即可完全还原（配置侧还有 `.bak`）。
-
-**离线安装**（机器完全不能上网时）
-
-1. 在能上网的机器打开 `https://github.com/1748477582/tia-portal-openness-mcp/archive/refs/heads/master.zip` 下载
-2. 拷到目标机器，解压到 `%USERPROFILE%\tia-mcp`
-3. 在解压目录运行 `powershell -ExecutionPolicy Bypass -File install-mcp.ps1 -TiaMajorVersion 20`
+两者取向不同：本项目面向「一个工程师本机、多版本工程、要能解释每一步为什么」的场景。
 
 ---
 
-## 一行安装（复制即用）
-
-**推荐写法**：整包下载 → 解压 → 调安装器。**不依赖 `raw.githubusercontent.com`**（很多网络封它），也**不用 `iex`**
-（企业组策略常禁）。把下面**整段**复制给对方，粘给他的 AI 或直接在 PowerShell 里执行：
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-WebRequest -UseBasicParsing 'https://codeload.github.com/1748477582/tia-portal-openness-mcp/zip/refs/heads/master' -OutFile .\tia-mcp.zip; Expand-Archive .\tia-mcp.zip -DestinationPath .\tia-mcp-pkg -Force; & .\tia-mcp-pkg\tia-portal-openness-mcp-master\install-mcp.ps1 -TiaMajorVersion 20"
-```
-
-把末尾的 `20` 换成要用的版本（18 / 20 / 21）。**去掉 `-TiaMajorVersion 20`** 则会在终端里让你确认探测结果并选版本
-——脚本不会替你选。
-
-> 若对方网络能访问 `raw.githubusercontent.com`，也可以用更短的一行（`bootstrap.ps1` 会自动挑可用通道）：
-> ```powershell
-> powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/1748477582/tia-portal-openness-mcp/master/bootstrap.ps1' -OutFile .\tia-bootstrap.ps1; & .\tia-bootstrap.ps1"
-> ```
-
-装完**重启 AI 客户端**；之后想换版本，在安装目录（默认 `%USERPROFILE%\tia-mcp`）运行 `switch-version.ps1`。
-
-## 安装（给同事 / 新机器）
-
-> **接手这个仓库（换电脑 / 换 agent）先读 `AGENTS.md`**：入口、必读顺序、自检命令、硬规则。
-> 想找"有没有现成的文档/脚本"，查 **`docs/INDEX.md`**（自动生成，50+ 项，带"何时用/需要什么环境"）。
-
-最快的方式：**把上面那条一行命令复制给对方**（或粘给他的 AI）。
-
-如果要给对方 AI 一段自然语言指令（而不是一条命令），用这段：
+## 8. 目录结构
 
 ```
-帮我装 TIA Portal MCP：执行
-powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/1748477582/tia-portal-openness-mcp/master/bootstrap.ps1' -OutFile .\tia-bootstrap.ps1; & .\tia-bootstrap.ps1"
-它会先列出本机装了哪些 TIA —— 把列表贴给我，我告诉你用哪个版本，然后你再用 -Version <版本> 跑一次。
-装完提醒我重启客户端。
+tools/tiaportal-mcp/
+  tia_mcp_launcher.bat      # 版本探测 + 启动对应构建
+  detect_tia_version.ps1    # 扫全盘找已安装 TIA（磁盘为准）
+  tia_router.py             # 单连接器 + 按工程版本自动路由
+  src/TiaMcpServer/         # 引擎源码（三 csproj：V18 / V20 / 上游）
+scripts/                    # 体检、清单生成、闸门检查、切版本
+manifest/                   # tools-list.json / package-manifest.json
+docs/                       # 索引、用户指令、经验与坑
+runtime/                    # 发行包用的已编译运行时
 ```
 
-或自己动手（PowerShell，整包解压后运行，不需要管理员权限）：
+---
 
-```powershell
-# 交互安装：先列出本机装了哪些 TIA → 让你确认探测是否正确 → 让你选用哪个版本
-powershell -ExecutionPolicy Bypass -File install-mcp.ps1
+## 9. 常见问题
 
-# 只看计划（不写文件）；非交互时必须显式给版本，否则脚本拒绝——不替你猜
-powershell -ExecutionPolicy Bypass -File install-mcp.ps1 -DryRun -FollowOpenTia
+**新机器装完报「安装路径找不到」或总用 V18？**
+2.5.5 起已修：探测扫所有固定盘、以磁盘为准、找不到就报错而不是退 V18。若仍异常，跑
+`powershell -File tools\tiaportal-mcp\detect_tia_version.ps1 -List` 看它发现了什么。
 
-# 非交互/脚本化：固定某个版本，或跟随当前打开的 TIA
-powershell -ExecutionPolicy Bypass -File install-mcp.ps1 -TiaMajorVersion 20
-powershell -ExecutionPolicy Bypass -File install-mcp.ps1 -FollowOpenTia
+**装了 V18 和 V20，怎么切？**
+不用切。一条连接器即可，打开 `.ap18` 走 V18、`.ap20` 走 V20。也可用
+`scripts\Set-TiaVersion.ps1 -Version 18 -Apply` 把默认版本钉死。
 
-# 装完以后随时换版本（只改 TIA_MCP_VERSION，不碰其它配置）
-powershell -ExecutionPolicy Bypass -File switch-version.ps1
+**`AttachToOpenProject` 挂不上？**
+部分环境的 `Attach()` 会挂死（本机两次独立复现）。请改用 `ConnectIsolated` + `OpenProject`，
+不要依赖挂接。
 
-# 只要约 40 个核心工具 / 卸载
-powershell -ExecutionPolicy Bypass -File install-mcp.ps1 -Lite
-powershell -ExecutionPolicy Bypass -File install-mcp.ps1 -Client cursor -Remove
-```
+**导出成功但目录是空的？**
+2.6.1 起不会了：导出会回报 `filesWritten` 等磁盘事实，`success=false` 即表示引擎与磁盘不一致。
 
-支持的客户端：**WorkBuddy**（`~/.workbuddy/mcp.json`）、Claude Desktop、Claude Code、Cursor、VS Code——
-默认只处理**本机确实装了**的那些。改配置前自动备份为 `*.bak`，重复执行是幂等的。
-
-需要 **Windows + TIA Portal V18/V20/V21（含 Openness 选项）**；装了多个 TIA 版本时默认用最高版本，
-想指定加 `-TiaMajorVersion 18`。**只装一个版本时会自动钉住该版本**——启动器在"没打开 TIA"时兜底写死 V18，
-不钉会加载错误的构建（V18 目录不存在 → 起不来）。也可以双击 `配置MCP-v18.bat` / `配置MCP-v20.bat` / `配置MCP.bat`（按版本选）。
-
-更细的说明（含常见卡点）见 **`同事安装_给Agent的一句话.md`**。
-
-## 安全默认值与自省工具（2.5.0 起）
-
-- **`FindTools(query, limit)`**（L0）：按能力词检索**全部**工具名与描述，返回精确工具名、参数签名与**风险标注**
-  （`read-only` / `reads the project, writes a file` / `writes or overwrites engineering data` /
-  `RISK changes CPU, deletes data or closes project - call by name`）。**不改变对外通告的工具列表**，是兜底而非流程必经步骤。
-- **反射桥不再通向 Portal / 工程**：通过 `InvokeObject` / `InvokeService` 调用 `TiaPortal` 或 `Project` 的方法
-  （`Close` / `Dispose` / `Save` / `SaveAs` 等）一律拒绝并指向 `CloseProject` / `Disconnect` / `SaveProject` / `OpenProject`。
-  此前 `InvokeObject(portal, "Dispose", allowWrite=true)` 可以关掉用户开着的 TIA（2026-09-24 事故的同一类路径）。
-- **`WritePlcSclSourceFile` 不再静默覆盖**：目标文件已存在且内容不同 ⇒ 报错并要求显式 `overwrite=true`（内容相同仍幂等成功）。
-- **8 个危险默认值改为"省略即安全"**：`overwrite`（5 个批量导入工具）与 `autoCreateGroup` / `autoCreate`（3 个分组/归类工具）
-  默认改为 `false`；**`CloseProject` / `Disconnect` 的 `saveBeforeClose=true` 保持不变**（那本来就是安全方向）。
-- **启动时清理陈旧临时产物**：`%TEMP%` 下本服务器自建的、带唯一后缀且超过 24 小时的导出/回读/备份目录会被清除；
-  固定名目录（如 `tia_mcp_scl`）与他人进程的文件一律不动。
+**V20 工程编译很慢？**
+100+ 工艺对象时 60 秒以上属正常，`timeoutSeconds` 给 600。
 
 ---
 
-## 上手步骤
+## 10. 变更与许可
 
-1. **环境准备**
-   - .NET Framework **4.8**、**TIA Portal V18** 已安装；
-   - 当前用户加入 **`Siemens TIA Openness`** 本地组，注销重登；
-   - 定位博途安装根（任选其一）：
-     a) 启动 exe 时传 `--tia-portal-location "C:/Program Files/Siemens/Automation/Portal V18"`（推荐，非标准安装位置必用）；
-     b) 用户环境变量 `TiaPortalLocation` 指向博途安装根；
-     c) 让程序自动从注册表读取。
-   - 首次连接时在 TIA 弹窗中授权 **Openness**。
+逐版本变更见 [CHANGELOG.md](CHANGELOG.md)。当前 **2.6.2**。
 
-2. **挂载 MCP（手动配置，最稳）**
-   复制压缩包内的 `.mcp.json` 片段（或参考下例），把 `command` 指向本包内的 V18 exe：
-
-   ```json
-   {
-     "mcpServers": {
-       "tia-portal": {
-         "command": "C:/path/to/unzip/tools/tiaportal-mcp/src/TiaMcpServer/bin-v18/Release/net48/TiaMcpServer.exe",
-         "args": ["--tia-major-version", "18", "--logging", "0"],
-         "env": { "TiaPortalLocation": "C:/Program Files/Siemens/Automation/Portal V18" }
-       }
-     }
-   }
-   ```
-
-   （若使用受管 MCP 客户端，升级 `TiaMcpServer.exe` 前需先在连接器配置中将 `disabled` 设为 `true` 释放文件锁，复制完成后再恢复。同款 exe 也支持 `TiaMcpServer.exe config` 尝试自动发现并写入宿主配置，手动配置更稳。）
-
-3. **首次调用顺序**
-   - `Bootstrap` → `Connect` → `OpenProject`（或 `CreateProject`）→ `GetProjectTree`，从树中读取真实的 `PLC_xxx` / `HMI_RT_xxx` 路径再继续。
-
----
-
-## 能力范围与边界
-
-**可做**：工程与硬件组态、PROFINET、PLC 声明式导入（Tag/UDT/DB/SCL/LAD）、Classic / Comfort HMI 连接/变量/画面、交叉引用与影响面分析、批量分组与自动分类、编译诊断、保存。
-
-**V18 下不可做**：
-- WinCC **Unified** HMI（23 个工具已隐藏，V18 Openness 不含 `HmiUnified` 程序集）——需 V20/V21。
-- S7DCL 人类可读 SCL 文本导出（`Export/Import*Documents` 系列为 V20+ 专属，本构建仅以引导提示暴露、不可调用）。可改走 `ExportBlockSourceUtf8` + `RegenerateBlockFromSource`（SimaticML XML，强制 UTF-8+BOM 编码安全）。
-
-**包内不含**：西门子安装介质、现场导出工程、业务专用工艺。
-
----
-
-## 版本对照
-
-| 能力 | V18 构建 | V20 / V21 构建 |
-|------|-----------|------------------------|
-| 通用 PLC / Classic HMI 工具 | ✅ | ✅ |
-| WinCC Unified HMI 工具 | ❌（已守卫隐藏） | ✅ |
-| 文档导入导出（`*Documents` / S7DCL） | ⚠️ 仅引导提示 | ✅ 可调用 |
-| 暴露工具数 | **204** | **232** |
-
----
-
-## 构建（如需自行编译）
-
-三个 csproj 对应三个 TIA 版本，输出目录区分：
-
-```bat
-:: V18（隐藏 28 个工具：23 Unified HMI + 5 VCI，共 204 个）
-dotnet build TiaMcpServer.V18.csproj -c Release ^
-  -p:TiaPortalLocation="C:/Program Files/Siemens/Automation/Portal V18" ^
-  -p:BaseOutputPath=bin-v18/ -p:BaseIntermediateOutputPath=obj-v18/
-
-:: V20（单体会话程序集）
-dotnet build TiaMcpServer.V20.csproj -c Release ^
-  -p:TiaPortalLocation="D:/Program Files/Siemens/Automation/Portal V20" ^
-  -p:BaseOutputPath=bin-v20/ -p:BaseIntermediateOutputPath=obj-v20/
-
-:: V21（拆分程序集）
-dotnet build TiaMcpServer.csproj -c Release
-```
-
-`TiaMcpServer.V18.csproj` 已定义 `TIA_V18` 编译符号，自动隐藏 Unified HMI 工具。
-
----
-
-## 交付内容
-
-`master` 分支根目录提供：
-
-```
-（本仓库不发布单独的 `TIA_Portal_Openness_MCP.zip` 资产，也没有 GitHub Release —— 早期文档里的那个 zip 已不存在。）
-```
-
-压缩包内含：已编译运行时 `bin-v18/`、源码 `src/`、文档 `docs/`、模板 `templates/`、Skill、能力矩阵 `manifest/`、配置 `.mcp.json`、以及更详细的 `README.md` 与 `LICENSE`。解压后所有文档与模板均在包内，无需另行克隆源码仓库。
-
-> 本仓库**直接包含完整源码树**（`tools/tiaportal-mcp/src/`，三个 csproj：V18 / V20 / V21），另有预置运行时 `runtime/`。下载方式：`Code` → `Download ZIP`，或 `git clone`。
-
----
-
-## 文档地图（压缩包内）
-
-| 路径 | 说明 |
-|------|------|
-| `tools/tiaportal-mcp/skill/SKILL.md` | 主规范：工具分层、参数陷阱、HMI schema、LAD/SCL 边界 |
-| `manifest/tools-list.json` | 静态工具名与层级；运行时权威列表以连上后的 `tools/list` 为准 |
-| `docs/tool-capability-matrix.md` | 能力矩阵（静态索引） |
-| **`AGENTS.md`** | **接手入口**：任何 agent / 任何人第一次接触本仓库时读这一份（必读顺序、自检、硬规则） |
-| **`docs/INDEX.md`** | **内容索引**（自动生成）：所有文档/脚本/清单的一句话说清 + 何时用 + 需要什么环境 |
-| **`docs/lessons-and-shortcuts.md`** | **踩过的坑与捷径**：事故级教训（误杀/误关用户 TIA）、RCW 类型嗅探谎言、PS 5.1 陷阱、推送新旧方向审计、编码与 BOM、DLP 绕法。**动手前先扫一遍** |
-| `docs/scl-instruction-library.md` / `docs/lad-instruction-library.md` | SCL / LAD 指令库 |
-| `docs/hmi-plc-tag-binding-and-addressing.md` | HMI↔PLC 绑定与寻址 |
-| `templates/plc/` · `templates/hmi/` | PLC / HMI 模板索引 |
-| `手册/` | 速启、Openness 限制、错误模型等 |
-
----
-
-## 常见问题
-
-**Q：连接器只显示部分工具 / 看不到某个工具？**
-属于客户端工具描述符/缓存问题，不是交付包裁剪能力；重启客户端或清空工具缓存即可。运行时权威列表以 `tools/list` 为准。
-
-**Q：为什么没有 WinCC Unified？**
-TIA Portal V18 的 Openness 全安装不含 `Siemens.Engineering.HmiUnified` 程序集，Unified HMI 工具在 V18 构建中被 `#if !TIA_V18` 守卫隐藏。V18 下请走 Classic / Comfort HMI 工具族；Unified 需求使用 V20/V21 构建。
-
-**Q：升级 `TiaMcpServer.exe` 时被「文件被占用」？**
-受管 MCP 连接器的进程由宿主托管，会被立即重生。升级前先在连接器配置中将 `disabled` 设为 `true` 释放文件锁，复制完成后再恢复。
-
-**Q：与 IDE 无关吗？**
-是。凡支持 MCP 的客户端（WorkBuddy、Cursor、VS Code、Claude Desktop、自研 HTTP 客户端等）均可使用同一 `TiaMcpServer.exe`。
-
----
-
-## 许可证
-
-本项目以 **MIT 许可证**发布，版权声明见 `LICENSE`。
+MIT License，见 [LICENSE](LICENSE)。

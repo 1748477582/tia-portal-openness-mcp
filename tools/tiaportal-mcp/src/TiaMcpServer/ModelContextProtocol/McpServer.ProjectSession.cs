@@ -60,8 +60,10 @@ namespace TiaMcpServer.ModelContextProtocol
         {
             try
             {
-                if (Portal.ProjectIsValid)
+                if (Portal.ProjectIsValid && Portal.OwnsProject)
                 {
+                    // Only auto-close a project this server opened. An attached (user-owned) project
+                    // must never be closed here — Portal.OpenProject then refuses with an explanation.
                     Portal.CloseProject();
                 }
 
