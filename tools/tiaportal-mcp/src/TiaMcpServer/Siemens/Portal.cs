@@ -58,7 +58,9 @@ namespace TiaMcpServer.Siemens
         // program" ops, or when the idle sibling instance auto-disconnects and disposes the shared
         // portal). A named mutex keyed by TIA major version makes the second instance refuse to
         // attach instead of destabilizing the user's session.
-        private System.Threading.Mutex? _attachMutex;
+        // 锁按「目标 TIA 进程 PID」而不是「版本」：同一版本的多个 TIA 进程可以各接一个引擎
+        // （prewarm 与连接器因此不再互斥），但两个引擎抢同一个 TIA 进程仍会被拒。
+        private readonly Dictionary<int, System.Threading.Mutex> _attachMutexes = new Dictionary<int, System.Threading.Mutex>();
         private ProjectBase? _project;
         private LocalSession? _session;
         // Resolving a softwarePath walks the device tree via Openness (~40 COM calls per call). Cache it per
@@ -369,38 +371,52 @@ namespace TiaMcpServer.Siemens
         // STA thread (ConnectPortal's body runs via _sta.Run). If another instance already owns
         // it, refuse to attach — double-attach crashes the user's TIA. On success this thread owns
         // the mutex and must release it (ReleaseSingleAttachLock) on disconnect/dispose.
-        private void AcquireSingleAttachLock()
+        private bool TryAcquireAttachLock(int pid)
         {
-            var mutexName = $"TiaMcpServer.SingleAttach.V{Engineering.TiaMajorVersion}";
+            var mutexName = $"TiaMcpServer.SingleAttach.V{Engineering.TiaMajorVersion}.P{pid}";
             System.Threading.Mutex? m = null;
             try
             {
                 m = new System.Threading.Mutex(true, mutexName, out var createdNew);
                 if (createdNew)
                 {
-                    _attachMutex = m;
-                    return;
+                    _attachMutexes[pid] = m;
+                    return true;
                 }
-                // Named mutex already existed and is owned by another instance → we did NOT acquire it.
                 try { m.Dispose(); } catch { }
-                _attachMutex = null;
-                throw new PortalException(PortalErrorCode.OpennessError,
-                    $"另一个 TiaMcpServer 实例已占用 TIA V{Engineering.TiaMajorVersion} 的 Openness 连接。" +
-                    "禁止重复 Attach：Siemens Openness 为单客户端模型，双 Attach 会破坏用户 TIA 的 COM 会话并导致其崩溃。" +
-                    "请先停止多余的 MCP 实例（仅保留一个），再重新连接。");
+                return false;
             }
             catch (System.Threading.AbandonedMutexException)
             {
-                // Previous owner crashed without releasing; the constructor granted us ownership.
-                _attachMutex = m;
+                _attachMutexes[pid] = m!;
+                return true;
+            }
+            catch
+            {
+                try { m?.Dispose(); } catch { }
+                return false;
+            }
+        }
+
+        /// <summary>释放除 keepPid 之外的锁：一旦选定某个 TIA 进程，其它试探性附加拿到的锁要立刻还回去。</summary>
+        private void ReleaseAttachLocksExcept(int keepPid)
+        {
+            foreach (var pid in _attachMutexes.Keys.Where(p => p != keepPid).ToList())
+            {
+                try { _attachMutexes[pid].ReleaseMutex(); } catch { }
+                try { _attachMutexes[pid].Dispose(); } catch { }
+                _attachMutexes.Remove(pid);
             }
         }
 
         private void ReleaseSingleAttachLock()
         {
-            try { _attachMutex?.ReleaseMutex(); } catch { }
-            try { _attachMutex?.Dispose(); } catch { }
-            _attachMutex = null;
+            foreach (var pid in _attachMutexes.Keys.ToList())
+            {
+                try { _attachMutexes[pid].ReleaseMutex(); } catch { }
+                try { _attachMutexes[pid].Dispose(); } catch { }
+            }
+            _attachMutexes.Clear();
         }
 
         public void Dispose()
@@ -650,9 +666,8 @@ namespace TiaMcpServer.Siemens
                 _session = null;
                 _portal = null;
 
-                // G4: claim the single-attach lock BEFORE touching any running TIA. A second
-                // instance will refuse to attach rather than corrupt the user's TIA session.
-                AcquireSingleAttachLock();
+                // 锁不再在这里按版本抢：改为在循环里按目标 PID 抢（见 TryAcquireAttachLock），
+                // 否则 prewarm 一旦连上，连接器就永远进不来。
 
                 // connect to running TIA Portal
                 AttachAttempts.Clear();
@@ -696,6 +711,13 @@ namespace TiaMcpServer.Siemens
                             continue;
                         }
 
+                        if (!TryAcquireAttachLock(proc.Id))
+                        {
+                            AttachAttempts.Add($"PID={proc.Id}: SKIPPED — attach lock held by another TiaMcpServer instance");
+                            _logger?.LogInformation($"PID={proc.Id}: attach lock held by another instance; skipping.");
+                            continue;
+                        }
+
                         TiaPortal? candidate = null;
                         try
                         {
@@ -733,6 +755,7 @@ namespace TiaMcpServer.Siemens
                                 _ownsPortal = false;   // attached, not started by us
                                 _ownsProject = false;  // user's project — never auto-close
                                 ConnectMode = "attached";
+                                ReleaseAttachLocksExcept(proc.Id);   // 其它试探性附加的锁立即归还
                                 BoundProjectName = null;
 
                                 if (hasSession)
@@ -806,6 +829,7 @@ namespace TiaMcpServer.Siemens
                     : TiaPortalMode.WithoutUserInterface;
                 _logger?.LogInformation($"Starting a new TIA Portal instance ({launchMode}) — implicit Connect fallback "
                                       + "(headless unless TIA_MCP_AUTOSTART_UI=1).");
+                ReleaseSingleAttachLock();   // 没有附加任何进程，锁全部归还
                 _portal = new TiaPortal(launchMode);
                 _ownsPortal = true;   // we started it, so we may dispose it
 

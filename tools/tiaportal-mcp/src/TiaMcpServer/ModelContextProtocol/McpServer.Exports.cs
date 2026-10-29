@@ -1,4 +1,4 @@
-using ModelContextProtocol;
+﻿using ModelContextProtocol;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using System;
@@ -193,6 +193,10 @@ namespace TiaMcpServer.ModelContextProtocol
                 throw new McpException($"outputPath 不是一个合法路径：{ex.Message}", ex, McpErrorCode.InvalidParams);
             }
 
+            // 路径边界：这个工具的定位是"把寄存的大响应导到工作目录"，不是通用写盘。
+            // 没有边界时它可以往系统目录、程序目录、TIA 安装目录里新建文件——一次调用就可能把环境弄脏。
+            EnsureWritableExportPath(full);
+
             // 不覆盖已存在的文件。这个工具不动 TIA 工程，所以看起来「只读」、门槛低；
             // 如果它能无声覆盖任意路径，那就等于开了个写盘后门 —— 路径写成工程目录里
             // 某个已有文件，一次调用就把它盖了。默认拒绝，要覆盖得明说。
@@ -283,6 +287,40 @@ namespace TiaMcpServer.ModelContextProtocol
                 Meta = new JsonObject { ["ok"] = true, ["deleted"] = n, ["remaining"] = count }
             };
         }
+
+        /// <summary>SaveExport 的落盘边界：只允许写到普通工作目录。</summary>
+        private static void EnsureWritableExportPath(string full)
+        {
+            var target = full.TrimEnd('\\', '/');
+
+            if (Directory.Exists(target))
+                throw new McpException($"{target} 是一个目录；outputPath 必须是文件路径。", null, McpErrorCode.InvalidParams);
+
+            var root = Path.GetPathRoot(target);
+            if (!string.IsNullOrEmpty(root) &&
+                string.Equals(target.TrimEnd('\\', '/'), root.TrimEnd('\\', '/'), StringComparison.OrdinalIgnoreCase))
+                throw new McpException($"拒绝写到盘根 {target}；请给一个具体文件路径。", null, McpErrorCode.InvalidParams);
+
+            var denied = new List<string>();
+            void AddRoot(string? p)
+            {
+                if (string.IsNullOrWhiteSpace(p)) return;
+                try { denied.Add(Path.GetFullPath(p).TrimEnd('\\', '/') + "\\"); } catch { }
+            }
+            AddRoot(Environment.GetEnvironmentVariable("WINDIR"));
+            AddRoot(Environment.GetEnvironmentVariable("ProgramFiles"));
+            AddRoot(Environment.GetEnvironmentVariable("ProgramFiles(x86)"));
+            AddRoot(Environment.GetEnvironmentVariable("ProgramData"));
+            try { AddRoot(Environment.SystemDirectory); } catch { }
+
+            foreach (var d in denied)
+                if (target.StartsWith(d, StringComparison.OrdinalIgnoreCase))
+                    throw new McpException($"拒绝写到 {target}：这是系统/程序目录。请换到普通工作目录（例如 C:/Temp 或工程外的文件夹）。", null, McpErrorCode.InvalidParams);
+
+            if (target.IndexOf("\\Siemens\\Automation\\Portal V", StringComparison.OrdinalIgnoreCase) >= 0)
+                throw new McpException($"拒绝写到 {target}：这是 TIA Portal 安装目录。请换到工程外的普通目录。", null, McpErrorCode.InvalidParams);
+        }
+
     }
 
     internal sealed class ResponseGuardTool : McpServerTool
@@ -426,5 +464,7 @@ namespace TiaMcpServer.ModelContextProtocol
                 }
             };
         }
+
+
     }
 }

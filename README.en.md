@@ -1,214 +1,210 @@
----
-summary: English overview - what this MCP is, how to install it (incl. a one-liner for a colleague), version notes and safe defaults
-kind: entry
-when: English readers, or a non-Chinese colleague needs the overview
-env: none
----
+# TIA Portal Openness MCP (V18 / V20 / V21)
 
-# TIA Portal Openness MCP — Multi-Version (V18 / V20 / V21)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+![TIA Portal](https://img.shields.io/badge/TIA%20Portal-V18%20%2F%20V20%20%2F%20V21-blue)
+![Tools](https://img.shields.io/badge/tools-232%20(V20)%20%2F%20204%20(V18)-green)
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) ![TIA Portal](https://img.shields.io/badge/TIA%20Portal-V18%20%2F%20V20%20%2F%20V21-blue.svg) ![MCP Tools](https://img.shields.io/badge/MCP%20Tools-232-green.svg)
-
-> **TIA Portal Openness MCP** — an independently maintained, MIT-licensed MCP server for **Siemens TIA Portal V18 / V20 / V21**.
-
-On **Windows + TIA Portal V18 / V20 / V21**, drive TIA Portal through **MCP (stdio)**: create projects, add hardware, generate PLC objects (Tag / UDT / DB / SCL / LAD), build **Classic / Comfort / Unified HMI** screens and tags, compile-and-diagnose, and save. The bundle ships **prebuilt runtimes**, a Skill spec, templates, a capability matrix, and a manual. **No source-clone required** — download the zip at the repository root, unzip, and go.
-
-## Quick start (3 steps)
-
-1. **Prepare**: install **TIA Portal V18** + **.NET Framework 4.8**; add your Windows user to the local **`Siemens TIA Openness`** group and log off/on once.
-2. **Download & unzip**: use **`Code` → `Download ZIP`** on this repository page (or `git clone`), then unzip anywhere.
-3. **Mount the MCP**: in your MCP client (WorkBuddy / Cursor / VS Code / Claude Desktop, etc.), point `command` at
-   `tools\tiaportal-mcp\src\TiaMcpServer\bin-v18\Release\net48\TiaMcpServer.exe`,
-   pass `args` `["--tia-major-version","18","--logging","0"]`, trust the connector, and restart the client. The connector exposes **204 safe V18 tools**.
+Drive TIA Portal from an AI agent over **MCP (stdio)**: read structure, export blocks, generate PLC code,
+edit hardware configuration, and run offline project audits. The repository ships **pre-built runtimes** —
+unzip and go; you do not need to compile anything.
 
 ---
 
-## Version notes (V18 / V20 / V21)
+## 1. What it does
 
-This repository maintains **V18 / V20 / V21** builds (three csproj files producing the same `TiaMcpServer.exe`, distinguished by output directory `bin-v18` / `bin-v20` / `bin`). The **V18 build** applies the following compatibility handling:
+| Area | Capabilities |
+|---|---|
+| **Read** | Project tree, software tree, block hierarchy, block interfaces, tag tables, UDTs, cross references, call chains, online values |
+| **Export** | Single / batch blocks and types → SimaticML XML, **with disk facts reported** (files written, empty files, unparsable XML, bytes) |
+| **Write** | Create / delete / move blocks, renumber, import UDTs / tag tables / technology objects, import from external sources, regenerate from SCL |
+| **Hardware** | Add devices, plug modules, set I/O addresses, configure PROFINET subnets, drive parameters and telegrams |
+| **HMI** | Classic / Comfort / Unified screens, tags, connections, button actions |
+| **Diagnostics** | Compile and collect messages, broken-link and address-consistency checks, list of inconsistent blocks |
+| **Audit** | Offline rule engine (see §5), CI friendly |
 
-- **WinCC Unified HMI is unavailable in V18**: a full V18 Openness install does not include `Siemens.Engineering.HmiUnified`. The **23 Unified HMI tools** are hidden in the V18 build via `#if !TIA_V18` guards (bodies kept, simply not registered as MCP tools).
-- **Exposed tool count**: the connector reports **204 safe V18 tools** (baseline 232 − 28 guarded tools); V20/V21 builds expose the full set.
-- **VersionControl (VCI) is unavailable in V18**: the V18 `Siemens.Engineering` assembly does not ship `MappedObject` / `ExportObject` / `ConnectObject` / `GetSupportedFileFormats`, so VCI is a **V20+ capability**; its **5 tools** are likewise hidden in the V18 build via `#if !TIA_V18`.
-- **Audit result**: apart from those **28 tools** (23 Unified HMI + 5 VCI), every exposed tool is safe and usable under V18; V20-only document tools (`Export/Import*Documents`) are exposed in V18 only as guided hints and are not callable.
-- **HMI automation path**: under V18 use the **Classic / Comfort HMI** tool family; Unified requires the V20/V21 build.
+Layers: `L0` bootstrap 7 · `L1` everyday 57 · `L2` specialised 168.
+The V20 build exposes **232** tools; the V18 build hides 28 capabilities V18 does not have
+(23 Unified HMI + 5 VersionControl) and exposes **204**.
 
-## Install (for a colleague / a new machine)
+---
 
-Fastest path — send this one sentence to their **AI agent** and let it install itself:
+## 2. Connect in 60 seconds
 
-```
-Help me install the TIA Portal MCP: download https://github.com/1748477582/tia-portal-openness-mcp/archive/refs/heads/master.zip,
-extract it to %USERPROFILE%\Downloads\tia-mcp, then run
-powershell -ExecutionPolicy Bypass -File install-mcp.ps1
-Paste the script output back to me and tell me which client to restart.
-```
+**Prerequisites**: Windows x64, **TIA Portal V18/V20/V21 with Openness selected during setup**, .NET Framework 4.8,
+and the current Windows user in the local group `Siemens TIA Openness` (sign out and back in after changing it).
 
-Or do it yourself (PowerShell, after extracting the bundle; no administrator rights needed):
+### Option A — one-line install (recommended)
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File install-mcp.ps1 -DryRun   # show the plan, write nothing
-powershell -ExecutionPolicy Bypass -File install-mcp.ps1           # detect TIA, pick the build, write the configs
-powershell -ExecutionPolicy Bypass -File install-mcp.ps1 -Client workbuddy   # one specific client
-powershell -ExecutionPolicy Bypass -File install-mcp.ps1 -Lite              # ~40 essential tools only
-powershell -ExecutionPolicy Bypass -File install-mcp.ps1 -Client cursor -Remove
+powershell -ExecutionPolicy Bypass -File .\install-mcp.ps1
 ```
 
-Supported hosts: **WorkBuddy** (`~/.workbuddy/mcp.json`), Claude Desktop, Claude Code, Cursor, VS Code —
-by default only the ones actually installed on the machine are touched. Existing configs are backed up
-to `*.bak` first, and repeated runs are idempotent.
+The installer **scans every fixed drive** for TIA installations (no guessed default), lists what it found,
+lets you confirm, then writes the MCP configuration.
 
-Requires **Windows + TIA Portal V18/V20/V21 (with the Openness option)**. With several TIA versions
-installed the highest one wins; pass `-TiaMajorVersion 18` to choose. You can also double-click
-`配置MCP-v18.bat` / `配置MCP-v20.bat` / `配置MCP.bat` if you prefer a file per version.
+### Option B — wire it up manually
 
-## Safe defaults and self-service tool search (since 2.5.0)
+Point your MCP client at the launcher inside the extracted folder:
 
-- **`FindTools(query, limit)`** (L0): searches the **whole** roster by capability words and returns each match's exact name,
-  parameter signature and a **risk flag** (`read-only` / `reads the project, writes a file` /
-  `writes or overwrites engineering data` / `RISK changes CPU, deletes data or closes project - call by name`).
-  It does **not** change which tools are advertised — a fallback, not a step.
-- **The reflection bridge no longer reaches Portal / Project**: calling `Close` / `Dispose` / `Save` / `SaveAs` on
-  `TiaPortal` or `Project` through `InvokeObject` / `InvokeService` is refused, with the message pointing at
-  `CloseProject` / `Disconnect` / `SaveProject` / `OpenProject`. Before this, `InvokeObject(portal, "Dispose",
-  allowWrite=true)` could close a TIA the user had open — the same class of accident as 2026-09-24.
-- **`WritePlcSclSourceFile` no longer overwrites silently**: an existing target with different content fails and
-  requires an explicit `overwrite=true` (identical content still succeeds idempotently).
-- **Eight dangerous defaults now mean "safe when omitted"**: `overwrite` (5 batch-import tools) and
-  `autoCreateGroup` / `autoCreate` (3 grouping tools) default to `false`. **`CloseProject` / `Disconnect` keep
-  `saveBeforeClose = true`** — that default already pointed the safe way.
-- **Stale temp artifacts are swept at startup**: uniquely-suffixed export / read-back / backup directories this
-  server created under `%TEMP%` are removed after 24 hours. Fixed-name directories (e.g. `tia_mcp_scl`) and other
-  processes' files are never touched.
-
----
-
-## Setup
-
-1. **Environment**
-   - Install **.NET Framework 4.8** and **TIA Portal V18**;
-   - Add the current user to the local **`Siemens TIA Openness`** group and re-login;
-   - Locate the TIA install root (one of):
-     a) pass `--tia-portal-location "C:/Program Files/Siemens/Automation/Portal V18"` at launch (recommended for non-default installs);
-     b) set the `TiaPortalLocation` user environment variable;
-     c) let it auto-read from the registry.
-   - Authorize **Openness** in the TIA popup on first connect.
-
-2. **Mount the MCP (manual config, most reliable)**
-   Point `command` at the V18 exe inside the bundle:
-
-   ```json
-   {
-     "mcpServers": {
-       "tia-portal": {
-         "command": "C:/path/to/unzip/tools/tiaportal-mcp/src/TiaMcpServer/bin-v18/Release/net48/TiaMcpServer.exe",
-         "args": ["--tia-major-version", "18", "--logging", "0"],
-         "env": { "TiaPortalLocation": "C:/Program Files/Siemens/Automation/Portal V18" }
-       }
-     }
-   }
-   ```
-
-   (On a managed MCP client, set `disabled` to `true` in the connector config to release the file lock before upgrading `TiaMcpServer.exe`, then restore it after copying. The same exe also supports `TiaMcpServer.exe config` to auto-discover and write host config — manual config is more reliable.)
-
-3. **First-call sequence**
-   - `Bootstrap` → `Connect` → `OpenProject` (or `CreateProject`) → `GetProjectTree`, then read the real `PLC_xxx` / `HMI_RT_xxx` paths from the tree before continuing.
-
----
-
-## Capabilities & boundaries
-
-**Can do**: project & hardware configuration, PROFINET, declarative PLC import (Tag/UDT/DB/SCL/LAD), Classic / Comfort HMI connections/tags/screens, cross-reference & impact analysis, batch grouping & auto-classification, compile-and-diagnose, save.
-
-**Not available under V18**:
-- WinCC **Unified** HMI (23 tools hidden; V18 Openness lacks the `HmiUnified` assembly) — requires V20/V21.
-- S7DCL human-readable SCL text export (`Export/Import*Documents` is V20+ only; exposed as a guided hint only in this build). Use `ExportBlockSourceUtf8` + `RegenerateBlockFromSource` instead (SimaticML XML, UTF-8+BOM).
-
-**Not bundled**: Siemens install media, field projects, business-specific technology.
-
----
-
-## Version comparison
-
-| Capability | V18 build | V20 / V21 build |
-|------|-----------|------------------------|
-| Common PLC / Classic HMI tools | ✅ | ✅ |
-| WinCC Unified HMI tools | ❌ (guarded/hidden) | ✅ |
-| Document import/export (`*Documents` / S7DCL) | ⚠️ guided hint only | ✅ callable |
-| Exposed tool count | **204** | **232** |
-
----
-
-## Build (if compiling from source)
-
-Three csproj files map to the three TIA versions, distinguished by output directory:
-
-```bat
-:: V18 (28 tools hidden: 23 Unified HMI + 5 VCI, 204 total)
-dotnet build TiaMcpServer.V18.csproj -c Release ^
-  -p:TiaPortalLocation="C:/Program Files/Siemens/Automation/Portal V18" ^
-  -p:BaseOutputPath=bin-v18/ -p:BaseIntermediateOutputPath=obj-v18/
-
-:: V20 (monolithic session assembly)
-dotnet build TiaMcpServer.V20.csproj -c Release ^
-  -p:TiaPortalLocation="D:/Program Files/Siemens/Automation/Portal V20" ^
-  -p:BaseOutputPath=bin-v20/ -p:BaseIntermediateOutputPath=obj-v20/
-
-:: V21 (split assemblies)
-dotnet build TiaMcpServer.csproj -c Release
+```json
+{
+  "mcpServers": {
+    "tia-portal": {
+      "command": "cmd",
+      "args": ["/c", "<extract-dir>\\tools\\tiaportal-mcp\\tia_mcp_launcher.bat"],
+      "env": { "TIA_MCP_ATTACH_TIMEOUT_MS": "8000" }
+    }
+  }
+}
 ```
 
-`TiaMcpServer.V18.csproj` defines the `TIA_V18` compile symbol, which automatically hides the Unified HMI tools.
+Register **one entry only**. The version is chosen automatically from the project you open (see §3).
 
 ---
 
-## What's delivered
+## 3. Three design decisions that matter
 
-The `master` branch root provides:
+### 3.1 One connector, engine chosen by project version
+
+The Openness assemblies of a given TIA version can only be loaded into one process, therefore:
+
+- `tia_mcp_launcher.bat` **scans all fixed drives** and treats the filesystem as the only authority
+  (`Portal V<XX>\bin\Siemens.Automation.Portal.exe` **and** `PublicAPI\V<XX>\Siemens.Engineering.dll`).
+  **The registry is not trusted** — incomplete uninstalls leave keys behind, and a `Portal V20\PublicAPI`
+  folder legitimately contains client DLLs for V17–V20.
+- `tia_router.py` is **one** MCP server in front of per-version child engines. On `OpenProject` it reads the
+  project extension (`.ap18` / `.ap20`) and switches to the matching engine. Before switching it **saves and
+  closes** the open project; if the save fails the switch is aborted — it never force-closes your work.
+- Multiple versions installed? It **does not guess**: it reports `ambiguous`, lists the candidates, and
+  remembers your one-time choice in the config.
+
+### 3.2 Headless for reading, a window for writing
+
+- `ConnectIsolated(withUserInterface=false)` — no window; for reading structure, blocks, exports, audits.
+- `ConnectIsolated(withUserInterface=true)` — visible TIA window; for anything that changes the project.
+- **Write gate**: 65 write tools are refused outright on a headless instance, with a message telling you to
+  `Disconnect` and reconnect with `withUserInterface=true`. The tool never edits your program in a window
+  you cannot see.
+- Only instances and projects **this server opened** are ever closed; attached user projects are left alone.
+
+### 3.3 "The tool said OK" is not evidence — the disk is
+
+Export, compile and write operations **read back the actual result**: export responses carry
+`filesWritten / emptyFiles / unparsableFiles / totalBytes / diskVerified`. Zero new files, or any empty /
+unparsable file, makes `success=false`, and the message says
+`disk shows N new file(s)` or `treat this export as FAILED`.
+
+---
+
+## 4. Three workflows (for the agent, not new tools)
+
+Available as MCP Prompts after mounting. They fix the ordering, the stop gates and the "never do this" list:
+
+| Prompt | Purpose |
+|---|---|
+| `Workflow_AuditProject` | Read-only audit: identity gate → tree → software tree → block hierarchy → consistency → types → export reconciliation → offline rules → report |
+| `Workflow_ExportForReview` | Export and **prove** the disk artefacts before any offline parsing |
+| `Workflow_EditBlock` | Impact analysis → backup → edit → re-import → compile → verify → save |
+
+---
+
+## 5. Project audit (offline, CI friendly)
+
+```powershell
+# Collect (attaches to TIA, read-only)
+python scripts\tia_project_audit.py --collect --project "<project.apXX>" --software <plcName> --out report.md
+
+# Analyse collected data only (no TIA)
+python scripts\tia_project_audit.py --skeleton s.json --hierarchy h.json --out report.md
+```
+
+Rules enabled by default (all are **fact checks**, no naming style):
+
+| Rule | Meaning |
+|---|---|
+| R0 / R0b | **Source reconciliation** between skeleton and hierarchy (block count, per-type counts); mismatch is P1 |
+| R1 / R3 / R5 | Loose root-level blocks, unpartitioned numbering, sparse number space |
+| R7 | Blocks not compiled (`isConsistent=false`) — export and download will be refused |
+| R8 | Know-how protected blocks (logic not readable; needs manual unlock) |
+| R11 / R12 | Empty groups, programming-language distribution |
+| R13 / R13b | Suspected orphans (no callers, heuristic) + **call-graph coverage statement** |
+
+Naming conventions (group prefixes, block prefixes, special characters in names) are **not checked by default** —
+naming belongs to your own framework. Pass `--naming-check` to enable them.
+
+---
+
+## 6. Versions and tool counts
+
+| Build | Output | TIA | Tools | Notes |
+|---|---|---|---|---|
+| V18 | `bin-v18` | V18 | 204 | 28 capabilities hidden (not available in V18) |
+| V20 | `bin-v20` | V20 | 232 | Full tool set |
+| V21 | `bin` | V21 | 232 | Upstream build |
+
+V16 / V17 / V19 are not supported: no usable Openness channel there (or no build shipped here).
+When an unsupported version is detected, the tool **says so** instead of silently degrading.
+
+---
+
+## 7. How this differs from similar projects
+
+The most active comparable open-source project is [Czarnak/tia-portal-mcp](https://github.com/Czarnak/tia-portal-mcp)
+(**v4.2.0**, released 2026-10-25; .NET 10; TIA V21; 14 read-write / 4 read-only tools according to its v3.0.0 discussion).
+
+| Dimension | This project (2.6.2) | Czarnak/tia-portal-mcp (v4.2.0) |
+|---|---|---|
+| Tool granularity | **Many small tools** (232, composable) | **Few composite tools** (preview → apply) |
+| TIA versions | V18 / V20 / V21 builds, **routed by project** | V21 only |
+| Runtime | .NET Framework 4.8 (built into Windows) | .NET 10 (install runtime or use the self-contained zip) |
+| Write safety | **Window gate** (headless instances refuse writes) + only closes self-started instances | Access modes (read-only hides write tools) + preview tokens + audit JSONL |
+| Audit | Built-in offline rule engine (reconciliation / uncompiled / protected / orphans) | No separate audit script |
+| Distribution | Runtimes included in the repo, unzip and go | Self-contained zip / NuGet global tool |
+
+Different optimisations: this project targets "one engineer, several TIA versions on one machine, every step explainable".
+
+---
+
+## 8. Repository layout
 
 ```
-(This repository does not publish a separate `TIA_Portal_Openness_MCP.zip` asset and has no GitHub Release — the zip mentioned in older docs no longer exists.)
+tools/tiaportal-mcp/
+  tia_mcp_launcher.bat      # version detection + start the matching build
+  detect_tia_version.ps1    # scan all fixed drives (filesystem is the authority)
+  tia_router.py             # single connector, routes by project version
+  src/TiaMcpServer/         # engine source (three csproj: V18 / V20 / upstream)
+scripts/                    # audit, manifest generation, release gates, version switch
+manifest/                   # tools-list.json / package-manifest.json
+docs/                       # index, user directives, lessons learned
+runtime/                    # pre-built runtimes used by the distribution
 ```
 
-The archive contains: prebuilt runtime `bin-v18/`, source `src/`, docs `docs/`, templates `templates/`, a Skill, the capability matrix `manifest/`, config `.mcp.json`, plus a more detailed `README.md` and `LICENSE`. Everything needed is inside the archive — no separate source clone required.
+---
 
-> This repository **ships the full source tree** (`tools/tiaportal-mcp/src/`, three csproj files: V18 / V20 / V21) plus a prebuilt runtime under `runtime/`. Download with `Code` → `Download ZIP`, or `git clone`.
+## 9. FAQ
+
+**"Install path not found", or it always uses V18 on a new machine?**
+Fixed in 2.5.5: detection scans every fixed drive, trusts the filesystem, and fails loudly instead of
+falling back to V18. To see what it found:
+`powershell -File tools\tiaportal-mcp\detect_tia_version.ps1 -List`.
+
+**I have both V18 and V20 — how do I switch?**
+You do not. With one connector, `.ap18` goes to V18 and `.ap20` goes to V20.
+To pin a default: `scripts\Set-TiaVersion.ps1 -Version 18 -Apply`.
+
+**`AttachToOpenProject` does not attach?**
+On some machines `Attach()` hangs (reproduced twice here). Use `ConnectIsolated` + `OpenProject` instead.
+
+**Export "succeeded" but the folder is empty?**
+Not since 2.6.1: exports report `filesWritten` and friends; `success=false` means engine and disk disagree.
+
+**V20 compiles slowly?**
+Normal with 100+ technology objects — 60 s or more. Give `timeoutSeconds` 600.
 
 ---
 
-## Documentation map (inside the archive)
+## 10. Changelog and license
 
-| Path | What |
-|------|------|
-| `tools/tiaportal-mcp/skill/SKILL.md` | Primary spec: tool layers, parameter traps, HMI schema, LAD/SCL boundaries |
-| `manifest/tools-list.json` | Static tool names/layers (runtime authority is `tools/list` after connect) |
-| `docs/tool-capability-matrix.md` | Capability matrix |
-| **`AGENTS.md`** | **Handover entry point**: read this first when picking the repo up (reading order, self-checks, hard rules) |
-| **`docs/INDEX.md`** | **Content index** (generated): every doc/script/manifest with a one-line purpose, when to use it, and what it needs |
-| **`docs/lessons-and-shortcuts.md`** | **Failures and shortcuts**: the incidents that cost real work (killing or closing the user's TIA), RCW type sniffing that lies, PowerShell 5.1 traps, push-direction auditing, encoding/BOM rules, DLP workarounds. Read before touching the server |
-| `docs/scl-instruction-library.md` / `docs/lad-instruction-library.md` | SCL / LAD instruction libraries |
-| `docs/hmi-plc-tag-binding-and-addressing.md` | HMI↔PLC binding & addressing |
-| `templates/plc/` · `templates/hmi/` | PLC / HMI template index |
-| `手册/` | Quick start, Openness limitations, error model, etc. |
+Per-release notes: [CHANGELOG.md](CHANGELOG.md). Current version **2.6.2**.
 
----
-
-## FAQ
-
-**Q: The connector only shows some tools / a tool is missing?**
-This is a client tool-descriptor/cache issue, not a trimmed bundle — restart the client or clear the tool cache. The runtime authority is `tools/list`.
-
-**Q: Why no WinCC Unified?**
-TIA Portal V18's full Openness install does not include `Siemens.Engineering.HmiUnified`; the Unified HMI tools are hidden in the V18 build via `#if !TIA_V18`. Use the Classic / Comfort HMI family under V18; use V20/V21 for Unified.
-
-**Q: "File in use" when upgrading `TiaMcpServer.exe`?**
-The managed MCP connector's process is hosted and respawns immediately. Set `disabled` to `true` in the connector config to release the file lock before upgrading, then restore it.
-
-**Q: Is it IDE-independent?**
-Yes. Any MCP-capable client (WorkBuddy, Cursor, VS Code, Claude Desktop, custom HTTP clients, etc.) can use the same `TiaMcpServer.exe`.
-
----
-
-## License
-
-Released under the **MIT License** — see `LICENSE`.
+MIT License — see [LICENSE](LICENSE).
