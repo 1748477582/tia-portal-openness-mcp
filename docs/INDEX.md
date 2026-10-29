@@ -6,7 +6,7 @@
 
 | 共 59 项 | 环境：`none` 纯本机 · `python` 需 Python · `dotnet` 需 .NET SDK · `tia` 需 TIA Portal |
 
-## entry（9）
+## entry（7）
 
 | 文件 | 说明 | 何时用 | 环境 |
 |---|---|---|---|
@@ -15,16 +15,16 @@
 | [`.github/copilot-instructions.md`](../.github/copilot-instructions.md) | 给对应客户端的入口指针（薄壳）：只指向 AGENTS.md，不重复内容 | — | `none` |
 | [`AGENTS.md`](../AGENTS.md) | 任何 agent / 任何人接手本仓库时的唯一入口：这是什么、先读什么、怎么自检、硬规则、加东西时的义务 | 第一次接触本仓库（换电脑、换 agent、换人）时最先读这一份 | `none` |
 | [`CLAUDE.md`](../CLAUDE.md) | 给 Claude 系 agent 的入口指针（薄壳）：只指向 AGENTS.md，不重复内容 | Claude Code / Claude 系客户端自动读取本文件时 | `none` |
-| [`README.en.md`](../README.en.md) | English overview - what this MCP is, how to install it (incl. a one-liner for a colleague), version notes and safe defaults | English readers, or a non-Chinese colleague needs the overview | `none` |
-| [`README.md`](../README.md) | 项目总览：这套 MCP 是什么、怎么装（含给同事的一句话）、版本说明与安全默认值 | 想知道这个项目能干什么、怎么安装时 | `none` |
 | [`llms.txt`](../llms.txt) | 给 LLM/agent 的机器可读入口（llmstxt 约定）：项目是什么、从哪开始、不能碰什么 | — | `none` |
 | [`同事安装_给Agent的一句话.md`](../同事安装_给Agent的一句话.md) | 给同事的安装指令：前提条件、一条可复制的一行命令、装前自检、换版本与卸载、离线安装 | 别人的机器要装这套 MCP 时（把「一行安装」整段发过去即可） | `none` |
 
-## doc（21）
+## doc（23）
 
 | 文件 | 说明 | 何时用 | 环境 |
 |---|---|---|---|
 | [`CHANGELOG.md`](../CHANGELOG.md) | 版本变更记录：每版的新增 / 变更（含行为变更）/ 修复 / 移除，以及工具总数 | 升级前、排查回归、确认某个行为从哪一版开始变 | `none` |
+| [`README.en.md`](../README.en.md) | An MCP server built on Siemens Openness. It lets MCP clients and AI agents (WorkBuddy, Claude Desktop, | — | `none` |
+| [`README.md`](../README.md) | 基于 Siemens Openness 的 MCP 服务端，让 AI 客户端（WorkBuddy / Claude Desktop / Cursor / VS Code 等） | — | `none` |
 | [`docs/AI_spec_prompt.md`](AI_spec_prompt.md) | 把下面这段（连同 tia schema 的输出）贴给任意 AI（Claude / GPT / Gemini / 国产模型均可）， | — | `none` |
 | [`docs/CLI_quickstart.md`](CLI_quickstart.md) | v2.0 起，交付包里的 同一个 exe 既是 MCP 服务，也是命令行 tia。 | — | `none` |
 | [`docs/HMI_Unified_画面生成规范与模板.md`](HMI_Unified_画面生成规范与模板.md) | 本规范用于生成 WinCC Unified 画面、标签、按钮动作和动态化绑定。模板文件位于 templates/hmi/，均为可读、可修改、可直接应用的 designJson。 | — | `none` |
