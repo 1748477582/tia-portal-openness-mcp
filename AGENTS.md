@@ -62,7 +62,7 @@ powershell -ExecutionPolicy Bypass -File switch-version.ps1 -TiaMajorVersion 18
 powershell -ExecutionPolicy Bypass -File switch-version.ps1 -FollowOpenTia
 ```
 
-全绿 = 环境就绪。任何一步红，先去 `docs/lessons-and-shortcuts.md` 搜报错关键词（那里面全是踩过的坑）。
+全绿 = 环境就绪。任何一步红，先去 内部经验库（不随仓库发布） 搜报错关键词（那里面全是踩过的坑）。
 
 **前置条件（别误判成"仓库坏了"）**：
 - 第 1–2 步只需要 **TIA Portal V18+（含 Openness）+ PowerShell**；**只安装并使用 MCP 的话，到第 2 步就够了**。
@@ -77,9 +77,9 @@ powershell -ExecutionPolicy Bypass -File switch-version.ps1 -FollowOpenTia
 | 顺序 | 文件 | 作用 | 什么时候读 |
 |---|---|---|---|
 | 1 | **`AGENTS.md`**（本文） | 入口与硬规则 | 第一次接触 |
-| 2 | **`docs/user-directives.md`** | **用户明确交代过的硬约束**（验证方式、安全、流程、文风、存储） | **每次开工前扫一遍；交付前逐条自查** |
+| 2 | **内部约束清单（不随仓库发布）** | **用户明确交代过的硬约束**（验证方式、安全、流程、文风、存储） | **每次开工前扫一遍；交付前逐条自查** |
 | 3 | **`docs/INDEX.md`** | **全部内容的目录**（文档/脚本/清单各是什么、何时用、需要什么环境） | 想找"有没有现成的" |
-| 4 | **`docs/lessons-and-shortcuts.md`** | 踩过的坑与捷径（症状/根因/做法/证据） | **动手前**，尤其碰 TIA、推送、脚本 |
+| 4 | **内部经验库（不随仓库发布）** | 踩过的坑与捷径（症状/根因/做法/证据） | **动手前**，尤其碰 TIA、推送、脚本 |
 | 5 | `tools/tiaportal-mcp/skill/SKILL.md` | 工具分层、参数陷阱、HMI schema、调用顺序 | 要实际调工具之前 |
 | 6 | `docs/tool-capability-matrix.md` | 232 个工具的能力矩阵（静态索引） | 找具体工具 |
 | 7 | `docs/CLI_quickstart.md` | 同一个 exe 的命令行用法（`tia` 子命令） | 想用命令行而非 MCP |
@@ -99,9 +99,9 @@ powershell -ExecutionPolicy Bypass -File switch-version.ps1 -FollowOpenTia
 | 4 | **改工具 = 同步三份**：引擎 `tools/list` = `manifest/tools-list.json` = `docs/tool-capability-matrix.md`（改描述也要） | CI 红；或文档与实际不符 |
 | 5 | **遇到 know-how 加密块先问用户要密码**，不做字典/枚举；不为解保护新增工具 | 越权，且用户明确拒绝过 |
 | 6 | **别用 `git push`**：本机到 github.com:443 不通，推送走 Git Database API（`tools/tiaportal-mcp/push_repo.py`），且必须设 `HTTPS_PROXY` | 推送失败，或误以为"推上去了" |
-| 7 | **用户明确交代过的事是硬约束**：见 `docs/user-directives.md`。核心几条——独立验证用户自述、验证深度如实说、摘要必须与磁盘一致、仓库与文档去 AI 腔、写操作前先确认 | 这几条都违反过，且都付了代价 |
+| 7 | **用户明确交代过的事是硬约束**：见 内部约束清单（不随仓库发布）。核心几条——独立验证用户自述、验证深度如实说、摘要必须与磁盘一致、仓库与文档去 AI 腔、写操作前先确认 | 这几条都违反过，且都付了代价 |
 
-细节、证据、绕法全在 `docs/lessons-and-shortcuts.md`（§0 / §1 / §7 / §12）；用户要求逐条见 `docs/user-directives.md`。
+细节、证据、绕法全在 内部经验库（不随仓库发布）（§0 / §1 / §7 / §12）；用户要求逐条见 内部约束清单（不随仓库发布）。
 
 ---
 
@@ -154,10 +154,10 @@ powershell -ExecutionPolicy Bypass -File switch-version.ps1 -FollowOpenTia
 | 给同事/新机器装 | `install-mcp.ps1`（`-DryRun` 先看），说明见 `同事安装_给Agent的一句话.md` |
 | 查某个工具的参数/是否存在 | `FindTools(query)`；或 `docs/tool-capability-matrix.md` |
 | **换 TIA 版本** | `switch-version.ps1`（列出本机版本让你选；只改 `TIA_MCP_VERSION`，不碰其它配置） |
-| 改一个工具 | 硬规则 #4 + `docs/lessons-and-shortcuts.md` §4.5 的完整链路 |
+| 改一个工具 | 硬规则 #4 + 内部经验库（不随仓库发布） §4.5 的完整链路 |
 | 改完推送 | `python tools/tiaportal-mcp/push_repo.py --plan` → `--push --message-file <msg>` → 再 `--plan` 确认零差异 |
-| 真机验证（不碰用户 TIA） | `docs/lessons-and-shortcuts.md` §9 + `_upstream_diff/verify_*.py` 骨架 |
-| 遇到报错 | 先搜 `docs/lessons-and-shortcuts.md`，再搜 `CHANGELOG.md` |
+| 真机验证（不碰用户 TIA） | 内部经验库（不随仓库发布） §9 + `_upstream_diff/verify_*.py` 骨架 |
+| 遇到报错 | 先搜 内部经验库（不随仓库发布），再搜 `CHANGELOG.md` |
 
 ---
 
@@ -172,4 +172,4 @@ powershell -ExecutionPolicy Bypass -File switch-version.ps1 -FollowOpenTia
 | （可选）GitHub token | 只有要**推送**时才需要：设 `GITHUB_TOKEN`，或用 `TIA_MCP_TOKEN_FILE` 指向含 `ghp_...` 的文件。**token 不进仓库** |
 
 **不在仓库里的东西**（换机器会丢，需要重新配置）：`~/.workbuddy/mcp.json` 里的连接器条目（用 `install-mcp.ps1` 重装）、
-GitHub token、本机代理端口。这三样都写进了 `docs/lessons-and-shortcuts.md`，照着配即可。
+GitHub token、本机代理端口。这三样都写进了 内部经验库（不随仓库发布），照着配即可。

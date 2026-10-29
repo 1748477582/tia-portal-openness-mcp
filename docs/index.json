@@ -1,31 +1,7 @@
 {
  "generatedBy": "scripts/Generate-DocIndex.py",
- "count": 59,
+ "count": 41,
  "items": [
-  {
-   "path": ".cursor/rules/tia-mcp.mdc",
-   "title": "tia-mcp.mdc",
-   "kind": "entry",
-   "summary": "给对应客户端的入口指针（薄壳）：只指向 AGENTS.md，不重复内容",
-   "when": "",
-   "env": "none"
-  },
-  {
-   "path": ".cursorrules",
-   "title": "本仓库的 agent 入口是 AGENTS.md（请先读它）",
-   "kind": "entry",
-   "summary": "给对应客户端的入口指针（薄壳）：只指向 AGENTS.md，不重复内容",
-   "when": "",
-   "env": "none"
-  },
-  {
-   "path": ".github/copilot-instructions.md",
-   "title": "Copilot / agent 入口指针",
-   "kind": "entry",
-   "summary": "给对应客户端的入口指针（薄壳）：只指向 AGENTS.md，不重复内容",
-   "when": "",
-   "env": "none"
-  },
   {
    "path": "AGENTS.md",
    "title": "AGENTS.md — 接手本仓库的入口",
@@ -40,14 +16,6 @@
    "kind": "doc",
    "summary": "版本变更记录：每版的新增 / 变更（含行为变更）/ 修复 / 移除，以及工具总数",
    "when": "升级前、排查回归、确认某个行为从哪一版开始变",
-   "env": "none"
-  },
-  {
-   "path": "CLAUDE.md",
-   "title": "CLAUDE.md",
-   "kind": "entry",
-   "summary": "给 Claude 系 agent 的入口指针（薄壳）：只指向 AGENTS.md，不重复内容",
-   "when": "Claude Code / Claude 系客户端自动读取本文件时",
    "env": "none"
   },
   {
@@ -73,14 +41,6 @@
    "summary": "一行式安装入口：可直接从 GitHub 拉取并调用 install-mcp.ps1；不带版本时只探测并给出下一条命令（不猜）",
    "when": "别人要把本 MCP 装到自己机器上时，复制 README 里那条一行命令即可",
    "env": "python"
-  },
-  {
-   "path": "cursor-mcp.example.json",
-   "title": "cursor-mcp.example.json",
-   "kind": "manifest",
-   "summary": "MCP 客户端配置示例（Cursor/mcp.json 格式，复制粘贴用）",
-   "when": "",
-   "env": "none"
   },
   {
    "path": "docs/AI_spec_prompt.md",
@@ -139,38 +99,6 @@
    "env": "none"
   },
   {
-   "path": "docs/lad-instruction-library.md",
-   "title": "LAD 指令库（中性参考）",
-   "kind": "doc",
-   "summary": "本文件汇总在 LAD（梯形图）网络中常见的指令、引脚、操作数与连接方式，配合 tools/tiaportal-mcp/skill/SKILL.md 中已验证的 Part Name 注册表使用。所有示例均为通用语法，不绑定特定工艺。",
-   "when": "",
-   "env": "none"
-  },
-  {
-   "path": "docs/lessons-and-shortcuts.md",
-   "title": "踩过的坑与捷径（Lessons & Shortcuts）",
-   "kind": "doc",
-   "summary": "踩过的坑与捷径：症状 / 根因 / 正确做法 / 证据；含两起关掉用户 TIA 的事故、全部已知平台限制、PowerShell 与推送陷阱",
-   "when": "动手改代码、碰 TIA、推送、写脚本之前（先搜报错关键词）",
-   "env": "none"
-  },
-  {
-   "path": "docs/mcp-ide-and-tool-visibility.md",
-   "title": "MCP 与 IDE：交付包边界说明",
-   "kind": "doc",
-   "summary": "交付包 不绑定 某一种 IDE（Cursor / VS Code / Claude Desktop / 自建 HTTP 客户端均可）。",
-   "when": "",
-   "env": "none"
-  },
-  {
-   "path": "docs/optional-reference-materials.md",
-   "title": "可选参考素材（仓库 `reference` 目录）",
-   "kind": "doc",
-   "summary": "交付包 体积受控，不内置大型西门子样板工程。推荐在 本仓库同级或上级 维护目录：",
-   "when": "",
-   "env": "none"
-  },
-  {
    "path": "docs/plc-network-patterns-expanded.md",
    "title": "PLC 程序扩展：网络与指令模式（提炼自工程实践 + SKILL 已验证子集）",
    "kind": "doc",
@@ -179,42 +107,10 @@
    "env": "none"
   },
   {
-   "path": "docs/scl-instruction-library.md",
-   "title": "SCL 指令库（中性参考）",
-   "kind": "doc",
-   "summary": "本文件汇总在 S7-1200 / S7-1500 SCL 中常用的语法和指令模板，便于 PlcBuildAndImport(kind=fc|fb) 的 DSL 转换，或直接写入外部源 .scl 文件后通过 ImportPlcExternal…",
-   "when": "",
-   "env": "none"
-  },
-  {
-   "path": "docs/server-maturity-roadmap.md",
-   "title": "服务成熟度路线图",
-   "kind": "doc",
-   "summary": "服务成熟度路线图：与商业产品逐项对比后的差距清单与推进顺序",
-   "when": "规划下一步能力时",
-   "env": "none"
-  },
-  {
    "path": "docs/tool-capability-matrix.md",
    "title": "MCP 工具能力矩阵",
    "kind": "doc",
    "summary": "本文件由源码中的 McpServerTool 静态抽取生成，运行时仍以 tools/list 为准。",
-   "when": "",
-   "env": "none"
-  },
-  {
-   "path": "docs/user-directives.md",
-   "title": "用户明确交代过的事项（硬约束）",
-   "kind": "doc",
-   "summary": "用户明确交代过的要求（硬约束）：交付验证、安全、流程、文风、存储、本仓库专属规矩，附交付前自查清单",
-   "when": "每次开工前扫一遍；交付前逐条自查。这些不是建议，是用户明确要求过的",
-   "env": "none"
-  },
-  {
-   "path": "docs/verify-low-barrier-features.md",
-   "title": "Low-barrier features — status & how to verify",
-   "kind": "doc",
-   "summary": "Status date: 2026-06-16.",
    "when": "",
    "env": "none"
   },
@@ -241,14 +137,6 @@
    "summary": "单文件安装器：探测本机 TIA（≥V18）→ 选构建/启动器 → 写进已装客户端配置 → 体检；幂等、改前备份",
    "when": "新机器或同事的机器要装这套 MCP 时（先 -DryRun 看计划）",
    "env": "python"
-  },
-  {
-   "path": "llms.txt",
-   "title": "llms.txt — 给 LLM / agent 的机器可读入口（llmstxt 约定）",
-   "kind": "entry",
-   "summary": "给 LLM/agent 的机器可读入口（llmstxt 约定）：项目是什么、从哪开始、不能碰什么",
-   "when": "",
-   "env": "none"
   },
   {
    "path": "manifest/package-manifest.json",
@@ -355,28 +243,12 @@
    "env": "python"
   },
   {
-   "path": "scripts/Test-MatchPlcName.ps1",
-   "title": "Offline deterministic test of Guard.MatchPlcName (the tolerant softwarePath matcher).",
-   "kind": "script",
-   "summary": "Offline deterministic test of Guard.MatchPlcName (the tolerant softwarePath matcher).",
-   "when": "",
-   "env": "none"
-  },
-  {
    "path": "scripts/Validate-Bundle.ps1",
    "title": "Validate-Bundle.ps1",
    "kind": "script",
    "summary": "Offline validation: required files, JSON parse, blueprint bundle list, tool roster count.",
    "when": "",
    "env": "none"
-  },
-  {
-   "path": "scripts/prewarm_tia.py",
-   "title": "-*- coding: utf-8 -*-",
-   "kind": "script",
-   "summary": "Keep a headless TIA Portal warm so every MCP session connects in ~1s instead of cold-starting.",
-   "when": "",
-   "env": "python"
   },
   {
    "path": "scripts/tia_project_audit.py",
@@ -411,14 +283,6 @@
    "env": "python"
   },
   {
-   "path": "tools/tiaportal-mcp/build.ps1",
-   "title": "Base directory: $PSScriptRoot works when .ps1 is called via &",
-   "kind": "script",
-   "summary": "TIA MCP build script - outputs UTF-8 log to avoid Chinese garbled text.",
-   "when": "",
-   "env": "tia"
-  },
-  {
    "path": "tools/tiaportal-mcp/detect_tia_version.ps1",
    "title": "TIA Portal installation discovery for tia_mcp_launcher.bat",
    "kind": "script",
@@ -441,14 +305,6 @@
    "summary": "命令行入口：同一个 exe 的 tia 子命令（如 doctor）",
    "when": "",
    "env": "python"
-  },
-  {
-   "path": "同事安装_给Agent的一句话.md",
-   "title": "给同事：复制一条命令就能装",
-   "kind": "entry",
-   "summary": "给同事的安装指令：前提条件、一条可复制的一行命令、装前自检、换版本与卸载、离线安装",
-   "when": "别人的机器要装这套 MCP 时（把「一行安装」整段发过去即可）",
-   "env": "none"
   },
   {
    "path": "配置MCP-v18.bat",
